@@ -1,0 +1,14 @@
+# Reference documentation (Do NOT push to Git)
+Tham khảo sơ đồ mẫu/
+Tham k?o so d? m?u/
+
+# Internal refactoring & draft architecture notes
+refactoring/
+docs/refactoring/
+architecture/
+docs/architecture/
+
+# OS specific
+Thumbs.db
+Desktop.ini
+.DS_Store

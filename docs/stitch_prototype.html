@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="FASHION-WEB - Nền tảng kiểm soát dòng tiền, phí sàn và đối soát bán hàng đa kênh.">
+  <title>FASHION-WEB | Kiểm soát dòng tiền đa kênh</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --app: #edf0f5;
+      --surface: #fff;
+      --soft: #f8f9fc;
+      --line: #e7eaf0;
+      --line-strong: #dce1ea;
+      --ink: #202636;
+      --text: #586274;
+      --muted: #99a2b1;
+      --blue: #4d64df;
+      --blue-dark: #374fca;
+      --blue-soft: #eef1ff;
+      --green: #1ba77c;
+      --green-soft: #e9f8f2;
+      --amber: #bc861d;
+      --amber-soft: #fff7e2;
+      --red: #d9575b;
+      --red-soft: #fff0f1;
+      --tiktok: #20242b;
+      --shopee: #e86643;
+      --pos: #77869c;
+      --side: 194px;
+      --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--app); }
+    body {
+      min-height: 100vh; margin: 0; padding: 10px; overflow: hidden;
+      background: var(--app); color: var(--ink); font: 12px/1.42 var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    [hidden] { display: none !important; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid #b9c4ff; outline-offset: 2px; }
+
+    .app {
+      display: flex; min-height: calc(100vh - 20px); overflow: hidden; border: 1px solid #e3e7ed;
+      border-radius: 11px; background: var(--surface); box-shadow: 0 12px 32px rgba(38, 46, 65, .05);
+    }
+
+    /* Same quiet, light sidebar and high-density table language as the reference. */
+    .sidebar {
+      display: flex; width: var(--side); flex: 0 0 var(--side); flex-direction: column; overflow-y: auto;
+      border-right: 1px solid var(--line); background: #fbfcfe; padding: 16px 10px 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 9px; padding: 3px 10px 17px; color: #262d3d; font-size: 14px; font-weight: 700; letter-spacing: -.3px; }
+    .brand-mark { position: relative; width: 18px; height: 18px; overflow: hidden; border-radius: 5px; background: #4d64df; box-shadow: 0 3px 8px rgba(77,100,223,.25); }
+    .brand-mark::before, .brand-mark::after { position: absolute; border-radius: 50%; background: #fff; content: ""; }
+    .brand-mark::before { width: 8px; height: 8px; top: 3px; left: 3px; }
+    .brand-mark::after { width: 7px; height: 7px; right: 2px; bottom: 2px; opacity: .62; }
+    .store-switch { display: flex; align-items: center; gap: 8px; margin: 0 3px 11px; border: 1px solid var(--line); border-radius: 7px; background: #fff; padding: 8px 9px; color: var(--text); text-align: left; }
+    .store-symbol { color: #7f8aa0; font-size: 16px; }
+    .store-switch strong, .store-switch small { display: block; overflow: hidden; max-width: 128px; text-overflow: ellipsis; white-space: nowrap; }
+    .store-switch strong { color: #545e70; font-size: 10px; }
+    .store-switch small { margin-top: 1px; color: var(--muted); font-size: 9px; }
+    .side-label { margin: 16px 10px 6px; color: #a2aab8; font-size: 9px; font-weight: 700; letter-spacing: .45px; text-transform: uppercase; }
+    .side-label:first-of-type { margin-top: 4px; }
+    .nav { display: grid; gap: 2px; }
+    .nav button {
+      display: flex; width: 100%; min-height: 34px; align-items: center; gap: 10px; border: 0; border-radius: 6px;
+      background: transparent; color: #606a7c; padding: 0 10px; text-align: left; transition: .15s ease;
+    }
+    .nav button:hover { background: #f2f4f9; color: #394356; }
+    .nav button.active { background: var(--blue-soft); color: var(--blue); font-weight: 600; }
+    .nav-ico { width: 16px; color: #929bab; font-size: 16px; text-align: center; }
+    .nav button.active .nav-ico { color: var(--blue); }
+    .nav-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav-count { min-width: 17px; margin-left: auto; border-radius: 20px; background: #f0f2f6; color: #7c879a; padding: 1px 5px; font-size: 9px; font-weight: 700; text-align: center; }
+    .nav button.active .nav-count { background: #dce3ff; color: var(--blue); }
+    .connection { margin-top: auto; border-top: 1px solid var(--line); padding: 12px 6px 0; color: #748095; font-size: 10px; }
+    .live-dots { display: inline-flex; gap: 3px; margin-right: 7px; }
+    .live-dots i { width: 6px; height: 6px; border-radius: 50%; background: #42bb8e; }
+    .connection small { display: block; margin: 4px 0 0 20px; color: #a1aab8; font-size: 9px; }
+
+    .main { display: flex; min-width: 0; flex: 1; flex-direction: column; overflow: hidden; background: #fbfcfe; }
+    .topbar { display: flex; min-height: 56px; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); background: #fff; padding: 0 18px 0 22px; }
+    .title h1 { margin: 0; color: #2e3545; font-size: 18px; font-weight: 700; letter-spacing: -.42px; line-height: 1.1; }
+    .title p { margin: 3px 0 0; color: var(--muted); font-size: 9.5px; }
+    .top-actions { display: flex; align-items: center; gap: 9px; }
+    .search { display: flex; width: min(252px, 26vw); height: 31px; align-items: center; gap: 7px; border: 1px solid #eaecf2; border-radius: 18px; background: #f8f9fc; color: #a3abb7; padding: 0 11px; }
+    .search:focus-within { border-color: #c0c9ff; background: #fff; }
+    .search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 10px; }
+    .search input::placeholder { color: #adb4c0; }
+    .round { display: grid; width: 29px; height: 29px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: #929baa; font-size: 16px; }
+    .round:hover { background: #f1f3f8; color: var(--blue); }
+    .round.add { background: var(--blue); color: #fff; box-shadow: 0 4px 10px rgba(77,100,223,.24); font-size: 23px; font-weight: 400; line-height: 1; }
+    .round.add:hover { background: var(--blue-dark); color: #fff; }
+    .health { display: flex; align-items: center; gap: 5px; border-left: 1px solid var(--line); padding-left: 10px; color: #758196; font-size: 10px; font-weight: 600; }
+    .health b { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; background: var(--green-soft); color: var(--green); font-size: 11px; }
+    .user { display: flex; align-items: center; gap: 7px; border-left: 1px solid var(--line); padding-left: 10px; }
+    .avatar { display: grid; width: 27px; height: 27px; place-items: center; border: 2px solid #f4eee9; border-radius: 50%; background: #d9cabd; color: #5a4a3d; font-size: 9px; font-weight: 700; }
+    .user strong, .user small { display: block; line-height: 1.18; }
+    .user strong { color: #4b5465; font-size: 10px; }
+    .user small { color: #a0a8b5; font-size: 9px; }
+
+    .screen { display: none; min-height: 0; flex: 1; flex-direction: column; overflow: auto; }
+    .screen.active { display: flex; }
+    .tabs { display: flex; min-height: 40px; align-items: end; gap: 25px; overflow-x: auto; border-bottom: 1px solid var(--line); background: #fff; padding: 0 23px; }
+    .tab { position: relative; height: 40px; border: 0; background: transparent; color: #99a2b1; font-size: 11px; white-space: nowrap; }
+    .tab.active { color: var(--blue); font-weight: 600; }
+    .tab.active::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; border-radius: 2px 2px 0 0; background: var(--blue); content: ""; }
+    .content { width: 100%; max-width: 1500px; margin: 0 auto; padding: 16px 20px 28px; }
+
+    .toolbar { display: flex; min-height: 38px; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+    .summary { display: flex; align-items: center; gap: 9px; color: #a0a8b6; font-size: 11px; }
+    .summary b { color: #3c4555; font-size: 15px; line-height: 1; }
+    .summary .s-icon { color: #748197; font-size: 19px; }
+    .toolbar-right { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .btn, .mini {
+      display: inline-flex; min-height: 29px; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line-strong);
+      border-radius: 5px; background: #fff; color: #5d687b; padding: 0 10px; font-size: 10px; font-weight: 600; transition: .15s ease;
+    }
+    .btn:hover, .mini:hover { border-color: #c9d1e1; background: #f9faff; color: #354052; }
+    .btn.primary { border-color: var(--blue); background: var(--blue); color: #fff; box-shadow: 0 3px 7px rgba(77,100,223,.16); }
+    .btn.primary:hover { border-color: var(--blue-dark); background: var(--blue-dark); color: #fff; }
+    .btn.soft { border-color: #d9e0ff; background: #f8f9ff; color: var(--blue); }
+    .select { height: 29px; max-width: 150px; border: 1px solid var(--line-strong); border-radius: 5px; background: #fff; color: #697386; padding: 0 25px 0 9px; font-size: 10px; }
+
+    .metrics { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; margin-bottom: 13px; }
+    .metric { position: relative; min-height: 76px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 12px 13px; text-align: left; }
+    button.metric { width: 100%; cursor: pointer; }
+    .metric-label { display: block; color: #9ba4b3; font-size: 9px; font-weight: 600; letter-spacing: .18px; text-transform: uppercase; }
+    .metric-value { display: block; margin-top: 5px; color: var(--ink); font-size: 19px; font-weight: 700; letter-spacing: -.55px; line-height: 1; white-space: nowrap; }
+    .metric-note { display: block; margin-top: 5px; color: #a0a8b6; font-size: 9px; }
+    .metric.danger .metric-value, .negative { color: var(--red); }
+    .metric.success .metric-note { color: var(--green); }
+    .rhythm { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); overflow: hidden; margin-bottom: 13px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+    .rhythm div { min-width: 0; border-right: 1px solid var(--line); padding: 9px 11px; }
+    .rhythm div:last-child { border-right: 0; }
+    .rhythm span { display: block; overflow: hidden; color: #9ca5b3; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .rhythm b { display: block; margin-top: 2px; color: #3a4455; font-size: 13px; }
+    .rhythm b.red { color: var(--red); }
+
+    .card { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+    .card-head { display: flex; min-height: 43px; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding: 0 13px; }
+    .card-head h2 { margin: 0; color: #4b5566; font-size: 11px; font-weight: 700; }
+    .card-head span, .card-head p { margin: 0; color: #a3abb8; font-size: 9px; }
+    .scroll { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; color: #505a6b; font-size: 10px; }
+    th { height: 33px; border-bottom: 1px solid #eef0f4; background: #fafbfc; color: #9ca5b4; font-size: 8.5px; font-weight: 700; letter-spacing: .22px; text-align: left; text-transform: uppercase; white-space: nowrap; }
+    td { height: 51px; border-bottom: 1px solid #eff1f5; padding: 7px 10px; vertical-align: middle; }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #fbfcff; }
+    .check { width: 36px; padding-left: 13px; }
+    .check input { width: 13px; height: 13px; margin: 0; accent-color: var(--blue); }
+    .order-code { display: block; color: var(--blue); font-size: 10px; font-weight: 700; line-height: 1.15; }
+    .sub { display: block; overflow: hidden; margin-top: 3px; color: #a3abb8; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .product { max-width: 176px; }
+    .product strong { display: block; overflow: hidden; color: #535d6e; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .product span { display: block; overflow: hidden; margin-top: 2px; color: #a3abb8; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .channel, .status { display: inline-flex; min-height: 19px; align-items: center; justify-content: center; border-radius: 4px; padding: 2px 7px; font-size: 8.5px; font-weight: 700; white-space: nowrap; }
+    .tiktok { background: #eff1f4; color: var(--tiktok); }
+    .shopee { background: #fff0ec; color: #d65b39; }
+    .pos { background: #edf1f6; color: #60708a; }
+    .pending { background: var(--amber-soft); color: var(--amber); }
+    .shipped { background: #eaf3ff; color: #2878bc; }
+    .delivered, .reconciled { background: var(--green-soft); color: #168b69; }
+    .cancelled, .discrepancy { background: var(--red-soft); color: #cf5155; }
+    .money { color: #3d4758; font-weight: 600; white-space: nowrap; }
+    .actions { display: flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap; }
+    .mini { min-height: 23px; border-radius: 4px; padding: 0 7px; font-size: 9px; }
+    .mini.blue { border-color: #cbd4ff; background: #f6f7ff; color: var(--blue); }
+    .mini.red { border-color: #f0d4d5; background: #fffafa; color: var(--red); }
+    .locked { color: #9ba4b2; font-size: 9px; }
+
+    /* Settlement */
+    .settle-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-bottom: 13px; }
+    .settle-metrics .metric::before { position: absolute; top: 0; right: 0; left: 0; height: 3px; background: #dfe4eb; content: ""; }
+    .settle-metrics .waiting::before { background: #e5b042; }
+    .settle-metrics .matched::before { background: #26b184; }
+    .settle-metrics .variance::before { background: #de6769; }
+    .rules { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; border: 1px solid #dce3fb; border-radius: 8px; background: #f8f9ff; color: #74809a; padding: 9px 12px; }
+    .rules > b { color: #52607d; font-size: 10px; white-space: nowrap; }
+    .rules .rule-list { display: flex; flex: 1; gap: 14px; overflow-x: auto; white-space: nowrap; }
+    .rules .rule-list span { font-size: 9px; }
+    .rules .rule-list b { color: #59657d; }
+    .fee-table { min-width: 1160px; }
+    .fee-table th, .fee-table td { text-align: right; }
+    .fee-table th:nth-child(-n+2), .fee-table td:nth-child(-n+2) { text-align: left; }
+    .fee-table td { height: 50px; }
+    .audit { display: grid; grid-template-columns: 29px 1fr auto; gap: 11px; align-items: center; margin-top: 13px; border: 1px solid #f0dada; border-radius: 8px; background: #fffafa; padding: 11px 13px; }
+    .audit-icon { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 7px; background: var(--red-soft); color: var(--red); font-size: 14px; }
+    .audit strong, .audit span { display: block; }
+    .audit strong { color: #7d454a; font-size: 10px; }
+    .audit span { margin-top: 2px; color: #ae8084; font-size: 9px; }
+    .audit a { color: var(--blue); font-size: 10px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+
+    /* Dashboard */
+    .periods { display: flex; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+    .periods button { min-height: 28px; border: 0; border-right: 1px solid var(--line); background: #fff; color: #8993a4; padding: 0 9px; font-size: 9.5px; white-space: nowrap; }
+    .periods button:last-child { border-right: 0; }
+    .periods button.active { background: var(--blue-soft); color: var(--blue); font-weight: 700; }
+    .kpis { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-bottom: 13px; }
+    .kpis .metric { min-height: 95px; }
+    .kpis .metric::after { position: absolute; right: 13px; bottom: 12px; color: #c8ced8; content: "↗"; font-size: 16px; }
+    .kpis .metric.danger::after { color: #efb9ba; content: "↘"; }
+    .kpis .metric-value { font-size: 20px; }
+    .notice { display: flex; align-items: center; gap: 8px; margin-bottom: 13px; border: 1px solid #dbe5fb; border-radius: 6px; background: #f8faff; color: #75829c; padding: 8px 10px; font-size: 10px; }
+    .notice b { color: #51617f; }
+    .notice i { color: var(--blue); font-size: 13px; font-style: normal; }
+    .dash { display: grid; grid-template-columns: minmax(0,1.45fr) minmax(270px,.85fr); gap: 13px; }
+    .stack { display: grid; gap: 13px; }
+    .legend { display: flex; align-items: center; gap: 10px; color: #8d96a6; font-size: 9px; }
+    .legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .legend i { width: 7px; height: 7px; border-radius: 2px; background: var(--blue); }
+    .legend i.net { background: #69b79d; }
+    .chart-wrap { padding: 13px 13px 10px; }
+    .chart { display: grid; height: 205px; grid-template-columns: 31px repeat(7,minmax(24px,1fr)); column-gap: 8px; }
+    .axis { display: flex; height: 174px; flex-direction: column; justify-content: space-between; color: #a7afbb; font-size: 8px; text-align: right; }
+    .day { display: grid; grid-template-rows: 174px 22px; gap: 6px; min-width: 0; }
+    .bars { display: flex; align-items: end; justify-content: center; gap: 4px; border-bottom: 1px solid #e4e8ef; background-image: linear-gradient(to bottom,transparent 24.5%,#f1f3f6 25%,transparent 25.5%,transparent 49.5%,#f1f3f6 50%,transparent 50.5%,transparent 74.5%,#f1f3f6 75%,transparent 75.5%); }
+    .bar { width: min(13px,38%); min-height: 4px; border-radius: 3px 3px 1px 1px; background: var(--blue); }
+    .bar.net { background: #67b79d; }
+    .day label { overflow: hidden; color: #9ba4b1; font-size: 8px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+    .drill { border: 0; background: transparent; color: var(--blue); font-size: 9px; font-weight: 700; }
+    .donut-area { display: flex; min-height: 197px; align-items: center; gap: 17px; padding: 15px; }
+    .donut { position: relative; display: grid; width: 132px; height: 132px; flex: 0 0 132px; place-items: center; border: 0; border-radius: 50%; background: conic-gradient(var(--tiktok) 0 48%,var(--shopee) 48% 85%,#94a0b6 85%); cursor: pointer; }
+    .donut::before { width: 87px; height: 87px; border-radius: 50%; background: #fff; content: ""; }
+    .donut-center { position: absolute; display: grid; place-items: center; color: #4d576a; font-size: 9px; }
+    .donut-center strong { color: #30394a; font-size: 14px; letter-spacing: -.45px; }
+    .channel-list { display: grid; width: 100%; gap: 10px; }
+    .channel-list div { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #7d8798; font-size: 9.5px; }
+    .channel-list span { display: inline-flex; align-items: center; gap: 6px; }
+    .dot { width: 8px; height: 8px; border-radius: 2px; background: var(--tiktok); }
+    .dot.s { background: var(--shopee); }.dot.p { background: #94a0b6; }
+    .channel-list b { color: #4c5668; font-size: 10px; }
+    .sku td { height: 39px; padding-top: 5px; padding-bottom: 5px; }
+    .rank { color: #a8afbc; font-weight: 700; }.sku-name { color: #4b5567; font-weight: 600; }.sku-meta { color: #a1a9b7; font-size: 9px; }
+
+    /* Modals and feedback */
+    .overlay { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; overflow: auto; background: rgba(29,35,49,.37); padding: 22px; }
+    .modal { width: min(760px,100%); max-height: min(720px,calc(100vh - 44px)); overflow: auto; border: 1px solid #e7e9ef; border-radius: 10px; background: #fff; box-shadow: 0 22px 55px rgba(22,28,42,.18); }
+    .modal.small { width: min(500px,100%); }
+    .modal-head { display: flex; min-height: 54px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 0 17px; }
+    .modal-head h2 { margin: 0; color: #31394a; font-size: 14px; letter-spacing: -.2px; }.modal-head p { margin: 2px 0 0; color: #99a2b1; font-size: 9px; }
+    .close { display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 5px; background: transparent; color: #8c96a7; font-size: 20px; }.close:hover { background: #f3f5f9; color: #4f5a6d; }
+    .modal-body { padding: 17px; }
+    .modal-grid { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(220px,.8fr); gap: 18px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; }
+    .field { display: grid; gap: 5px; }.field.full { grid-column: 1/-1; }
+    .field label, .field > span { color: #748094; font-size: 9px; font-weight: 700; }
+    .field input, .field select, .field textarea { width: 100%; min-height: 31px; border: 1px solid var(--line-strong); border-radius: 5px; background: #fff; color: #465165; padding: 0 9px; outline: 0; font-size: 10px; }
+    .field textarea { min-height: 70px; padding: 8px 9px; resize: vertical; }.field input:focus, .field select:focus, .field textarea:focus { border-color: #bac5fb; box-shadow: 0 0 0 3px rgba(77,100,223,.08); }
+    .items { margin-top: 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; }
+    .items-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); background: #fafbfc; padding: 8px 9px; color: #637086; font-size: 9px; font-weight: 700; }
+    .items-head button { border: 0; background: transparent; color: var(--blue); font-size: 9px; font-weight: 700; }
+    .item { display: grid; grid-template-columns: 1fr 48px 78px; gap: 7px; padding: 8px; }.item input { min-width: 0; }
+    .preview { align-self: start; border: 1px solid #e1e5fb; border-radius: 7px; background: #fafbff; padding: 12px; }
+    .preview h3 { margin: 0 0 9px; color: #53617e; font-size: 10px; }
+    .preview-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; color: #7b879a; font-size: 9.5px; }.preview-row strong { color: #485466; font-size: 10px; }.preview-row.neg strong { color: var(--red); }
+    .preview-row.total { margin-top: 4px; border-top: 1px solid #e5e9fa; padding-top: 9px; color: #4d5b78; font-weight: 700; }.preview-row.total strong { color: #2f3c53; font-size: 13px; }
+    .rule-note { margin-top: 8px; border-radius: 5px; background: #f0f3ff; color: #7480a0; padding: 7px; font-size: 8.5px; line-height: 1.4; }
+    .error { min-height: 15px; margin-top: 9px; color: var(--red); font-size: 9.5px; }
+    .modal-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding: 11px 17px; }
+    .recap { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px; }
+    .recap div { border: 1px solid var(--line); border-radius: 6px; background: #fbfcff; padding: 9px; }.recap span { display: block; color: #9aa4b3; font-size: 8.5px; text-transform: uppercase; }.recap b { display: block; margin-top: 4px; color: #465265; font-size: 11px; }.recap .red { color: var(--red); }
+    .drop { display: grid; min-height: 128px; place-items: center; border: 1px dashed #cdd6ed; border-radius: 7px; background: #fafbff; color: #8490a6; padding: 16px; text-align: center; }.drop strong, .drop span { display: block; }.drop strong { margin-top: 8px; color: #5b6780; font-size: 10px; }.drop span { margin-top: 3px; font-size: 9px; }
+    .toast { position: fixed; z-index: 60; right: 18px; bottom: 18px; display: flex; min-width: 235px; max-width: min(360px,calc(100vw - 36px)); align-items: center; gap: 9px; transform: translateY(16px); border: 1px solid #dce3ef; border-radius: 8px; background: #fff; box-shadow: 0 12px 30px rgba(32,38,52,.16); color: #566174; opacity: 0; padding: 10px 12px; pointer-events: none; transition: .2s ease; }
+    .toast.show { transform: translateY(0); opacity: 1; }.toast i { color: var(--green); font-size: 15px; font-style: normal; }
+
+    @media (max-width:1080px) {
+      :root { --side: 177px; }
+      .metric { padding-right: 10px; padding-left: 10px; }.metric-value,.kpis .metric-value { font-size: 17px; }
+      .user-copy { display: none; }
+    }
+    @media (max-width:850px) {
+      body { padding: 0; overflow: auto; }.app { min-height: 100vh; border: 0; border-radius: 0; }:root { --side: 61px; }
+      .sidebar { align-items: center; padding-right: 7px; padding-left: 7px; }.brand { padding-right: 0; padding-left: 0; }.brand-name,.store-switch strong,.store-switch small,.nav-text,.side-label,.nav-count,.connection>span:not(.live-dots),.connection small { display: none; }.store-switch { width: 37px; justify-content: center; margin-right: 0; margin-left: 0; padding: 8px; }.nav button { justify-content: center; padding: 0; }.nav-ico { font-size: 18px; }.connection { padding-right: 0; padding-left: 0; }.live-dots { margin: 0; }
+      .topbar { padding-right: 13px; padding-left: 16px; }.search { width: 165px; }.health { display: none; }.metrics { grid-template-columns: repeat(3,minmax(0,1fr)); }.kpis { grid-template-columns: repeat(2,minmax(0,1fr)); }.dash,.modal-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width:560px) {
+      .topbar { gap: 8px; }.title p,.search,.top-actions>.round:not(.add) { display: none; }.tabs { gap: 17px; padding: 0 14px; }.content { padding: 13px 12px 22px; }.toolbar { align-items: flex-start; flex-direction: column; }.toolbar-right { width: 100%; justify-content: flex-start; }.metrics,.settle-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }.rhythm { grid-template-columns: repeat(3,minmax(0,1fr)); }.rhythm div:nth-child(3) { border-right: 0; }.rhythm div:nth-child(-n+3) { border-bottom: 1px solid var(--line); }.rules { align-items: flex-start; }.rules .rule-list { display: grid; gap: 3px; white-space: normal; }.donut-area { gap: 12px; padding: 12px; }.donut { width: 112px; height: 112px; flex-basis: 112px; }.donut::before { width: 72px; height: 72px; }.overlay { padding: 8px; }.modal-body { padding: 13px; }.form-grid,.recap { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Điều hướng chính">
+      <div class="brand"><i class="brand-mark"></i><span class="brand-name">FASHION-WEB</span></div>
+      <button class="store-switch" type="button" onclick="toast('Đang làm việc tại FashionRev · Hà Nội')"><b class="store-symbol">▣</b><span><strong>FashionRev · Hà Nội</strong><small>3 kênh đang kết nối</small></span></button>
+      <div class="side-label">Tổng quan</div>
+      <nav class="nav">
+        <button type="button" data-nav="analytics" onclick="view('analytics')"><span class="nav-ico">▦</span><span class="nav-text">Báo cáo điều hành</span></button>
+      </nav>
+      <div class="side-label">Vận hành</div>
+      <nav class="nav">
+        <button type="button" class="active" data-nav="orders" onclick="view('orders')"><span class="nav-ico">▤</span><span class="nav-text">Đơn hàng đa kênh</span><span class="nav-count">42</span></button>
+        <button type="button" data-nav="settlement" onclick="view('settlement')"><span class="nav-ico">▱</span><span class="nav-text">Phí sàn &amp; Đối soát</span><span class="nav-count">3</span></button>
+      </nav>
+      <div class="side-label">Thiết lập</div>
+      <nav class="nav">
+        <button type="button" onclick="open('fees')"><span class="nav-ico">⚙</span><span class="nav-text">Biểu phí sàn</span></button>
+        <button type="button" onclick="toast('TikTok, Shopee và POS đang đồng bộ bình thường')"><span class="nav-ico">⌁</span><span class="nav-text">Kết nối kênh bán</span></button>
+      </nav>
+      <div class="connection"><span class="live-dots"><i></i><i></i><i></i></span><span>Kết nối sàn ổn định</span><small>TikTok · Shopee · POS</small></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="title"><h1 id="page-title">Đơn hàng đa kênh</h1><p id="page-subtitle">Theo dõi vận hành và trạng thái giao hàng</p></div>
+        <div class="top-actions">
+          <label class="search">⌕<input id="search" type="search" placeholder="Tìm mã đơn, SKU, khách hàng..." oninput="searchCurrent(this.value)"></label>
+          <button class="round add" type="button" title="Tạo đơn hàng mới" onclick="orderModal()">+</button>
+          <button class="round" type="button" title="Trợ giúp" onclick="toast('Chọn một đơn để xem thao tác phù hợp')">?</button>
+          <button class="round" type="button" title="Thông báo" onclick="toast('Bạn có 3 đơn cần hoàn tất đối soát')">♧</button>
+          <span class="health"><b>✓</b>3/3</span>
+          <span class="user"><i class="avatar">ĐH</i><span class="user-copy"><strong>Đặng Đức Hòa</strong><small>Chủ cửa hàng</small></span><b style="color:#a1a9b6;font-size:16px;font-weight:400">›</b></span>
+        </div>
+      </header>
+
+      <!-- SCR-01: Quản lý đơn hàng đa kênh -->
+      <section class="screen active" id="orders">
+        <nav class="tabs" aria-label="Trạng thái đơn hàng">
+          <button class="tab active" type="button" onclick="orderFilter('all',this)">Tất cả đơn hàng</button>
+          <button class="tab" type="button" onclick="orderFilter('pending',this)">Chờ xử lý</button>
+          <button class="tab" type="button" onclick="orderFilter('shipped',this)">Đang vận chuyển</button>
+          <button class="tab" type="button" onclick="orderFilter('delivered',this)">Giao thành công</button>
+          <button class="tab" type="button" onclick="orderFilter('cancelled',this)">Đã hủy</button>
+        </nav>
+        <div class="content">
+          <div class="toolbar">
+            <div class="summary"><span class="s-icon">▤</span><b>1.248</b><span>đơn hàng trong kỳ này</span></div>
+            <div class="toolbar-right">
+              <select class="select" aria-label="Lọc kênh" onchange="channelFilter(this.value)"><option value="all">Tất cả kênh</option><option value="tiktok">TikTok Shop</option><option value="shopee">Shopee</option><option value="pos">Tại quầy POS</option></select>
+              <button class="btn" type="button" onclick="toast('Đã làm mới danh sách đơn hàng')">↻ Làm mới</button>
+              <button class="btn primary" type="button" onclick="orderModal()">＋ Tạo đơn hàng</button>
+            </div>
+          </div>
+
+          <div class="metrics">
+            <article class="metric"><span class="metric-label">Tổng đơn hàng</span><b class="metric-value">1.248</b><span class="metric-note">+8,4% so với tháng trước</span></article>
+            <article class="metric success"><span class="metric-label">Đã giao thành công</span><b class="metric-value">1.180</b><span class="metric-note">94,5% tỷ lệ hoàn tất</span></article>
+            <article class="metric"><span class="metric-label">Doanh thu gộp</span><b class="metric-value">184,5M ₫</b><span class="metric-note">Chỉ tính đơn DELIVERED</span></article>
+            <article class="metric"><span class="metric-label">Đang vận chuyển</span><b class="metric-value">42</b><span class="metric-note">Cần theo dõi giao hàng</span></article>
+            <article class="metric danger"><span class="metric-label">Đơn bị hủy</span><b class="metric-value">26</b><span class="metric-note">2,1% toàn bộ đơn tạo</span></article>
+          </div>
+          <div class="rhythm" aria-label="Nhịp độ vận hành"><div><span>Chờ chuẩn bị</span><b>14</b></div><div><span>Đang ở bưu cục</span><b>42</b></div><div><span>Giao thành công</span><b>1.180</b></div><div><span>Tỷ lệ hoàn tất</span><b>94,5%</b></div><div><span>Giá trị đơn TB</span><b>156K ₫</b></div><div><span>Tỷ lệ hủy</span><b class="red">2,1%</b></div></div>
+
+          <section class="card">
+            <div class="card-head"><h2>Danh sách đơn hàng</h2><span>Thao tác nhanh theo trạng thái hiện tại</span></div>
+            <div class="scroll">
+              <table id="orders-table">
+                <thead><tr><th class="check"><input aria-label="Chọn tất cả" type="checkbox"></th><th>Mã đơn / Khách hàng</th><th>Kênh bán</th><th>Sản phẩm</th><th>Thời gian tạo</th><th>Tiền khách trả</th><th>Trạng thái</th><th style="padding-right:13px;text-align:right">Thao tác</th></tr></thead>
+                <tbody>
+                  <tr class="order-row" data-status="pending" data-channel="shopee" data-key="ord-2026-001 sp-991122 nguyễn thu hương sơ mi oxford">
+                    <td class="check"><input aria-label="Chọn ORD-2026-001" type="checkbox"></td><td><span class="order-code">ORD-2026-001</span><span class="sub">SP-991122 · Nguyễn Thu Hương</span></td><td><span class="channel shopee">Shopee</span></td><td class="product"><strong>Sơ mi Oxford trắng</strong><span>SM-OXF-TRANG-M · ×2</span></td><td>11/09/2026<span class="sub">09:34</span></td><td><span class="money">480.000 ₫</span></td><td class="status-cell"><span class="status pending">Chờ xử lý</span></td><td><span class="actions"><button class="mini blue" type="button" onclick="status(this,'shipped')">Giao hàng</button><button class="mini red" type="button" onclick="cancel(this)">Hủy</button></span></td>
+                  </tr>
+                  <tr class="order-row" data-status="shipped" data-channel="tiktok" data-key="ord-2026-002 tt-889922 trần minh quân áo thun cotton">
+                    <td class="check"><input aria-label="Chọn ORD-2026-002" type="checkbox"></td><td><span class="order-code">ORD-2026-002</span><span class="sub">TT-889922 · Trần Minh Quân</span></td><td><span class="channel tiktok">TikTok Shop</span></td><td class="product"><strong>Áo thun cotton đen</strong><span>AT-COT-DEN-L · ×2</span></td><td>11/09/2026<span class="sub">09:18</span></td><td><span class="money">510.000 ₫</span></td><td class="status-cell"><span class="status shipped">Đang giao</span></td><td><span class="actions"><button class="mini blue" type="button" onclick="status(this,'delivered')">Đã giao</button><button class="mini red" type="button" onclick="cancel(this)">Hủy</button></span></td>
+                  </tr>
+                  <tr class="order-row" data-status="delivered" data-channel="pos" data-key="ord-2026-003 pos-44351 lê phúc khang quần jean ống rộng">
+                    <td class="check"><input aria-label="Chọn ORD-2026-003" type="checkbox"></td><td><span class="order-code">ORD-2026-003</span><span class="sub">POS-44351 · Lê Phúc Khang</span></td><td><span class="channel pos">POS · QR</span></td><td class="product"><strong>Quần jean ống rộng</strong><span>QJ-ONG-RONG-30 · ×1</span></td><td>11/09/2026<span class="sub">08:55</span></td><td><span class="money">620.000 ₫</span></td><td class="status-cell"><span class="status delivered">Đã giao</span></td><td><span class="actions"><span class="locked">✓ Đã khóa sổ</span><button class="mini" type="button" onclick="toast('Đơn DELIVERED đã được khóa để bảo toàn sổ sách')">Xem</button></span></td>
+                  </tr>
+                  <tr class="order-row" data-status="pending" data-channel="tiktok" data-key="ord-2026-004 tt-990267 võ thanh hạ váy lụa cổ vuông">
+                    <td class="check"><input aria-label="Chọn ORD-2026-004" type="checkbox"></td><td><span class="order-code">ORD-2026-004</span><span class="sub">TT-990267 · Võ Thanh Hạ</span></td><td><span class="channel tiktok">TikTok Shop</span></td><td class="product"><strong>Váy lụa cổ vuông xanh</strong><span>VL-CV-XANH-S · ×1</span></td><td>11/09/2026<span class="sub">08:42</span></td><td><span class="money">390.000 ₫</span></td><td class="status-cell"><span class="status pending">Chờ xử lý</span></td><td><span class="actions"><button class="mini blue" type="button" onclick="status(this,'shipped')">Giao hàng</button><button class="mini red" type="button" onclick="cancel(this)">Hủy</button></span></td>
+                  </tr>
+                  <tr class="order-row" data-status="delivered" data-channel="shopee" data-key="ord-2026-005 sp-991745 ngô hoài nam blazer dáng suông">
+                    <td class="check"><input aria-label="Chọn ORD-2026-005" type="checkbox"></td><td><span class="order-code">ORD-2026-005</span><span class="sub">SP-991745 · Ngô Hoài Nam</span></td><td><span class="channel shopee">Shopee</span></td><td class="product"><strong>Blazer dáng suông</strong><span>BZ-DEN-M · ×1</span></td><td>10/09/2026<span class="sub">17:28</span></td><td><span class="money">1.250.000 ₫</span></td><td class="status-cell"><span class="status delivered">Đã giao</span></td><td><span class="actions"><span class="locked">✓ Đã khóa sổ</span><button class="mini" type="button" onclick="toast('Mở chi tiết ORD-2026-005')">Xem</button></span></td>
+                  </tr>
+                  <tr class="order-row" data-status="cancelled" data-channel="shopee" data-key="ord-2026-006 sp-990630 phạm gia linh chân váy">
+                    <td class="check"><input aria-label="Chọn ORD-2026-006" type="checkbox"></td><td><span class="order-code">ORD-2026-006</span><span class="sub">SP-990630 · Phạm Gia Linh</span></td><td><span class="channel shopee">Shopee</span></td><td class="product"><strong>Chân váy chữ A be</strong><span>CV-A-BE-M · ×1</span></td><td>10/09/2026<span class="sub">16:04</span></td><td><span class="money">340.000 ₫</span></td><td class="status-cell"><span class="status cancelled">Đã hủy</span></td><td><span class="actions"><span class="locked">Khách đổi ý</span><button class="mini" type="button" onclick="toast('Đơn hủy đã bị loại trừ khỏi doanh thu')">Chi tiết</button></span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- SCR-02: Phí sàn & Đối soát ví -->
+      <section class="screen" id="settlement">
+        <nav class="tabs" aria-label="Trạng thái đối soát">
+          <button class="tab active" type="button" onclick="settleFilter('all',this)">Tất cả quyết toán</button>
+          <button class="tab" type="button" onclick="settleFilter('pending',this)">Chờ đối soát</button>
+          <button class="tab" type="button" onclick="settleFilter('reconciled',this)">Đã khớp 100%</button>
+          <button class="tab" type="button" onclick="settleFilter('discrepancy',this)">Có chênh lệch</button>
+        </nav>
+        <div class="content">
+          <div class="toolbar">
+            <div class="summary"><span class="s-icon">▱</span><b>1.180</b><span>đơn DELIVERED sẵn sàng quyết toán</span></div>
+            <div class="toolbar-right"><select class="select"><option>Kỳ 01–11/09/2026</option><option>Kỳ trước</option></select><button class="btn" type="button" onclick="open('fees')">⚙ Cấu hình phí</button><button class="btn primary" type="button" onclick="open('statement')">↑ Nhập sao kê</button></div>
+          </div>
+          <div class="settle-metrics">
+            <article class="metric waiting"><span class="metric-label">Chờ đối soát</span><b class="metric-value">18 đơn</b><span class="metric-note">Dự kiến nhận 6.842.000 ₫</span></article>
+            <article class="metric matched"><span class="metric-label">Đã khớp hoàn toàn</span><b class="metric-value">1.159 đơn</b><span class="metric-note" style="color:var(--green)">98,2% hồ sơ trong kỳ</span></article>
+            <article class="metric variance danger"><span class="metric-label">Bị lệch tiền</span><b class="metric-value">3 đơn</b><span class="metric-note">Cần giải trình chênh lệch</span></article>
+          </div>
+          <div class="rules"><b>⚙ Biểu phí đang áp dụng</b><div class="rule-list"><span><b>TikTok:</b> 4% HH + 3% TT + 2.000 ₫</span><span><b>Shopee:</b> 4,5% HH + 4% TT + 2% Freeship</span><span><b>POS:</b> tiền mặt 0 ₫ · thẻ/QR 1%</span></div><button class="mini" type="button" onclick="open('fees')">Chi tiết</button></div>
+          <section class="card">
+            <div class="card-head"><h2>Bảng kê bóc tách phí và thực nhận ví</h2><span>Thực thu dự kiến = Tiền khách trả − Tổng phí sàn</span></div>
+            <div class="scroll">
+              <table class="fee-table" id="settlement-table">
+                <thead><tr><th>Mã đơn</th><th>Kênh</th><th>Tiền khách trả</th><th>Phí hoa hồng</th><th>Phí thanh toán</th><th>Phí DV / Freeship</th><th>Tổng phí sàn</th><th>Dự kiến thực thu</th><th>Thực nhận ví</th><th>Chênh lệch</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+                <tbody>
+                  <tr data-settle="pending" data-id="ORD-2026-001" data-project="429600" data-key="ord-2026-001 shopee nguyễn thu hương"><td><span class="order-code">ORD-2026-001</span><span class="sub">Nguyễn Thu Hương</span></td><td><span class="channel shopee">Shopee</span></td><td><span class="money">480.000 ₫</span></td><td class="negative">−21.600</td><td class="negative">−19.200</td><td class="negative">−9.600</td><td class="negative">−50.400</td><td><span class="money">429.600 ₫</span></td><td class="actual">—</td><td class="variance">—</td><td class="settle-status"><span class="status pending">Chờ ví về</span></td><td><button class="mini blue" type="button" onclick="reconcile('ORD-2026-001',429600)">Đối soát</button></td></tr>
+                  <tr data-settle="reconciled" data-id="ORD-2026-002" data-project="472300" data-key="ord-2026-002 tiktok trần minh quân"><td><span class="order-code">ORD-2026-002</span><span class="sub">Trần Minh Quân</span></td><td><span class="channel tiktok">TikTok</span></td><td><span class="money">510.000 ₫</span></td><td class="negative">−20.400</td><td class="negative">−15.300</td><td class="negative">−2.000</td><td class="negative">−37.700</td><td><span class="money">472.300 ₫</span></td><td class="actual"><span class="money">472.300 ₫</span></td><td class="variance">0 ₫</td><td class="settle-status"><span class="status reconciled">Khớp 100%</span></td><td><button class="mini" type="button" onclick="reconcile('ORD-2026-002',472300)">Xem</button></td></tr>
+                  <tr data-settle="discrepancy" data-id="ORD-2026-007" data-project="358000" data-key="ord-2026-007 shopee hồ minh anh"><td><span class="order-code">ORD-2026-007</span><span class="sub">Hồ Minh Anh</span></td><td><span class="channel shopee">Shopee</span></td><td><span class="money">400.000 ₫</span></td><td class="negative">−18.000</td><td class="negative">−16.000</td><td class="negative">−8.000</td><td class="negative">−42.000</td><td><span class="money">358.000 ₫</span></td><td class="actual"><span class="money">338.000 ₫</span></td><td class="variance"><span class="negative">20.000 ₫</span></td><td class="settle-status"><span class="status discrepancy">Lệch tiền</span></td><td><button class="mini red" type="button" onclick="reconcile('ORD-2026-007',358000,338000,'Sàn truy thu phí vận chuyển bù 20k')">Giải trình</button></td></tr>
+                  <tr data-settle="reconciled" data-id="ORD-2026-003" data-project="613800" data-key="ord-2026-003 pos lê phúc khang"><td><span class="order-code">ORD-2026-003</span><span class="sub">Lê Phúc Khang</span></td><td><span class="channel pos">POS · QR</span></td><td><span class="money">620.000 ₫</span></td><td class="negative">0</td><td class="negative">−6.200</td><td class="negative">0</td><td class="negative">−6.200</td><td><span class="money">613.800 ₫</span></td><td class="actual"><span class="money">613.800 ₫</span></td><td class="variance">0 ₫</td><td class="settle-status"><span class="status reconciled">Khớp 100%</span></td><td><button class="mini" type="button" onclick="reconcile('ORD-2026-003',613800)">Xem</button></td></tr>
+                  <tr data-settle="pending" data-id="ORD-2026-005" data-project="1123750" data-key="ord-2026-005 shopee ngô hoài nam"><td><span class="order-code">ORD-2026-005</span><span class="sub">Ngô Hoài Nam</span></td><td><span class="channel shopee">Shopee</span></td><td><span class="money">1.250.000 ₫</span></td><td class="negative">−56.250</td><td class="negative">−50.000</td><td class="negative">−20.000</td><td class="negative">−126.250</td><td><span class="money">1.123.750 ₫</span></td><td class="actual">—</td><td class="variance">—</td><td class="settle-status"><span class="status pending">Chờ ví về</span></td><td><button class="mini blue" type="button" onclick="reconcile('ORD-2026-005',1123750)">Đối soát</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <aside class="audit"><i class="audit-icon">!</i><span><strong>Hồ sơ chênh lệch gần nhất · #DIS-002</strong><span>ORD-2026-007 thiếu nhận 20.000 ₫ — sàn truy thu phí vận chuyển bù theo sai lệch kích thước kiện hàng.</span></span><a href="#settlement" onclick="reconcile('ORD-2026-007',358000,338000,'Sàn truy thu phí vận chuyển bù 20k');return false">Mở hồ sơ →</a></aside>
+        </div>
+      </section>
+
+      <!-- SCR-03: Dashboard doanh thu & báo cáo điều hành -->
+      <section class="screen" id="analytics">
+        <nav class="tabs" aria-label="Góc nhìn báo cáo">
+          <button class="tab active" type="button">Tổng quan dòng tiền</button>
+          <button class="tab" type="button" onclick="toast('Mở phân tích theo từng kênh bán')">Theo kênh bán</button>
+          <button class="tab" type="button" onclick="toast('Mở bảng xếp hạng SKU')">Top SKU</button>
+        </nav>
+        <div class="content">
+          <div class="toolbar">
+            <div class="summary"><span class="s-icon">▦</span><b>Tháng 09</b><span>Số liệu chốt đến 11/09/2026</span></div>
+            <div class="toolbar-right"><span class="periods"><button type="button" onclick="period(this)">Hôm nay</button><button type="button" class="active" onclick="period(this)">7 ngày qua</button><button type="button" onclick="period(this)">Tháng này</button></span><select class="select" onchange="toast('Đã áp dụng bộ lọc: '+this.options[this.selectedIndex].text)"><option>Tất cả kênh</option><option>TikTok Shop</option><option>Shopee</option><option>Tại quầy POS</option></select><button class="btn primary" type="button" onclick="exportCsv()">↓ Xuất CSV</button></div>
+          </div>
+          <div class="kpis">
+            <button class="metric" type="button" onclick="open('drill')"><span class="metric-label">Doanh thu gộp</span><b class="metric-value">184.500.000 ₫</b><span class="metric-note">1.180 đơn DELIVERED · Xem đơn gốc</span></button>
+            <article class="metric danger"><span class="metric-label">Tổng phí sàn khấu trừ</span><b class="metric-value">28.620.000 ₫</b><span class="metric-note">15,5% trên doanh thu gộp</span></article>
+            <button class="metric" type="button" onclick="open('drill')"><span class="metric-label">Thực thu về ví</span><b class="metric-value">155.880.000 ₫</b><span class="metric-note">Gross − phí sàn · Xem đơn gốc</span></button>
+            <article class="metric"><span class="metric-label">Đơn giao thành công</span><b class="metric-value">1.180 đơn</b><span class="metric-note">94,5% tỷ lệ hoàn tất</span></article>
+          </div>
+          <div class="notice"><i>✓</i><span><b>Nguyên tắc ghi nhận:</b> Dashboard chỉ tổng hợp đơn <b>DELIVERED</b>; PENDING, SHIPPED và CANCELLED bị loại trừ 100% khỏi số liệu.</span></div>
+          <div class="dash">
+            <section class="card">
+              <div class="card-head"><span><h2>Xu hướng dòng tiền 7 ngày gần nhất</h2><p>Đối chiếu doanh thu khách trả và số tiền thực thu sau phí sàn</p></span><span class="legend"><span><i></i>Doanh thu gộp</span><span><i class="net"></i>Thực thu về ví</span></span></div>
+              <div class="chart-wrap">
+                <div class="chart" aria-label="Biểu đồ cột doanh thu gộp và thực thu">
+                  <div class="axis"><span>30M</span><span>20M</span><span>10M</span><span>0</span></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:54%"></i><i class="bar net" style="height:46%"></i></div><label>05/09</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:66%"></i><i class="bar net" style="height:56%"></i></div><label>06/09</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:47%"></i><i class="bar net" style="height:39%"></i></div><label>07/09</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:74%"></i><i class="bar net" style="height:63%"></i></div><label>08/09</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:88%"></i><i class="bar net" style="height:74%"></i></div><label>09/09</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:70%"></i><i class="bar net" style="height:60%"></i></div><label>10/09</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:60%"></i><i class="bar net" style="height:51%"></i></div><label>11/09</label></div>
+                </div>
+              </div>
+            </section>
+            <div class="stack">
+              <section class="card">
+                <div class="card-head"><span><h2>Cơ cấu doanh thu theo kênh</h2><p>Nhấn biểu đồ để truy vết</p></span><button class="drill" type="button" onclick="open('drill')">Drilldown</button></div>
+                <div class="donut-area">
+                  <button class="donut" type="button" aria-label="Mở truy vết doanh thu" onclick="open('drill')"><span class="donut-center"><strong>184,5M</strong><span>Doanh thu gộp</span></span></button>
+                  <div class="channel-list"><div><span><i class="dot"></i>TikTok Shop</span><b>48,0%</b></div><div><span><i class="dot s"></i>Shopee</span><b>37,0%</b></div><div><span><i class="dot p"></i>Tại quầy POS</span><b>15,0%</b></div></div>
+                </div>
+              </section>
+              <section class="card">
+                <div class="card-head"><span><h2>Top 5 SKU mang doanh thu cao</h2><p>Xếp theo doanh thu gộp</p></span></div>
+                <table class="sku"><tbody>
+                  <tr><td style="width:28px;padding-left:13px"><span class="rank">01</span></td><td><span class="sku-name">SM-OXF-TRANG-M</span><span class="sub">Sơ mi Oxford trắng</span></td><td class="sku-meta">128 bán</td><td style="padding-right:13px;text-align:right"><span class="money">25.000.000 ₫</span></td></tr>
+                  <tr><td style="padding-left:13px"><span class="rank">02</span></td><td><span class="sku-name">AT-COT-DEN-L</span><span class="sub">Áo thun cotton đen</span></td><td class="sku-meta">112 bán</td><td style="padding-right:13px;text-align:right"><span class="money">15.000.000 ₫</span></td></tr>
+                  <tr><td style="padding-left:13px"><span class="rank">03</span></td><td><span class="sku-name">QJ-ONG-RONG-30</span><span class="sub">Quần jean ống rộng</span></td><td class="sku-meta">76 bán</td><td style="padding-right:13px;text-align:right"><span class="money">10.000.000 ₫</span></td></tr>
+                </tbody></table>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MOD-01: tạo đơn thủ công, gồm xem trước fee-engine -->
+  <div class="overlay" id="order-modal" hidden role="dialog" aria-modal="true" aria-labelledby="order-modal-title">
+    <section class="modal">
+      <header class="modal-head"><span><h2 id="order-modal-title">Tạo đơn hàng đa kênh</h2><p>Nhập đơn thủ công và xem trước dòng tiền thực thu.</p></span><button class="close" type="button" onclick="close('order')">×</button></header>
+      <form onsubmit="createOrder(event)">
+        <div class="modal-body"><div class="modal-grid">
+          <div>
+            <div class="form-grid">
+              <label class="field"><span>Kênh bán <b class="negative">*</b></span><select id="channel" onchange="preview()"><option value="tiktok">TikTok Shop</option><option value="shopee">Shopee</option><option value="pos">Tại quầy POS</option></select></label>
+              <label class="field"><span>Mã đơn ngoài</span><input id="external" value="TT-990445" required></label>
+              <label class="field"><span>Khách hàng <b class="negative">*</b></span><input id="customer" value="Khách vãng lai" required></label>
+              <label class="field"><span>Thanh toán</span><select id="payment" onchange="preview()"><option value="wallet">Ví sàn</option><option value="cash">Tiền mặt</option><option value="card">Quẹt thẻ / QR</option></select></label>
+              <label class="field full"><span>Voucher shop tài trợ (₫)</span><input id="voucher" type="number" min="0" value="30000" oninput="preview()"></label>
+            </div>
+            <div class="items"><div class="items-head"><span>Dòng sản phẩm <b class="negative">*</b></span><button type="button" onclick="addItem()">+ Thêm dòng</button></div><div id="item-list">
+              <div class="item"><input class="item-name" value="AT-COT-DEN-L · Áo thun cotton đen"><input class="qty" type="number" min="1" value="2" oninput="preview()"><input class="price" type="number" min="0" value="180000" oninput="preview()"></div>
+              <div class="item"><input class="item-name" value="AT-COT-TRANG-M · Áo thun cotton trắng"><input class="qty" type="number" min="1" value="1" oninput="preview()"><input class="price" type="number" min="0" value="150000" oninput="preview()"></div>
+            </div></div>
+            <div class="error" id="order-error"></div>
+          </div>
+          <aside class="preview">
+            <h3>Dòng tiền dự tính</h3>
+            <div class="preview-row"><span>Tiền hàng (Subtotal)</span><strong id="pre-subtotal">510.000 ₫</strong></div>
+            <div class="preview-row neg"><span>Voucher shop</span><strong id="pre-voucher">−30.000 ₫</strong></div>
+            <div class="preview-row"><span>Tiền khách trả (Gross)</span><strong id="pre-gross">480.000 ₫</strong></div>
+            <div class="preview-row neg"><span>Phí hoa hồng</span><strong id="pre-commission">−19.200 ₫</strong></div>
+            <div class="preview-row neg"><span>Phí thanh toán</span><strong id="pre-payment">−14.400 ₫</strong></div>
+            <div class="preview-row neg"><span>Phí dịch vụ / Freeship</span><strong id="pre-service">−2.000 ₫</strong></div>
+            <div class="preview-row total"><span>Dự kiến thực thu</span><strong id="pre-net">444.400 ₫</strong></div>
+            <div class="rule-note" id="pre-rule">TikTok: 4% tiền hàng + 3% tổng thanh toán + 2.000 ₫/đơn.</div>
+          </aside>
+        </div></div>
+        <footer class="modal-foot"><button class="btn" type="button" onclick="close('order')">Hủy</button><button class="btn primary" type="submit">＋ Tạo đơn hàng</button></footer>
+      </form>
+    </section>
+  </div>
+
+  <!-- MOD-02: hủy đơn -->
+  <div class="overlay" id="cancel-modal" hidden role="dialog" aria-modal="true">
+    <section class="modal small">
+      <header class="modal-head"><span><h2>Xác nhận hủy đơn hàng</h2><p>Đơn hủy sẽ bị loại trừ hoàn toàn khỏi số liệu doanh thu.</p></span><button class="close" type="button" onclick="close('cancel')">×</button></header>
+      <div class="modal-body"><div class="notice"><i>!</i><span id="cancel-summary">Bạn đang hủy đơn hàng.</span></div><label class="field"><span>Lý do hủy <b class="negative">*</b></span><select id="cancel-reason"><option value="">Chọn lý do</option><option>Khách đổi ý / boom hàng</option><option>Sai thông tin giao hàng</option><option>Hết hàng</option><option>Lý do khác</option></select></label><div class="error" id="cancel-error"></div></div>
+      <footer class="modal-foot"><button class="btn" type="button" onclick="close('cancel')">Quay lại</button><button class="btn primary" style="border-color:var(--red);background:var(--red)" type="button" onclick="confirmCancel()">Xác nhận hủy</button></footer>
+    </section>
+  </div>
+
+  <!-- MOD-03: đối soát một đơn -->
+  <div class="overlay" id="reconcile-modal" hidden role="dialog" aria-modal="true">
+    <section class="modal small">
+      <header class="modal-head"><span><h2>Đối soát thực nhận ví</h2><p>Nhập số tiền sàn đã chuyển về tài khoản.</p></span><button class="close" type="button" onclick="close('reconcile')">×</button></header>
+      <div class="modal-body">
+        <div class="recap"><div><span>Mã đơn</span><b id="rec-id">ORD-2026-001</b></div><div><span>Dự kiến thực thu</span><b id="rec-project">429.600 ₫</b></div><div><span>Chênh lệch</span><b class="red" id="rec-variance">0 ₫</b></div></div>
+        <label class="field"><span>Thực nhận về ví (₫) <b class="negative">*</b></span><input id="rec-actual" type="number" min="0" oninput="recPreview()"></label>
+        <label class="field" style="margin-top:11px"><span>Giải trình chênh lệch <b class="negative" id="note-star">*</b></span><textarea id="rec-note" placeholder="Bắt buộc khi số thực nhận khác dự kiến"></textarea></label>
+        <div class="error" id="rec-error"></div>
+      </div>
+      <footer class="modal-foot"><button class="btn" type="button" onclick="close('reconcile')">Hủy</button><button class="btn primary" type="button" onclick="saveReconcile()">Xác nhận đối soát</button></footer>
+    </section>
+  </div>
+
+  <!-- MOD-04/05: sao kê và biểu phí -->
+  <div class="overlay" id="statement-modal" hidden role="dialog" aria-modal="true">
+    <section class="modal small">
+      <header class="modal-head"><span><h2>Nhập file sao kê ví</h2><p>Tải sao kê TikTok Shop, Shopee hoặc biến động ngân hàng.</p></span><button class="close" type="button" onclick="close('statement')">×</button></header>
+      <div class="modal-body"><div class="drop"><i style="display:grid;width:31px;height:31px;place-items:center;border-radius:50%;background:#edf1ff;color:var(--blue);font-style:normal;font-size:18px">↑</i><strong>Kéo thả file .xlsx hoặc .csv vào đây</strong><span>Hệ thống sẽ đối chiếu theo mã đơn và số tiền thực nhận.</span><button class="btn soft" style="margin-top:10px" type="button" onclick="toast('Đây là prototype UI — khu vực đã sẵn sàng kết nối API tải tệp')">Chọn file từ máy</button></div><label class="field" style="margin-top:12px"><span>Kỳ quyết toán</span><select><option>01–11/09/2026</option><option>Tháng 09/2026</option></select></label></div>
+      <footer class="modal-foot"><button class="btn" type="button" onclick="close('statement')">Hủy</button><button class="btn primary" type="button" onclick="close('statement');toast('Đã đưa file sao kê vào hàng đợi đối soát')">Bắt đầu đối soát</button></footer>
+    </section>
+  </div>
+  <div class="overlay" id="fees-modal" hidden role="dialog" aria-modal="true">
+    <section class="modal small">
+      <header class="modal-head"><span><h2>Cấu hình biểu phí bán hàng</h2><p>Biểu phí được dùng cho ước tính thực thu khi tạo đơn.</p></span><button class="close" type="button" onclick="close('fees')">×</button></header>
+      <div class="modal-body" style="padding:0"><div class="scroll"><table><thead><tr><th style="padding-left:17px">Kênh</th><th>Hoa hồng</th><th>Thanh toán</th><th>Dịch vụ / Freeship</th></tr></thead><tbody>
+        <tr><td style="padding-left:17px"><span class="channel tiktok">TikTok Shop</span></td><td>4,0%</td><td>3,0%</td><td>2.000 ₫ / đơn</td></tr>
+        <tr><td style="padding-left:17px"><span class="channel shopee">Shopee</span></td><td>4,5%</td><td>4,0%</td><td>2,0% · tối đa 20.000 ₫</td></tr>
+        <tr><td style="padding-left:17px"><span class="channel pos">POS</span></td><td>0%</td><td>1,0% thẻ/QR</td><td>0 ₫</td></tr>
+      </tbody></table></div></div>
+      <footer class="modal-foot"><button class="btn" type="button" onclick="close('fees')">Hủy</button><button class="btn primary" type="button" onclick="close('fees');toast('Đã lưu biểu phí mới cho kỳ kế tiếp')">Lưu biểu phí</button></footer>
+    </section>
+  </div>
+
+  <!-- MOD-06: truy vết dashboard -->
+  <div class="overlay" id="drill-modal" hidden role="dialog" aria-modal="true">
+    <section class="modal">
+      <header class="modal-head"><span><h2>Truy vết đơn gốc DELIVERED</h2><p>Các đơn cấu thành số liệu doanh thu và thực thu trong bộ lọc hiện tại.</p></span><button class="close" type="button" onclick="close('drill')">×</button></header>
+      <div class="modal-body"><div class="notice"><i>✓</i><span><b>1.180 đơn DELIVERED</b> · Doanh thu gộp 184.500.000 ₫ · Phí sàn 28.620.000 ₫ · Thực thu 155.880.000 ₫</span></div>
+        <section class="card"><div class="scroll"><table style="min-width:600px"><thead><tr><th style="padding-left:12px">Mã đơn</th><th>Kênh</th><th>Khách hàng</th><th>Tiền khách trả</th><th>Phí sàn</th><th>Thực thu</th><th>Giao thành công</th></tr></thead><tbody>
+          <tr><td style="padding-left:12px"><span class="order-code">ORD-2026-005</span></td><td><span class="channel shopee">Shopee</span></td><td>Ngô Hoài Nam</td><td><span class="money">1.250.000 ₫</span></td><td><span class="negative">−126.250 ₫</span></td><td><span class="money">1.123.750 ₫</span></td><td>10/09/2026</td></tr>
+          <tr><td style="padding-left:12px"><span class="order-code">ORD-2026-003</span></td><td><span class="channel pos">POS · QR</span></td><td>Lê Phúc Khang</td><td><span class="money">620.000 ₫</span></td><td><span class="negative">−6.200 ₫</span></td><td><span class="money">613.800 ₫</span></td><td>11/09/2026</td></tr>
+          <tr><td style="padding-left:12px"><span class="order-code">ORD-2026-002</span></td><td><span class="channel tiktok">TikTok</span></td><td>Trần Minh Quân</td><td><span class="money">510.000 ₫</span></td><td><span class="negative">−37.700 ₫</span></td><td><span class="money">472.300 ₫</span></td><td>11/09/2026</td></tr>
+        </tbody></table></div></section>
+      </div>
+      <footer class="modal-foot"><button class="btn" type="button" onclick="close('drill')">Đóng</button><button class="btn primary" type="button" onclick="exportCsv()">↓ Xuất CSV các đơn đã lọc</button></footer>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" aria-live="polite"><i>✓</i><span id="toast-text">Đã cập nhật dữ liệu.</span></div>
+
+  <script>
+    const meta = {
+      orders: ["Đơn hàng đa kênh", "Theo dõi vận hành và trạng thái giao hàng"],
+      settlement: ["Phí sàn & Đối soát ví", "Bóc tách khoản khấu trừ và kiểm tra tiền thực nhận"],
+      analytics: ["Báo cáo dòng tiền", "Tổng hợp doanh thu đã giao và thực thu về ví"]
+    };
+    let activeView = "orders", orderState = "all", orderChannel = "all", cancelRow = null;
+    let rec = { id: "", project: 0 }, toastTimer;
+
+    function money(value) { return new Intl.NumberFormat("vi-VN").format(Math.round(Number(value) || 0)) + " ₫"; }
+    function toast(message) {
+      document.getElementById("toast-text").textContent = message;
+      const element = document.getElementById("toast");
+      element.classList.add("show"); clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { element.classList.remove("show"); }, 3200);
+    }
+    function view(name) {
+      if (!meta[name]) return;
+      activeView = name;
+      document.querySelectorAll(".screen").forEach(function (el) { el.classList.toggle("active", el.id === name); });
+      document.querySelectorAll("[data-nav]").forEach(function (el) { el.classList.toggle("active", el.dataset.nav === name); });
+      document.getElementById("page-title").textContent = meta[name][0];
+      document.getElementById("page-subtitle").textContent = meta[name][1];
+      document.getElementById("search").value = "";
+      history.replaceState(null, "", "#" + name);
+    }
+    function open(name) { document.getElementById(name + "-modal").hidden = false; document.body.style.overflow = "hidden"; }
+    function close(name) {
+      document.getElementById(name + "-modal").hidden = true;
+      if (!Array.from(document.querySelectorAll(".overlay")).some(function (el) { return !el.hidden; })) document.body.style.overflow = "";
+    }
+    function orderModal() { preview(); open("order"); }
+    function orderFilter(state, button) {
+      orderState = state;
+      document.querySelectorAll("#orders .tab").forEach(function (el) { el.classList.remove("active"); });
+      button.classList.add("active"); applyOrders();
+    }
+    function channelFilter(channel) { orderChannel = channel; applyOrders(); }
+    function applyOrders() {
+      const q = document.getElementById("search").value.trim().toLowerCase();
+      document.querySelectorAll("#orders-table .order-row").forEach(function (row) {
+        row.hidden = !((orderState === "all" || row.dataset.status === orderState) && (orderChannel === "all" || row.dataset.channel === orderChannel) && (!q || row.dataset.key.indexOf(q) !== -1));
+      });
+    }
+    function status(button, next) {
+      const row = button.closest(".order-row");
+      if (next === "delivered" && row.dataset.status !== "shipped") { toast("Đơn online phải chuyển sang Đang giao trước khi Giao thành công."); return; }
+      row.dataset.status = next;
+      const cell = row.querySelector(".status-cell"), action = button.closest("td");
+      if (next === "shipped") {
+        cell.innerHTML = '<span class="status shipped">Đang giao</span>';
+        action.innerHTML = '<span class="actions"><button class="mini blue" type="button" onclick="status(this,&#39;delivered&#39;)">Đã giao</button><button class="mini red" type="button" onclick="cancel(this)">Hủy</button></span>';
+        toast("Đã chuyển đơn sang trạng thái SHIPPED.");
+      } else {
+        cell.innerHTML = '<span class="status delivered">Đã giao</span>';
+        action.innerHTML = '<span class="actions"><span class="locked">✓ Đã khóa sổ</span><button class="mini" type="button" onclick="toast(&#39;Đơn DELIVERED đã khóa để bảo toàn sổ sách&#39;)">Xem</button></span>';
+        toast("Đã giao thành công — doanh thu được ghi nhận chính thức.");
+      }
+      applyOrders();
+    }
+    function cancel(button) {
+      cancelRow = button.closest(".order-row");
+      document.getElementById("cancel-summary").textContent = "Đơn " + cancelRow.querySelector(".order-code").textContent + " sẽ không được tính vào bất kỳ KPI doanh thu nào.";
+      document.getElementById("cancel-reason").value = ""; document.getElementById("cancel-error").textContent = ""; open("cancel");
+    }
+    function confirmCancel() {
+      const reason = document.getElementById("cancel-reason").value;
+      if (!reason) { document.getElementById("cancel-error").textContent = "Vui lòng chọn lý do hủy đơn."; return; }
+      if (!cancelRow || cancelRow.dataset.status === "delivered") { close("cancel"); toast("Không thể hủy đơn hàng đã giao thành công."); return; }
+      cancelRow.dataset.status = "cancelled";
+      cancelRow.querySelector(".status-cell").innerHTML = '<span class="status cancelled">Đã hủy</span>';
+      cancelRow.querySelector("td:last-child").innerHTML = '<span class="actions"><span class="locked">' + escapeHtml(reason) + '</span></span>';
+      close("cancel"); applyOrders(); toast("Đã hủy đơn và loại trừ giá trị đơn khỏi doanh thu.");
+    }
+    function values() {
+      let subtotal = 0;
+      document.querySelectorAll("#item-list .item").forEach(function (line) { subtotal += (Number(line.querySelector(".qty").value) || 0) * (Number(line.querySelector(".price").value) || 0); });
+      const voucher = Math.max(0, Number(document.getElementById("voucher").value) || 0);
+      const gross = Math.max(0, subtotal - voucher), channel = document.getElementById("channel").value, payment = document.getElementById("payment").value;
+      let commission = 0, paymentFee = 0, service = 0, rule = "";
+      if (channel === "tiktok") { commission = subtotal * .04; paymentFee = gross * .03; service = 2000; rule = "TikTok: 4% tiền hàng + 3% tổng thanh toán + 2.000 ₫/đơn."; }
+      else if (channel === "shopee") { commission = subtotal * .045; paymentFee = gross * .04; service = Math.min(subtotal * .02, 20000); rule = "Shopee: 4,5% tiền hàng + 4% tổng thanh toán + 2% Freeship (tối đa 20.000 ₫)."; }
+      else { paymentFee = payment === "card" ? gross * .01 : 0; rule = payment === "card" ? "POS thẻ/QR: phí xử lý ngân hàng 1% tổng thanh toán." : "POS tiền mặt: không có phí sàn hoặc phí thanh toán."; }
+      return { subtotal: subtotal, voucher: voucher, gross: gross, commission: commission, payment: paymentFee, service: service, net: gross - commission - paymentFee - service, channel: channel, rule: rule };
+    }
+    function preview() {
+      const v = values();
+      [["pre-subtotal",v.subtotal],["pre-voucher",v.voucher],["pre-gross",v.gross],["pre-commission",v.commission],["pre-payment",v.payment],["pre-service",v.service],["pre-net",v.net]].forEach(function (pair) { document.getElementById(pair[0]).textContent = (pair[0].indexOf("voucher") > -1 || pair[0].indexOf("commission") > -1 || pair[0].indexOf("payment") > -1 || pair[0].indexOf("service") > -1 ? "−" : "") + money(pair[1]); });
+      document.getElementById("pre-rule").textContent = v.rule;
+    }
+    function addItem() {
+      const item = document.createElement("div"); item.className = "item";
+      item.innerHTML = '<input class="item-name" value="SKU mới · Sản phẩm"><input class="qty" type="number" min="1" value="1" oninput="preview()"><input class="price" type="number" min="0" value="0" oninput="preview()">';
+      document.getElementById("item-list").appendChild(item); item.querySelector(".item-name").focus(); preview();
+    }
+    function createOrder(event) {
+      event.preventDefault(); const v = values(), error = document.getElementById("order-error");
+      if (v.subtotal <= 0) { error.textContent = "Đơn hàng phải chứa ít nhất một sản phẩm có giá trị."; return; }
+      if (v.voucher > v.subtotal) { error.textContent = "Voucher giảm giá không được vượt quá tổng tiền hàng."; return; }
+      const code = "ORD-2026-" + String(100 + document.querySelectorAll("#orders-table tbody tr").length + 1).padStart(3, "0");
+      const ext = document.getElementById("external").value.trim() || "Đơn thủ công", customer = document.getElementById("customer").value.trim() || "Khách vãng lai", product = document.querySelector(".item-name").value.trim() || "Sản phẩm mới";
+      const state = v.channel === "pos" ? "delivered" : "pending", stateText = state === "delivered" ? "Đã giao" : "Chờ xử lý", channelText = v.channel === "tiktok" ? "TikTok Shop" : v.channel === "shopee" ? "Shopee" : "POS";
+      const row = document.createElement("tr"); row.className = "order-row"; row.dataset.status = state; row.dataset.channel = v.channel; row.dataset.key = (code+" "+ext+" "+customer+" "+product).toLowerCase();
+      row.innerHTML = '<td class="check"><input type="checkbox"></td><td><span class="order-code">'+code+'</span><span class="sub">'+escapeHtml(ext)+' · '+escapeHtml(customer)+'</span></td><td><span class="channel '+v.channel+'">'+channelText+'</span></td><td class="product"><strong>'+escapeHtml(product)+'</strong><span>Đơn nhập thủ công</span></td><td>11/09/2026<span class="sub">Vừa tạo</span></td><td><span class="money">'+money(v.gross)+'</span></td><td class="status-cell"><span class="status '+state+'">'+stateText+'</span></td><td><span class="actions">'+(state === "delivered" ? '<span class="locked">✓ Đã khóa sổ</span>' : '<button class="mini blue" type="button" onclick="status(this,&#39;shipped&#39;)">Giao hàng</button><button class="mini red" type="button" onclick="cancel(this)">Hủy</button>')+'</span></td>';
+      document.querySelector("#orders-table tbody").prepend(row); close("order"); view("orders");
+      toast(state === "delivered" ? "Đơn POS đã tạo ở trạng thái DELIVERED và được ghi nhận doanh thu." : "Đã tạo đơn hàng mới ở trạng thái PENDING.");
+    }
+    function settleFilter(state, button) {
+      document.querySelectorAll("#settlement .tab").forEach(function (el) { el.classList.remove("active"); }); button.classList.add("active");
+      document.querySelectorAll("#settlement-table tbody tr").forEach(function (row) { row.hidden = !(state === "all" || row.dataset.settle === state); });
+    }
+    function reconcile(id, project, actual, note) {
+      rec = { id: id, project: Number(project) || 0 };
+      document.getElementById("rec-id").textContent = id; document.getElementById("rec-project").textContent = money(project);
+      document.getElementById("rec-actual").value = actual === undefined ? project : actual; document.getElementById("rec-note").value = note || ""; document.getElementById("rec-error").textContent = "";
+      recPreview(); open("reconcile");
+    }
+    function recPreview() {
+      const variance = rec.project - (Number(document.getElementById("rec-actual").value) || 0), el = document.getElementById("rec-variance");
+      el.textContent = variance === 0 ? "0 ₫" : money(Math.abs(variance)); el.style.color = variance === 0 ? "var(--green)" : "var(--red)";
+      document.getElementById("note-star").style.visibility = variance === 0 ? "hidden" : "visible";
+    }
+    function saveReconcile() {
+      const actual = Number(document.getElementById("rec-actual").value), note = document.getElementById("rec-note").value.trim(), variance = rec.project - actual, error = document.getElementById("rec-error");
+      if (!Number.isFinite(actual) || actual < 0) { error.textContent = "Vui lòng nhập số tiền thực nhận hợp lệ."; return; }
+      if (variance !== 0 && !note) { error.textContent = "Bắt buộc nhập giải trình khi số thực nhận có chênh lệch."; return; }
+      const row = document.querySelector('[data-id="'+rec.id+'"]');
+      if (row) { row.dataset.settle = variance === 0 ? "reconciled" : "discrepancy"; row.querySelector(".actual").innerHTML = '<span class="money">'+money(actual)+'</span>'; row.querySelector(".variance").innerHTML = variance === 0 ? "0 ₫" : '<span class="negative">'+money(Math.abs(variance))+'</span>'; row.querySelector(".settle-status").innerHTML = variance === 0 ? '<span class="status reconciled">Khớp 100%</span>' : '<span class="status discrepancy">Lệch tiền</span>'; }
+      close("reconcile"); toast(variance === 0 ? "Đã lưu đối soát khớp 100%." : "Đã lưu chênh lệch và giải trình vào hồ sơ kiểm toán.");
+    }
+    function period(button) { document.querySelectorAll(".periods button").forEach(function (el) { el.classList.remove("active"); }); button.classList.add("active"); toast("Đã áp dụng khoảng thời gian: "+button.textContent+"."); }
+    function searchCurrent(query) {
+      query = query.trim().toLowerCase();
+      if (activeView === "orders") { applyOrders(); return; }
+      if (activeView === "settlement") { document.querySelectorAll("#settlement-table tbody tr").forEach(function (row) { row.hidden = !!query && row.dataset.key.indexOf(query) === -1; }); return; }
+      if (query) toast("Tìm kiếm báo cáo theo: "+query);
+    }
+    function exportCsv() { close("drill"); toast("Đã chuẩn bị Bao_Cao_Doanh_Thu_20260911.csv để xuất."); }
+    function escapeHtml(text) { return String(text).replace(/[&<>"']/g,function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]; }); }
+    document.querySelectorAll(".overlay").forEach(function (el) { el.addEventListener("click",function (event) { if (event.target === el) close(el.id.replace("-modal","")); }); });
+    document.addEventListener("keydown",function (event) { if (event.key === "Escape") document.querySelectorAll(".overlay").forEach(function (el) { if (!el.hidden) close(el.id.replace("-modal","")); }); });
+    if (location.hash === "#settlement") view("settlement"); else if (location.hash === "#analytics") view("analytics");
+  </script>
+</body>
+</html>
