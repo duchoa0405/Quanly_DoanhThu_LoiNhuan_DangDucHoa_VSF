@@ -95,7 +95,7 @@ flowchart LR
     end
 
     sales -- "1. Ingests manual orders (Livestreams, Hotlines, POS) [MOD-01]" --> app
-    sales -- "2. Updates delivery milestones (Pending -> Shipped -> Delivered)" --> app
+    sales -- "2. Updates delivery milestones: Pending to Shipped to Delivered" --> app
     
     fin -- "3. Uploads bank & wallet statements (.xlsx) [MOD-03]" --> app
     fin -- "4. Audits variances & records justification notes (#DIS-002)" --> app
@@ -106,9 +106,9 @@ flowchart LR
     bankStmt -. "Periodic upload for reconciliation" .-> app
     posDevice -. "In-store counter sales" .-> app
 
-    app -. "Phase 2: Automated order sync" .-. tiktokApi
-    app -. "Phase 2: Automated order sync" .-. shopeeApi
-    app -. "Phase 2: Direct bank transaction feed" .-. openBankApi
+    app -. "Phase 2: Automated order sync" .-> tiktokApi
+    app -. "Phase 2: Automated order sync" .-> shopeeApi
+    app -. "Phase 2: Direct bank transaction feed" .-> openBankApi
 
     style app fill:#0052cc,stroke:#003d99,color:#ffffff,stroke-width:2px
     style SystemBoundary fill:#f8fafc,stroke:#cbd5e1,stroke-width:2px
@@ -319,8 +319,8 @@ sequenceDiagram
         Matcher->>Matcher: Computes: Variance = Actual Payout - Projected Net
         alt Variance == 0 (Exact Match)
             Matcher->>DB: Updates settlement_status = RECONCILED (Green Tag)
-        else Variance != 0 (Discrepancy, e.g., -20.000đ penalty)
-            Matcher->>DB: Updates settlement_status = DISCREPANCY (Red Tag)<br/>Automatically generates audit risk record #DIS
+        else Variance != 0 (Discrepancy / Shortfall)
+            Matcher->>DB: Updates settlement_status = DISCREPANCY (Generates audit record #DIS)
         end
     end
     DB-->>UI: Updates SCR-02 metrics: 1,159 Matched | 3 Discrepancies
@@ -342,7 +342,7 @@ sequenceDiagram
     Fin->>UI: Selects order ORD-2026-007 (Shortfall: -20.000 ₫)
     UI-->>Fin: Opens Audit Panel #DIS-002
     
-    Fin->>UI: Enters justification: "Carrier dimensional re-weighing penalty; verified with courier"
+    Fin->>UI: Enters justification: Carrier dimensional re-weighing penalty (verified with courier)
     Fin->>UI: Clicks [Submit for Approval]
     UI->>Audit: Registers audit justification record
     Audit->>DB: Saves state as PENDING_APPROVAL with attached evidence
