@@ -6,8 +6,23 @@ Tham k?o so d? m?u/
 refactoring/
 docs/refactoring/
 
+# Local draft & internal architecture plans (Keep local, do NOT push to Git)
+openapi_spec_vi.yaml
+database_erd.md
+*_vi.*
+docs/architecture/folder_structures.md
+docs/architecture/implementation_plan_dotnet.md
+
+# Build & Dependency artifacts
+bin/
+obj/
+node_modules/
+dist/
+.vs/
+*.user
 
 # OS specific
 Thumbs.db
 Desktop.ini
 .DS_Store
+
