@@ -1,0 +1,1050 @@
+openapi: 3.0.3
+info:
+  title: FASHION-WEB Core API Specification
+  description: >
+    Enterprise RESTful API specification for FASHION-WEB: Multi-Channel Revenue,
+    Strategy Pattern Fee Unbundling, and Automated Bank/Wallet Settlement Reconciliation.
+    Strictly enforces zero phantom revenue (DELIVERED only), NUMERIC(18,0) currency precision,
+    and ledger immutability.
+  version: 1.0.0
+  contact:
+    name: Dang Duc Hoa (VSF Internship Program)
+    email: support@fashionweb.local
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local Node.js Development Server
+  - url: https://api.fashionweb.vn/api/v1
+    description: Production Cloud Gateway
+
+tags:
+  - name: Orders (SCR-01 / MOD-01)
+    description: Order ingestion, multi-line items, lifecycle transitions, and cancellations.
+  - name: Fee Engine & Strategy (MOD-01 / MOD-04)
+    description: Real-time fee preview, Strategy Pattern calculation, and fee schedules.
+  - name: Settlement & Reconciliation (SCR-02 / MOD-03)
+    description: Bank/wallet spreadsheet ingestion, batch matching, and ledger audit.
+  - name: Discrepancy Auditing (#DIS-002)
+    description: Root cause dispute filing, evidence attachment, and executive sign-off.
+  - name: Analytics & Reporting (SCR-03 / MOD-05)
+    description: Executive KPI aggregation, cash flow trends, donut channel share, and CSV exports.
+
+paths:
+  # ============================================================================
+  # 1. ORDER INGESTION & LIFECYCLE APIS (SCR-01, MOD-01, MOD-02)
+  # ============================================================================
+  /orders/preview-fee:
+    post:
+      tags:
+        - Fee Engine & Strategy (MOD-01 / MOD-04)
+      summary: Real-time Strategy Pattern Fee Preview (MOD-01)
+      description: >
+        Computes instantaneous fee deductions, shop voucher bounds, and projected net payout
+        as user types in modal MOD-01, without persisting to database.
+      operationId: previewOrderFees
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeePreviewRequest'
+      responses:
+        '200':
+          description: Dynamic fee calculation breakdown.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeePreviewResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /orders:
+    get:
+      tags:
+        - Orders (SCR-01 / MOD-01)
+      summary: List Multi-Channel Orders (SCR-01 Table)
+      description: Retrieves paginated orders with multi-channel filtering, status pills, and search query.
+      operationId: listOrders
+      parameters:
+        - name: channel
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ALL, TIKTOK, SHOPEE, POS]
+            default: ALL
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ALL, PENDING, SHIPPED, DELIVERED, CANCELLED]
+            default: ALL
+        - name: search
+          in: query
+          required: false
+          description: Search keyword (order code, customer name, external ID).
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated order collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrderResponse'
+
+    post:
+      tags:
+        - Orders (SCR-01 / MOD-01)
+      summary: Create Multi-Line Order (MOD-01)
+      description: >
+        Ingests order from TikTok Shop, Shopee, or In-Store POS.
+        Enforces 0 <= shop_voucher <= gross_subtotal.
+        POS orders with cash/card transition immediately to DELIVERED; marketplace orders initialize as PENDING.
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+      responses:
+        '201':
+          description: Order created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /orders/{id}:
+    get:
+      tags:
+        - Orders (SCR-01 / MOD-01)
+      summary: Get Granular Order Details
+      operationId: getOrderById
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+      responses:
+        '200':
+          description: Granular order details including line items and fee snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /orders/{id}/status:
+    patch:
+      tags:
+        - Orders (SCR-01 / MOD-01)
+      summary: Transition Order Delivery Milestone
+      description: >
+        Advances order from PENDING -> SHIPPED -> DELIVERED.
+        When transitioning to DELIVERED, system permanently creates immutable OrderFeeSnapshot
+        and officially recognizes revenue in financial ledgers.
+      operationId: updateOrderStatus
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [SHIPPED, DELIVERED]
+      responses:
+        '200':
+          description: Order status transitioned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetailResponse'
+        '409':
+          description: Invalid lifecycle transition attempted (e.g. modifying DELIVERED order).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/{id}/cancel:
+    post:
+      tags:
+        - Orders (SCR-01 / MOD-01)
+      summary: Cancel Order & Reverse Revenue (MOD-02)
+      description: >
+        Cancels pending/shipped order. Requires mandatory cancellation reason.
+        Enforces 100% exclusion from recognized revenue and executive dashboards.
+      operationId: cancelOrder
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cancellation_reason]
+              properties:
+                cancellation_reason:
+                  type: string
+                  example: Customer changed mind before fulfillment.
+      responses:
+        '200':
+          description: Order cancelled and revenue excluded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetailResponse'
+
+  # ============================================================================
+  # 2. SETTLEMENT & STATEMENT RECONCILIATION APIS (SCR-02, MOD-03, MOD-04)
+  # ============================================================================
+  /settlement/ledger:
+    get:
+      tags:
+        - Settlement & Reconciliation (SCR-02 / MOD-03)
+      summary: Query Fee Deduction & Settlement Ledger (SCR-02 Table)
+      description: Retrieves granular fee breakdown, unbundled platform fees, and variance status per order.
+      operationId: getSettlementLedger
+      parameters:
+        - name: recon_status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ALL, PENDING_SETTLEMENT, RECONCILED, DISCREPANCY]
+        - name: channel
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ALL, TIKTOK, SHOPEE, POS]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Itemized settlement ledger lines.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettlementLedgerResponse'
+
+  /settlement/summary:
+    get:
+      tags:
+        - Settlement & Reconciliation (SCR-02 / MOD-03)
+      summary: Settlement Overview Metric Cards (SCR-02 Top Cards)
+      description: Computes counts and balances for Pending Settlement, 100% Reconciled, and Discrepancy orders.
+      operationId: getSettlementSummary
+      responses:
+        '200':
+          description: High-level settlement cards.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettlementSummaryResponse'
+
+  /settlement/statements/import:
+    post:
+      tags:
+        - Settlement & Reconciliation (SCR-02 / MOD-03)
+      summary: Upload Bank/Wallet Statement Spreadsheet (MOD-03)
+      description: >
+        Ingests .xlsx or .csv statement file from TikTok Shop, Shopee, or Bank.
+        Calculates SHA-256 hash to reject duplicate uploads.
+        Automatically triggers batch matching against order_fee_snapshots within <= 3.0 seconds.
+      operationId: importStatement
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, channel_code]
+              properties:
+                channel_code:
+                  type: string
+                  enum: [TIKTOK, SHOPEE, VCB, MB]
+                  example: TIKTOK
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Batch reconciliation execution result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementImportResult'
+        '409':
+          description: Duplicate spreadsheet upload detected (SHA-256 collision).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /settlement/fee-schedules:
+    get:
+      tags:
+        - Fee Engine & Strategy (MOD-01 / MOD-04)
+      summary: List Active Fee Schedules (MOD-04)
+      operationId: listFeeSchedules
+      responses:
+        '200':
+          description: Current commission and payment fee schedules.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeeScheduleDTO'
+
+    put:
+      tags:
+        - Fee Engine & Strategy (MOD-01 / MOD-04)
+      summary: Update Channel Fee Schedule (MOD-04)
+      description: Updates commission and payment rates for a channel. Restricted to Shop Owner role.
+      operationId: updateFeeSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeeScheduleDTO'
+      responses:
+        '200':
+          description: Updated schedule successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeScheduleDTO'
+
+  # ============================================================================
+  # 3. DISCREPANCY AUDITING APIS (#DIS-002)
+  # ============================================================================
+  /discrepancies:
+    get:
+      tags:
+        - Discrepancy Auditing (#DIS-002)
+      summary: List Discrepancy Audit Cases (#DIS)
+      operationId: listDiscrepancies
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ALL, PENDING_APPROVAL, APPROVED, REJECTED]
+      responses:
+        '200':
+          description: Audit dispute case records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiscrepancyAuditDTO'
+
+    post:
+      tags:
+        - Discrepancy Auditing (#DIS-002)
+      summary: File Discrepancy Justification Audit (#DIS-002)
+      description: Registers written explanation and documentary evidence for carrier weight penalties or fee discrepancies.
+      operationId: createDiscrepancyAudit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDiscrepancyRequest'
+      responses:
+        '201':
+          description: Audit case registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscrepancyAuditDTO'
+
+  /discrepancies/{id}/approve:
+    patch:
+      tags:
+        - Discrepancy Auditing (#DIS-002)
+      summary: Executive Sign-off on Discrepancy Audit
+      description: Shop Owner or Chief Accountant formal approval of variance adjustment.
+      operationId: approveDiscrepancy
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  enum: [APPROVED, REJECTED]
+                approver_note:
+                  type: string
+      responses:
+        '200':
+          description: Audit case signed off.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscrepancyAuditDTO'
+
+  # ============================================================================
+  # 4. EXECUTIVE ANALYTICS & REPORTING APIS (SCR-03, MOD-05)
+  # ============================================================================
+  /analytics/kpis:
+    get:
+      tags:
+        - Analytics & Reporting (SCR-03 / MOD-05)
+      summary: 4 Core Executive Financial KPIs (SCR-03)
+      description: >
+        Returns Gross Sales, Platform Fees Deducted, Net Realized Cash, and Delivered Order Volume.
+        Strictly aggregates from DELIVERED orders; all other statuses contribute exactly 0 VND.
+      operationId: getAnalyticsKPIs
+      parameters:
+        - $ref: '#/components/parameters/DateRangeParam'
+        - $ref: '#/components/parameters/ChannelParam'
+      responses:
+        '200':
+          description: Aggregated KPI figures.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutiveKPIsResponse'
+
+  /analytics/trend:
+    get:
+      tags:
+        - Analytics & Reporting (SCR-03 / MOD-05)
+      summary: 7-Day Cash Flow Grouped Bar Chart (SCR-03)
+      description: Daily comparison between Gross Revenue and Net Realized Cash.
+      operationId: getCashFlowTrend
+      parameters:
+        - $ref: '#/components/parameters/DateRangeParam'
+      responses:
+        '200':
+          description: Daily chronological series.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DailyTrendPoint'
+
+  /analytics/channel-breakdown:
+    get:
+      tags:
+        - Analytics & Reporting (SCR-03 / MOD-05)
+      summary: Channel Share Donut Chart (SCR-03)
+      description: Computes revenue contribution and percentage shares across TikTok Shop, Shopee, and POS.
+      operationId: getChannelBreakdown
+      parameters:
+        - $ref: '#/components/parameters/DateRangeParam'
+      responses:
+        '200':
+          description: Channel revenue percentage breakdown.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChannelBreakdownDTO'
+
+  /analytics/top-skus:
+    get:
+      tags:
+        - Analytics & Reporting (SCR-03 / MOD-05)
+      summary: Top 5 Best-Selling SKU Leaderboard (SCR-03)
+      description: Ranks SKUs descending by delivered unit volume and revenue contribution.
+      operationId: getTopSKUs
+      parameters:
+        - $ref: '#/components/parameters/DateRangeParam'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: Ranked SKU leaderboard.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TopSKUDTO'
+
+  /analytics/drilldown:
+    get:
+      tags:
+        - Analytics & Reporting (SCR-03 / MOD-05)
+      summary: Source Order Drilldown Audit (MOD-05)
+      description: Retrieves granular DELIVERED order transactions constituting KPI totals.
+      operationId: getDrilldownOrders
+      parameters:
+        - $ref: '#/components/parameters/DateRangeParam'
+        - $ref: '#/components/parameters/ChannelParam'
+      responses:
+        '200':
+          description: Granular audited source order ledger.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DrilldownOrderDTO'
+
+  /analytics/export-csv:
+    get:
+      tags:
+        - Analytics & Reporting (SCR-03 / MOD-05)
+      summary: Export Reconciliation Audit Ledger CSV
+      description: Streams downloadable CSV file of all reconciled orders and variance logs.
+      operationId: exportReconciliationCSV
+      parameters:
+        - $ref: '#/components/parameters/DateRangeParam'
+      responses:
+        '200':
+          description: CSV file stream.
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
+# ==============================================================================
+# COMPONENTS & DATA SCHEMAS
+# ==============================================================================
+components:
+  parameters:
+    EntityId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DateRangeParam:
+      name: period
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [TODAY, LAST_7_DAYS, THIS_MONTH, CUSTOM]
+        default: THIS_MONTH
+    ChannelParam:
+      name: channel
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [ALL, TIKTOK, SHOPEE, POS]
+        default: ALL
+
+  schemas:
+    # --------------------------------------------------------------------------
+    # Order Schemas
+    # --------------------------------------------------------------------------
+    OrderItemDTO:
+      type: object
+      required: [sku_code, product_name, quantity, unit_price]
+      properties:
+        sku_code:
+          type: string
+          example: AT-COT-BLK-L
+        product_name:
+          type: string
+          example: Áo thun Cotton Đen Size L
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
+        unit_price:
+          type: integer
+          description: Unit retail price in VND.
+          example: 180000
+        line_total:
+          type: integer
+          description: Computed quantity * unit_price.
+          example: 360000
+
+    OrderCreateRequest:
+      type: object
+      required: [channel_code, customer_name, payment_method, items]
+      properties:
+        channel_code:
+          type: string
+          enum: [TIKTOK, SHOPEE, POS]
+          example: TIKTOK
+        external_order_id:
+          type: string
+          example: TT-889922
+        customer_name:
+          type: string
+          example: Lê Minh Hoàng
+        customer_phone:
+          type: string
+          example: "0912345678"
+        payment_method:
+          type: string
+          enum: [CASH, CARD_QR, PLATFORM_WALLET]
+          example: PLATFORM_WALLET
+        shop_voucher:
+          type: integer
+          description: Seller-funded voucher deduction (VND). Must be <= gross_subtotal.
+          default: 0
+          example: 30000
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/OrderItemDTO'
+
+    OrderDetailResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_code:
+          type: string
+          example: FSW-2026-001
+        external_order_id:
+          type: string
+          example: TT-889922
+        channel_code:
+          type: string
+          example: TIKTOK
+        status:
+          type: string
+          enum: [PENDING, SHIPPED, DELIVERED, CANCELLED]
+          example: PENDING
+        customer_name:
+          type: string
+          example: Lê Minh Hoàng
+        payment_method:
+          type: string
+          example: PLATFORM_WALLET
+        gross_subtotal:
+          type: integer
+          example: 510000
+        shop_voucher:
+          type: integer
+          example: 30000
+        customer_paid:
+          type: integer
+          example: 480000
+        ordered_at:
+          type: string
+          format: date-time
+        delivered_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemDTO'
+        fee_snapshot:
+          $ref: '#/components/schemas/FeeSnapshotDTO'
+
+    PaginatedOrderResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderDetailResponse'
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total_records:
+              type: integer
+            total_pages:
+              type: integer
+
+    # --------------------------------------------------------------------------
+    # Fee Engine Schemas
+    # --------------------------------------------------------------------------
+    FeePreviewRequest:
+      type: object
+      required: [channel_code, subtotal]
+      properties:
+        channel_code:
+          type: string
+          enum: [TIKTOK, SHOPEE, POS]
+        payment_method:
+          type: string
+          enum: [CASH, CARD_QR, PLATFORM_WALLET]
+          default: PLATFORM_WALLET
+        subtotal:
+          type: integer
+          example: 510000
+        shop_voucher:
+          type: integer
+          default: 0
+          example: 30000
+
+    FeePreviewResponse:
+      type: object
+      properties:
+        subtotal:
+          type: integer
+          example: 510000
+        shop_voucher:
+          type: integer
+          example: 30000
+        customer_paid:
+          type: integer
+          example: 480000
+        commission_fee:
+          type: integer
+          example: 20400
+        payment_processing_fee:
+          type: integer
+          example: 14400
+        fixed_platform_fee:
+          type: integer
+          example: 2000
+        total_platform_deductions:
+          type: integer
+          example: 36800
+        projected_net_payout:
+          type: integer
+          example: 443200
+
+    FeeSnapshotDTO:
+      type: object
+      properties:
+        commission_fee:
+          type: integer
+        payment_processing_fee:
+          type: integer
+        service_freeship_fee:
+          type: integer
+        fixed_platform_fee:
+          type: integer
+        total_platform_deductions:
+          type: integer
+        expected_net_payout:
+          type: integer
+        is_immutable:
+          type: boolean
+        snapshotted_at:
+          type: string
+          format: date-time
+
+    FeeScheduleDTO:
+      type: object
+      properties:
+        channel_code:
+          type: string
+        commission_rate:
+          type: number
+          example: 0.0400
+        payment_fee_rate:
+          type: number
+          example: 0.0300
+        fixed_fee_per_order:
+          type: integer
+          example: 2000
+        freeship_extra_rate:
+          type: number
+          example: 0.0200
+
+    # --------------------------------------------------------------------------
+    # Settlement & Reconciliation Schemas
+    # --------------------------------------------------------------------------
+    SettlementSummaryResponse:
+      type: object
+      properties:
+        pending_settlement_orders:
+          type: integer
+          example: 18
+        pending_settlement_amount:
+          type: integer
+          example: 6842000
+        reconciled_orders:
+          type: integer
+          example: 1159
+        discrepancy_orders:
+          type: integer
+          example: 3
+        reconciled_percentage:
+          type: number
+          example: 98.2
+
+    SettlementLedgerResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              order_id:
+                type: string
+                format: uuid
+              order_code:
+                type: string
+                example: FSW-2026-007
+              channel_code:
+                type: string
+                example: TIKTOK
+              customer_paid:
+                type: integer
+                example: 280000
+              total_platform_deductions:
+                type: integer
+                example: 20400
+              expected_net_payout:
+                type: integer
+                example: 259600
+              actual_settled_amount:
+                type: integer
+                example: 239600
+              variance_amount:
+                type: integer
+                description: Negative figure denotes deduction shortfall.
+                example: -20000
+              recon_status:
+                type: string
+                enum: [PENDING_SETTLEMENT, RECONCILED, DISCREPANCY]
+                example: DISCREPANCY
+              dispute_ref:
+                type: string
+                nullable: true
+                example: DIS-2026-002
+
+    StatementImportResult:
+      type: object
+      properties:
+        import_id:
+          type: string
+          format: uuid
+        file_name:
+          type: string
+        total_rows_processed:
+          type: integer
+          example: 1200
+        matched_orders:
+          type: integer
+          example: 1159
+        discrepancies_flagged:
+          type: integer
+          example: 3
+        execution_duration_ms:
+          type: integer
+          example: 1840
+
+    DiscrepancyAuditDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        dispute_code:
+          type: string
+          example: DIS-2026-002
+        order_code:
+          type: string
+          example: FSW-2026-007
+        discrepancy_value:
+          type: integer
+          example: -20000
+        root_cause_category:
+          type: string
+          example: CARRIER_WEIGHT_PENALTY
+        justification_note:
+          type: string
+          example: Courier re-weighed parcel (+350g penalty verified with carrier slip).
+        approval_status:
+          type: string
+          enum: [PENDING_APPROVAL, APPROVED, REJECTED]
+          example: APPROVED
+
+    CreateDiscrepancyRequest:
+      type: object
+      required: [reconciliation_id, root_cause_category, justification_note]
+      properties:
+        reconciliation_id:
+          type: string
+          format: uuid
+        root_cause_category:
+          type: string
+          enum: [CARRIER_WEIGHT_PENALTY, PLATFORM_FEE_SURCHARGE, INCORRECT_PROMOTION, OTHER]
+        justification_note:
+          type: string
+        evidence_file_url:
+          type: string
+          nullable: true
+
+    # --------------------------------------------------------------------------
+    # Analytics Schemas
+    # --------------------------------------------------------------------------
+    ExecutiveKPIsResponse:
+      type: object
+      properties:
+        gross_sales:
+          type: integer
+          description: Strictly from DELIVERED orders (VND).
+          example: 184500000
+        total_platform_fees_deducted:
+          type: integer
+          description: Commission, payment, and fixed platform fees (VND).
+          example: 28620000
+        fee_erosion_percentage:
+          type: number
+          example: 15.5
+        net_realized_cash:
+          type: integer
+          description: Realized cash after all deductions (VND).
+          example: 155880000
+        delivered_order_volume:
+          type: integer
+          example: 1180
+        fulfillment_delivery_rate:
+          type: number
+          example: 94.5
+
+    DailyTrendPoint:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2026-03-10"
+        gross_sales:
+          type: integer
+          example: 28400000
+        net_realized_cash:
+          type: integer
+          example: 23998000
+
+    ChannelBreakdownDTO:
+      type: object
+      properties:
+        channel_code:
+          type: string
+          example: TIKTOK
+        channel_name:
+          type: string
+          example: TikTok Shop
+        revenue:
+          type: integer
+          example: 88560000
+        percentage:
+          type: number
+          example: 48.0
+
+    TopSKUDTO:
+      type: object
+      properties:
+        sku_code:
+          type: string
+          example: AT-COT-BLK-L
+        product_name:
+          type: string
+          example: Áo thun Cotton Đen Size L
+        delivered_units:
+          type: integer
+          example: 420
+        gross_revenue:
+          type: integer
+          example: 75600000
+
+    DrilldownOrderDTO:
+      type: object
+      properties:
+        order_code:
+          type: string
+          example: FSW-2026-001
+        channel:
+          type: string
+          example: TIKTOK
+        delivered_at:
+          type: string
+          format: date-time
+        customer_paid:
+          type: integer
+          example: 480000
+        platform_fees:
+          type: integer
+          example: 36800
+        net_payout:
+          type: integer
+          example: 443200
+
+    # --------------------------------------------------------------------------
+    # Error Responses
+    # --------------------------------------------------------------------------
+    ErrorResponse:
+      type: object
+      properties:
+        error_code:
+          type: string
+          example: DUPLICATE_STATEMENT_HASH
+        message:
+          type: string
+          example: Statement spreadsheet with identical SHA-256 hash has already been ingested.
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequestError:
+      description: Bad request parameters or invalid payload structure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Business constraint violation (e.g., voucher > subtotal).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFoundError:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
