@@ -2,11 +2,10 @@
 Tham khảo sơ đồ mẫu/
 Tham k?o so d? m?u/
 
-# Internal refactoring & draft architecture notes
+# Internal refactoring & draft notes
 refactoring/
 docs/refactoring/
-architecture/
-docs/architecture/
+
 
 # OS specific
 Thumbs.db
