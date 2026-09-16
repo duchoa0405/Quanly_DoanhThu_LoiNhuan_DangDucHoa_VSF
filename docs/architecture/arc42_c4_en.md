@@ -245,17 +245,131 @@ flowchart TB
     style repo fill:#334155,stroke:#1e293b,color:#ffffff
 ```
 
-### 5.3. C4 Level 4 — Source Code Patterns (Design Patterns)
+### 5.3. C4 Level 4 — Source Code Patterns (Class Diagram & Design Patterns)
 
-The platform implements two foundational software patterns:
+Zooming into the internal implementation of the core services, C4 Level 4 models the Object-Oriented structure, interfaces, and design patterns governing **Dynamic Fee Unbundling** and **Financial Immutability**:
 
-1. **Strategy Pattern (Dynamic Marketplace Fee Calculation):**
-   * Abstract interface: `PlatformFeeStrategy`.
-   * Concrete implementations: `TikTokShopFeeStrategy`, `ShopeeFeeStrategy`, `POSFeeStrategy`.
-   * Allows adding future marketplaces (Lazada, Tiki) in Phase 2 with zero modifications to `OrderManagementService`.
-2. **Snapshot Pattern (Immutable Ledger Integrity):**
-   * When an order transitions to `DELIVERED`, fee formulas and deduction amounts are permanently frozen into `order_fee_snapshots`.
-   * Future adjustments to platform commission schedules will never retroactively distort historical accounting ledgers.
+```mermaid
+classDiagram
+    direction TB
+
+    class PlatformFeeStrategy {
+        <<interface>>
+        +get_channel_code() String
+        +calculate_fees(subtotal: Decimal, voucher: Decimal) FeeBreakdown
+    }
+
+    class TikTokShopFeeStrategy {
+        -Decimal commission_rate
+        -Decimal payment_fee_rate
+        -Decimal fixed_order_fee
+        +calculate_fees(subtotal: Decimal, voucher: Decimal) FeeBreakdown
+    }
+
+    class ShopeeFeeStrategy {
+        -Decimal commission_rate
+        -Decimal payment_fee_rate
+        -Decimal freeship_xtra_rate
+        +calculate_fees(subtotal: Decimal, voucher: Decimal) FeeBreakdown
+    }
+
+    class POSFeeStrategy {
+        -Decimal swipe_fee_rate
+        -Decimal qr_transfer_fee_rate
+        +calculate_fees(subtotal: Decimal, voucher: Decimal) FeeBreakdown
+    }
+
+    PlatformFeeStrategy <|.. TikTokShopFeeStrategy : implements
+    PlatformFeeStrategy <|.. ShopeeFeeStrategy : implements
+    PlatformFeeStrategy <|.. POSFeeStrategy : implements
+
+    class DynamicFeeStrategyEngine {
+        -Map strategies
+        +register_strategy(strategy: PlatformFeeStrategy) void
+        +resolve_strategy(channel: String) PlatformFeeStrategy
+        +compute_expected_fees(channel: String, subtotal: Decimal, voucher: Decimal) FeeBreakdown
+    }
+
+    DynamicFeeStrategyEngine o-- PlatformFeeStrategy : aggregates
+
+    class OrderManagementService {
+        -DynamicFeeStrategyEngine fee_engine
+        -OrderRepository order_repo
+        +create_order(payload: OrderCreateDTO) Order
+        +transition_to_shipped(order_id: UUID) Order
+        +transition_to_delivered(order_id: UUID) Order
+        -freeze_fee_snapshot(order: Order, fees: FeeBreakdown) OrderFeeSnapshot
+    }
+
+    OrderManagementService --> DynamicFeeStrategyEngine : delegates fee calculation
+
+    class Order {
+        +UUID id
+        +String order_code
+        +String channel
+        +String status
+        +Decimal subtotal
+        +Decimal shop_voucher
+        +Decimal net_revenue
+        +DateTime created_at
+        +DateTime delivered_at
+        +is_delivered() Boolean
+    }
+
+    class OrderFeeSnapshot {
+        +UUID id
+        +UUID order_id
+        +Decimal platform_fee
+        +Decimal commission_fee
+        +Decimal payment_fee
+        +Decimal voucher_borne
+        +Decimal shipping_borne
+        +Decimal expected_payout
+        +Boolean is_immutable
+        +DateTime frozen_at
+        +verify_checksum() Boolean
+    }
+
+    Order "1" *-- "1" OrderFeeSnapshot : freezes upon DELIVERED
+    OrderManagementService --> Order : manages lifecycle
+
+    class StatementMatchingService {
+        -ReconciliationRepository recon_repo
+        -OrderRepository order_repo
+        +import_statement(file_bytes: bytes, filename: String) StatementImport
+        +execute_reconciliation(import_id: UUID) ReconciliationSummary
+        -match_single_line(statement_line: StatementLine) ReconciliationRecord
+    }
+
+    class ReconciliationRecord {
+        +UUID id
+        +UUID order_id
+        +UUID statement_line_id
+        +Decimal expected_amount
+        +Decimal actual_settled_amount
+        +Decimal variance_amount
+        +String status
+        +String dispute_ref
+        +compute_variance() Decimal
+        +is_discrepancy() Boolean
+    }
+
+    StatementMatchingService --> OrderFeeSnapshot : compares with expected
+    StatementMatchingService --> ReconciliationRecord : creates
+    ReconciliationRecord --> Order : audits variance
+```
+
+#### Core Design Patterns & Structural Invariants:
+
+1. **Strategy Pattern (`PlatformFeeStrategy`):**
+   * Encapsulates channel-specific fee deduction formulas (`TikTokShopFeeStrategy`, `ShopeeFeeStrategy`, `POSFeeStrategy`) behind an abstract interface.
+   * Enables seamless onboarding of new sales channels (e.g., Lazada, Tiki) with zero refactoring to `OrderManagementService` (Open/Closed Principle).
+2. **Snapshot Pattern (`OrderFeeSnapshot`):**
+   * An order's fee breakdown and expected payout are calculated dynamically during creation and drafting.
+   * The instant an order transitions to `DELIVERED`, the fee breakdown is immutably frozen into `OrderFeeSnapshot` with `is_immutable = true`. Subsequent platform policy updates will never alter historical accounting ledgers.
+3. **Reconciliation Invariant Engine (`StatementMatchingService`):**
+   * Executes two-way matching between `OrderFeeSnapshot.expected_payout` and `StatementLine.actual_settled_amount`.
+   * Automatically derives `ReconciliationRecord.variance_amount = expected_amount - actual_settled_amount`. If `variance_amount ≠ 0`, marks status as `DISCREPANCY` and mandates an audit justification trail (`#DIS-002`).
 
 ---
 
