@@ -222,8 +222,8 @@ Designed for Sales and Fulfillment teams to track multi-channel order streams ac
 * **Master Orders Data Table:**
   * Columns: `Order ID`, `Channel Badge`, `External ID`, `Timestamp`, `Customer`, `SKU Line Items`, `Customer Payment`, `Order Status`, `Inline Quick Actions`.
   * Inline Action Buttons:
-    * `[Ship]`: Transitions `PENDING` $\rightarrow$ `SHIPPED` (Revenue flagged as *In-Transit*).
-    * `[Delivered]`: Transitions `SHIPPED` $\rightarrow$ `DELIVERED` (Officially credits revenue and permanently locks ledger row).
+    * `[Ship]`: Transitions `PENDING` → `SHIPPED` (Revenue flagged as *In-Transit*).
+    * `[Delivered]`: Transitions `SHIPPED` → `DELIVERED` (Officially credits revenue and permanently locks ledger row).
     * `[Cancel]`: Opens modal MOD-02 to record reason and reverse revenue.
 
 ---
@@ -281,7 +281,7 @@ Designed for Shop Owners and Executives to evaluate financial health and net rea
   * Product Line Items (Multi-line row repeater): SKU Code, Product Title, Quantity, Unit Price.
   * Shop Voucher Discount (`shop_voucher`).
 * **Real-Time Cash Flow & Fee Preview:**
-  * Automatically calculates: $\text{Subtotal} \rightarrow \text{Less Shop Voucher (Red)} \rightarrow \text{Gross Payment (Dark)} \rightarrow \text{Itemized Platform Fees (Red)} \rightarrow \text{Projected Net Settlement (Dark)}$.
+  * Automatically calculates: Subtotal → Less Shop Voucher (Red) → Gross Payment (Dark) → Itemized Platform Fees (Red) → Projected Net Settlement (Dark).
   * **POS Rule:** POS orders with cash/card payment automatically transition to `DELIVERED` upon saving; marketplace orders enter `PENDING` awaiting fulfillment.
 
 ---

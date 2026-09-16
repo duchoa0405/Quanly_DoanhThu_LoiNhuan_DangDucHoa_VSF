@@ -114,8 +114,8 @@ Realized Cash Flow  =  Delivered Gross Sales  -  Platform Fees  -  Shop Vouchers
 |---|---|---|---|
 | **1** | **Phantom Revenue Elimination** | Exclude 100% of `PENDING`, `SHIPPED`, `CANCELLED` orders from revenue KPIs and executive charts. | Prevents paying taxes or making inventory commitments on unearned income. |
 | **2** | **Immutable Realized Ledger** | Lock all item prices, quantities, and discounts permanently once an order reaches `DELIVERED`. | Guarantees audit reproducibility for tax and accounting compliance. |
-| **3** | **Shop Voucher Boundary** | Mathematically enforce $0 \le \text{shop\_voucher} \le \text{Subtotal}$. | Prevents negative net payable balance exploits and calculation overflow. |
-| **4** | **Mandatory Variance Justification** | If $\text{Variance} \ne 0$ during reconciliation, finance staff must provide written root-cause notes. | Prevents silent fund leakages caused by platform penalties or carrier re-weighing. |
+| **3** | **Shop Voucher Boundary** | Mathematically enforce `0 ≤ shop_voucher ≤ Subtotal`. | Prevents negative net payable balance exploits and calculation overflow. |
+| **4** | **Mandatory Variance Justification** | If `Variance ≠ 0` during reconciliation, finance staff must provide written root-cause notes. | Prevents silent fund leakages caused by platform penalties or carrier re-weighing. |
 | **5** | **Instant In-Store Settlement** | In-store POS cash/swipe orders transition immediately to `DELIVERED`. | Eliminates fictitious shipping delays for physical on-site counter sales. |
 
 ---
@@ -128,13 +128,14 @@ The fee engine dynamically selects the deduction formula using the **Strategy Pa
 
 | Sales Channel | Commission Fee | Payment Processing Fee | Service / Fixed Fees | Offline / Gateway Surcharge |
 |---|---|---|---|---|
-| **TikTok Shop** | 4.0% $\times$ Subtotal | 3.0% $\times$ Gross | 2,000 ₫ / fulfilled order | 0 ₫ |
-| **Shopee (Mall & Standard)** | 4.5% $\times$ Subtotal | 4.0% $\times$ Gross | Freeship Xtra 2.0% (Cap at 20,000 ₫) | 0 ₫ |
-| **In-Store POS** | 0% | 1.0% $\times$ Gross (Only on Card/QR payments) | 0 ₫ | Cash payment: 0% fee |
+| **TikTok Shop** | 4.0% × Subtotal | 3.0% × Gross | 2,000 ₫ / fulfilled order | 0 ₫ |
+| **Shopee (Mall & Standard)** | 4.5% × Subtotal | 4.0% × Gross | Freeship Xtra 2.0% (Cap at 20,000 ₫) | 0 ₫ |
+| **In-Store POS** | 0% | 1.0% × Gross (Only on Card/QR payments) | 0 ₫ | Cash payment: 0% fee |
 
-$$\text{Total Platform Fees} = \text{Commission Fee} + \text{Payment Processing Fee} + \text{Service / Fixed Fees}$$
-
-$$\text{Projected Net Payout} = \text{Gross Sales} - \text{Total Platform Fees}$$
+```text
+Total Platform Fees = Commission Fee + Payment Processing Fee + Service / Fixed Fees
+Projected Net Payout = Gross Sales - Total Platform Fees
+```
 
 ---
 
@@ -298,7 +299,7 @@ Action windows supporting real-world operational workflows triggered by interfac
 
 | Modal ID | Name | Trigger & Actor | Operational Purpose & Constraints |
 |---|---|---|---|
-| **MOD-01** | **Create Order Modal** | `[+ Create New Order]`<br>*(Sales / Ops)* | Manual order entry for livestreams, hotlines, or POS with real-time fee preview: Subtotal $\rightarrow$ Less Voucher (Red) $\rightarrow$ Gross $\rightarrow$ Platform Fees (Red) $\rightarrow$ Projected Net. POS cash/card orders transition immediately to `DELIVERED`. |
+| **MOD-01** | **Create Order Modal** | `[+ Create New Order]`<br>*(Sales / Ops)* | Manual order entry for livestreams, hotlines, or POS with real-time fee preview: Subtotal → Less Voucher (Red) → Gross → Platform Fees (Red) → Projected Net. POS cash/card orders transition immediately to `DELIVERED`. |
 | **MOD-02** | **Cancel Order Modal** | `[Cancel]`<br>*(Sales / Ops)* | Enforces cancellation reason tracking and excludes cancelled orders 100% from revenue recognition. |
 | **MOD-03** | **Bank Statement Import** | `[Import Statement (.xlsx)]`<br>*(Finance)* | Uploads bank statement spreadsheets (.xlsx, .csv) for automated matching and variance flagging. |
 | **MOD-04** | **Fee Schedule Config** | `[Configure Fees >]`<br>*(Owner / Finance)* | Configures commission percentages, payment gateway fees, and fixed service fees per channel in real time (Strategy Pattern). |
