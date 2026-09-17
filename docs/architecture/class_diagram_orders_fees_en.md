@@ -1,46 +1,37 @@
-# 02 — Class Diagram: Orders & Fee Engine
+# 02 — Class Diagrams: Orders & Fee Engine
 
 > **Project:** FASHION-WEB — Multi-Channel Revenue & Cash Flow Settlement Management  
 > **Module:** Orders Management (SCR-01 / MOD-01 / MOD-02) & Dynamic Fee Engine  
-> **Layer Scope:** Presentation (`FashionWeb.Api`), Business (`FashionWeb.Business`), Data (`FashionWeb.Data`)
+> **Layer Scope:** Presentation (`FashionWeb.Api`), Business (`FashionWeb.Business`), Data (`FashionWeb.Data`)  
+> **Architecture Pattern:** Clean Architecture 3-Tier, Strategy Pattern, Immutable Snapshot
 
 ---
 
-## 1. Architectural Role & Responsibilities
+## 1. Architectural Scope & Decomposition
 
-This bounded context governs multi-channel order ingestion, lifecycle state transitions, live fee unbundling, and immutable financial snapshotting:
-1. **Zero Phantom Revenue:** Revenue is recognized strictly upon `DELIVERED` status.
-2. **Strategy Pattern for Fees:** Channel deduction formulas (TikTok Shop, Shopee, POS) are decoupled behind `IPlatformFeeStrategy`.
-3. **Immutable Snapshot Pattern:** When an order transitions to `DELIVERED`, computed fees are frozen forever into `OrderFeeSnapshot`.
+To ensure optimal readability and maintainability, this module is decomposed into **3 focused sub-diagrams**:
+1. **Diagram 2.1 — 3-Tier API & Service Orchestration:** End-to-end Dependency Injection flow from Controller through Business Service to Data Repository.
+2. **Diagram 2.2 — Platform Fee Strategy Pattern Engine:** Decoupled calculation engine for marketplace deductions (TikTok, Shopee, POS).
+3. **Diagram 2.3 — Domain Entities & Immutable Financial Snapshot:** Domain Aggregate Root, line items, and audit-proof frozen snapshots.
 
 ---
 
-## 2. Orders & Fee Engine Class Diagram
+## 2. Diagram 2.1: 3-Tier API & Service Orchestration
+
+This diagram illustrates how client HTTP requests flow across process and layer boundaries under Clean Architecture rules:
 
 ```mermaid
 classDiagram
     direction TB
 
-    %% ===================================================
-    %% PRESENTATION TIER: FashionWeb.Api
-    %% ===================================================
     class OrdersController {
         <<Controller>>
         -IOrderService _orderService
-        -IFeeEngine _feeEngine
-        +PreviewFee(FeePreviewRequest request) Task~ActionResult~
         +GetOrders(string channel, string status, int page, int pageSize) Task~ActionResult~
         +GetOrderById(Guid id) Task~ActionResult~
         +CreateOrder(CreateOrderRequest request) Task~ActionResult~
         +UpdateStatus(Guid id, UpdateOrderStatusRequest request) Task~ActionResult~
         +CancelOrder(Guid id, CancelOrderRequest request) Task~ActionResult~
-    }
-
-    class FeePreviewRequest {
-        <<DTO Request>>
-        +string ChannelCode
-        +decimal Subtotal
-        +decimal ShopVoucher
     }
 
     class CreateOrderRequest {
@@ -79,28 +70,13 @@ classDiagram
         +string ExternalOrderId
         +string ChannelCode
         +string Status
-        +string PaymentMethod
         +decimal GrossSubtotal
         +decimal ShopVoucher
         +decimal CustomerPaid
         +DateTime OrderedAt
         +DateTime DeliveredAt
-        +List~OrderItemResponse~ Items
-        +FeeBreakdownResponse FeeSnapshot
     }
 
-    class FeeBreakdownResponse {
-        <<DTO Response>>
-        +decimal CommissionFee
-        +decimal PaymentFee
-        +decimal ServiceFee
-        +decimal TotalPlatformFees
-        +decimal ExpectedNetPayout
-    }
-
-    %% ===================================================
-    %% BUSINESS TIER: FashionWeb.Business
-    %% ===================================================
     class IOrderService {
         <<Interface>>
         +GetOrdersAsync(string channel, string status, int page, int pageSize) Task~PaginatedResult~
@@ -119,7 +95,78 @@ classDiagram
         +CreateOrderAsync(CreateOrderRequest request) Task~Order~
         +UpdateStatusAsync(Guid id, OrderStatus newStatus) Task~Order~
         +CancelOrderAsync(Guid id, string reason) Task
-        -FreezeFeeSnapshot(Order order, FeeBreakdown fees) OrderFeeSnapshot
+    }
+
+    class IOrderRepository {
+        <<Repository Interface>>
+        +GetByIdAsync(Guid id) Task~Order~
+        +GetByExternalIdAsync(string externalId) Task~Order~
+        +GetAllAsync(string channel, string status, int page, int pageSize) Task~List~
+        +AddAsync(Order order) Task
+        +UpdateAsync(Order order) Task
+        +SaveChangesAsync() Task
+    }
+
+    class OrderRepository {
+        <<Repository Implementation>>
+        -AppDbContext _context
+        +GetByIdAsync(Guid id) Task~Order~
+        +GetByExternalIdAsync(string externalId) Task~Order~
+        +GetAllAsync(string channel, string status, int page, int pageSize) Task~List~
+        +AddAsync(Order order) Task
+        +UpdateAsync(Order order) Task
+        +SaveChangesAsync() Task
+    }
+
+    class AppDbContext {
+        <<EF Core DbContext>>
+        +DbSet~Order~ Orders
+        +DbSet~OrderItem~ OrderItems
+        +DbSet~OrderFeeSnapshot~ OrderFeeSnapshots
+        +SaveChangesAsync() Task~int~
+    }
+
+    OrdersController ..> IOrderService : calls
+    OrdersController ..> CreateOrderRequest : consumes
+    OrdersController ..> OrderDetailResponse : produces
+    CreateOrderRequest o-- CreateOrderItemRequest : contains
+
+    IOrderService <|.. OrderService : implements
+    OrderService --> IOrderRepository : persists via
+    IOrderRepository <|.. OrderRepository : implements
+    OrderRepository --> AppDbContext : executes EF Core queries
+```
+
+---
+
+## 3. Diagram 2.2: Platform Fee Strategy Pattern Engine
+
+This diagram encapsulates channel-specific deduction algorithms behind abstract contracts, satisfying the **Open/Closed Principle (OCP)**:
+
+```mermaid
+classDiagram
+    direction TB
+
+    class OrdersController {
+        <<Controller>>
+        -IFeeEngine _feeEngine
+        +PreviewFee(FeePreviewRequest request) Task~ActionResult~
+    }
+
+    class FeePreviewRequest {
+        <<DTO Request>>
+        +string ChannelCode
+        +decimal Subtotal
+        +decimal ShopVoucher
+    }
+
+    class FeeBreakdownResponse {
+        <<DTO Response>>
+        +decimal CommissionFee
+        +decimal PaymentFee
+        +decimal ServiceFee
+        +decimal TotalPlatformFees
+        +decimal ExpectedNetPayout
     }
 
     class IFeeEngine {
@@ -180,8 +227,32 @@ classDiagram
         +decimal ExpectedNetPayout
     }
 
+    OrdersController ..> IFeeEngine : delegates preview
+    OrdersController ..> FeePreviewRequest : consumes
+    OrdersController ..> FeeBreakdownResponse : returns
+
+    IFeeEngine <|.. DynamicFeeEngine : implements
+    DynamicFeeEngine --> FeeStrategyFactory : resolves strategy
+    FeeStrategyFactory o-- IPlatformFeeStrategy : aggregates
+
+    IPlatformFeeStrategy <|.. TikTokShopFeeStrategy : implements
+    IPlatformFeeStrategy <|.. ShopeeFeeStrategy : implements
+    IPlatformFeeStrategy <|.. PosFeeStrategy : implements
+    IPlatformFeeStrategy ..> FeeBreakdown : produces
+```
+
+---
+
+## 4. Diagram 2.3: Domain Entities & Immutable Snapshot Model
+
+This diagram models the financial state machine and aggregate structure governing the **Zero Phantom Revenue** rule:
+
+```mermaid
+classDiagram
+    direction TB
+
     class Order {
-        <<Domain Entity>>
+        <<Aggregate Root>>
         +Guid Id
         +string OrderCode
         +string ExternalOrderId
@@ -227,81 +298,43 @@ classDiagram
         +DateTime FrozenAt
     }
 
-    %% ===================================================
-    %% DATA TIER: FashionWeb.Data
-    %% ===================================================
-    class IOrderRepository {
-        <<Repository Interface>>
-        +GetByIdAsync(Guid id) Task~Order~
-        +GetByExternalIdAsync(string externalId) Task~Order~
-        +GetAllAsync(string channel, string status, int page, int pageSize) Task~List~
-        +AddAsync(Order order) Task
-        +UpdateAsync(Order order) Task
-        +SaveChangesAsync() Task
+    class OrderStatus {
+        <<Enumeration>>
+        Pending
+        Shipped
+        Delivered
+        Cancelled
     }
 
-    class OrderRepository {
-        <<Repository Implementation>>
-        -AppDbContext _context
-        +GetByIdAsync(Guid id) Task~Order~
-        +GetByExternalIdAsync(string externalId) Task~Order~
-        +GetAllAsync(string channel, string status, int page, int pageSize) Task~List~
-        +AddAsync(Order order) Task
-        +UpdateAsync(Order order) Task
-        +SaveChangesAsync() Task
+    class ChannelType {
+        <<Enumeration>>
+        TikTok
+        Shopee
+        POS
     }
 
-    class AppDbContext {
-        <<EF Core DbContext>>
-        +DbSet~Order~ Orders
-        +DbSet~OrderItem~ OrderItems
-        +DbSet~OrderFeeSnapshot~ OrderFeeSnapshots
-        +SaveChangesAsync() Task~int~
+    class PaymentMethodType {
+        <<Enumeration>>
+        Cash
+        CardQR
+        PlatformWallet
     }
-
-    %% ===================================================
-    %% RELATIONSHIPS & DEPENDENCIES
-    %% ===================================================
-    OrdersController ..> IOrderService : calls
-    OrdersController ..> IFeeEngine : previews fee
-    OrdersController ..> CreateOrderRequest : consumes
-    OrdersController ..> OrderDetailResponse : produces
-
-    IOrderService <|.. OrderService : implements
-    OrderService --> IOrderRepository : persists via
-    OrderService --> IFeeEngine : delegates fee calculation
-    OrderService ..> Order : manages lifecycle
-
-    IFeeEngine <|.. DynamicFeeEngine : implements
-    DynamicFeeEngine --> FeeStrategyFactory : resolves strategy
-    FeeStrategyFactory o-- IPlatformFeeStrategy : aggregates
-
-    IPlatformFeeStrategy <|.. TikTokShopFeeStrategy : implements
-    IPlatformFeeStrategy <|.. ShopeeFeeStrategy : implements
-    IPlatformFeeStrategy <|.. PosFeeStrategy : implements
-    IPlatformFeeStrategy ..> FeeBreakdown : returns
-
-    IOrderRepository <|.. OrderRepository : implements
-    OrderRepository --> AppDbContext : executes EF Core queries
 
     Order "1" *-- "1..*" OrderItem : contains
     Order "1" o-- "0..1" OrderFeeSnapshot : freezes upon DELIVERED
+    Order ..> OrderStatus : tracks state
+    Order ..> ChannelType : belongs to
+    Order ..> PaymentMethodType : paid via
 ```
 
 ---
 
-## 3. Core Design Patterns & Business Invariants
+## 5. Architectural & Financial Invariants Summary
 
-### 3.1. Strategy Pattern: Platform Fee Engine
-* **Formula Isolation:**
-  * **TikTok Shop:** `Commission = 4.0% * Subtotal`, `Payment = 3.0% * CustomerPaid`, `Fixed = 2,000 VND`.
-  * **Shopee:** `Commission = 4.5% * Subtotal`, `Payment = 4.0% * CustomerPaid`, `Freeship Xtra = Min(2.0% * Subtotal, 20,000 VND)`.
-  * **In-Store POS:** `Card/QR Swipe = 1.0% * CustomerPaid`, `Cash = 0 VND`.
-* **Extensibility:** Onboarding a new channel (e.g., Lazada, Tiki) requires creating 1 new class implementing `IPlatformFeeStrategy` without modifying `OrderService` (Open/Closed Principle).
-
-### 3.2. Immutable Snapshot Pattern
-* When an order transitions to `DELIVERED`, `OrderService` calls `IFeeEngine`, instantiates `OrderFeeSnapshot`, and sets `IsImmutable = true`.
-* Once saved, historical fee deductions remain permanent even if platform commission schedules change in the future.
-
-### 3.3. Financial Arithmetic Constraint
-* 100% of monetary properties use C# `decimal` mapped to PostgreSQL `NUMERIC(18,0)` VND. Floating-point types (`float`, `double`) are strictly prohibited.
+1. **Strategy Pattern Rules:**
+   - TikTok Shop: `Commission = 4.0% * Subtotal`, `Payment = 3.0% * CustomerPaid`, `Fixed = 2,000 VND`.
+   - Shopee: `Commission = 4.5% * Subtotal`, `Payment = 4.0% * CustomerPaid`, `Freeship Xtra = Min(2.0% * Subtotal, 20,000 VND)`.
+   - In-Store POS: `Card/QR = 1.0% * CustomerPaid`, `Cash = 0 VND`.
+2. **Zero Phantom Revenue:** Revenue is recognized if and only if `Order.Status == OrderStatus.Delivered`. Pending or Shipped orders contribute exactly 0 VND to financial ledgers.
+3. **Immutable Snapshot Guarantee:** Upon transitioning to `DELIVERED`, `OrderFeeSnapshot` is created and locked with `IsImmutable = true`. Future platform fee policy changes will never alter historical settled orders.
+4. **Monetary Precision:** 100% of currency fields use C# `decimal` mapped to PostgreSQL `NUMERIC(18,0)` VND. Floating-point types (`float`, `double`) are strictly prohibited.
