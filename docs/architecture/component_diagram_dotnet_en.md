@@ -10,14 +10,14 @@ The backend follows a decoupled **3-Tier Architecture** governed by the **Depend
 
 ```mermaid
 flowchart TD
-    subgraph ClientLayer ["  CLIENT TIER (ReactJS Feature-First SPA) "]
+    subgraph ClientLayer ["CLIENT TIER (ReactJS Feature-First SPA)"]
         direction TB
         SPA_UI["React SPA Console (Vite + TypeScript)<br/>AppShell · SCR-01 · SCR-02 · SCR-03 · 5 Modals"]
         SPA_API["Feature API Clients (Axios)<br/>ordersApi · feesApi · settlementsApi · analyticsApi"]
         SPA_UI --> SPA_API
     end
 
-    subgraph ApiTier ["  TIER 1: PRESENTATION (FashionWeb.Api) "]
+    subgraph ApiTier ["TIER 1: PRESENTATION (FashionWeb.Api)"]
         direction TB
         CTRL["REST Controllers<br/>OrdersController · SettlementController<br/>DiscrepanciesController · AnalyticsController"]
         DTO["Contracts (Request / Response DTOs)<br/>Strict OpenAPI 3.0 Contract Mapping"]
@@ -29,7 +29,7 @@ flowchart TD
         CTRL --> AUTH
     end
 
-    subgraph BusinessTier ["  TIER 2: BUSINESS LOGIC (FashionWeb.Business) [INDEPENDENT CORE] "]
+    subgraph BusinessTier ["TIER 2: BUSINESS LOGIC (FashionWeb.Business) - INDEPENDENT CORE"]
         direction TB
         SVC_INT["Service Interfaces<br/>IOrderService · IFeeEngine · ISettlementService<br/>IDiscrepancyService · IAnalyticsService"]
         REPO_INT["Repository Interfaces<br/>IOrderRepository · IReconciliationRepository<br/>IFeeScheduleRepository · IDiscrepancyRepository"]
@@ -37,25 +37,25 @@ flowchart TD
         STRAT["Strategy Pattern (Platform Fee Engine)<br/>IPlatformFeeStrategy · FeeStrategyFactory<br/>TikTokShopFeeStrategy · ShopeeFeeStrategy · PosFeeStrategy"]
         DOMAIN["Domain Model & Financial Invariants<br/>Order · OrderItem · OrderFeeSnapshot · Money<br/>StatementImport · StatementLine · ReconciliationRecord"]
         
-        SVC_IMPL ..|> SVC_INT
+        SVC_IMPL -.->|implements| SVC_INT
         SVC_IMPL --> STRAT
         SVC_IMPL --> DOMAIN
         SVC_IMPL --> REPO_INT
     end
 
-    subgraph DataTier ["  TIER 3: DATA ACCESS (FashionWeb.Data) "]
+    subgraph DataTier ["TIER 3: DATA ACCESS (FashionWeb.Data)"]
         direction TB
         DBCONTEXT["AppDbContext (Entity Framework Core)<br/>DbSets · ACID Transaction Management"]
         CONFIGS["Fluent API Configurations<br/>OrderConfiguration · SnapshotConfiguration<br/>HasPrecision(18,0) for Currency"]
         REPO_IMPL["Repository Implementations<br/>OrderRepository · ReconciliationRepository<br/>FeeScheduleRepository · DiscrepancyRepository"]
         PARSERS["Parsers & Storage<br/>ExcelStatementParser (ClosedXML) · CsvStatementParser<br/>FileStorageService (SHA-256 Deduplication)"]
         
-        REPO_IMPL ..|> REPO_INT
+        REPO_IMPL -.->|implements| REPO_INT
         REPO_IMPL --> DBCONTEXT
         DBCONTEXT --> CONFIGS
     end
 
-    subgraph InfraTier ["  INFRASTRUCTURE "]
+    subgraph InfraTier ["INFRASTRUCTURE"]
         PG[("PostgreSQL 16 Engine<br/>8 Relational Tables<br/>Strict NUMERIC(18,0)")]
         FS[("Secure Statement Storage<br/>Raw .xlsx/.csv files + SHA-256 hashes")]
     end
