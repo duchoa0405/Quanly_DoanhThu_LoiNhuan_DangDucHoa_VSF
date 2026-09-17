@@ -1,35 +1,35 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="FASHION-WEB - Nền tảng kiểm soát dòng tiền, phí sàn và đối soát bán hàng đa kênh.">
-  <title>FASHION-WEB | Kiểm soát dòng tiền đa kênh</title>
+  <meta name="description" content="FASHION-WEB - Multi-channel revenue control, platform fee reconciliation, and financial auditing.">
+  <title>FASHION-WEB | Fashion Revenue & Profit Management System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --app: #edf0f5;
-      --surface: #fff;
-      --soft: #f8f9fc;
-      --line: #e7eaf0;
-      --line-strong: #dce1ea;
-      --ink: #202636;
-      --text: #586274;
-      --muted: #99a2b1;
-      --blue: #4d64df;
-      --blue-dark: #374fca;
-      --blue-soft: #eef1ff;
-      --green: #1ba77c;
-      --green-soft: #e9f8f2;
-      --amber: #bc861d;
-      --amber-soft: #fff7e2;
-      --red: #d9575b;
-      --red-soft: #fff0f1;
-      --tiktok: #20242b;
-      --shopee: #e86643;
-      --pos: #77869c;
+      --app: #f4f5f7;
+      --surface: #ffffff;
+      --soft: #f8fafc;
+      --line: #e2e8f0;
+      --line-strong: #cbd5e1;
+      --ink: #0f172a;
+      --text: #334155;
+      --muted: #64748b;
+      --blue: #0052cc;
+      --blue-dark: #0747a6;
+      --blue-soft: #deebff;
+      --green: #107c41;
+      --green-soft: #e6f4ea;
+      --amber: #b06000;
+      --amber-soft: #fef7e0;
+      --red: #c5221f;
+      --red-soft: #fce8e6;
+      --tiktok: #1e293b;
+      --shopee: #ea580c;
+      --pos: #64748b;
       --side: 194px;
       --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
     }
@@ -149,32 +149,41 @@
     .card-head h2 { margin: 0; color: #4b5566; font-size: 11px; font-weight: 700; }
     .card-head span, .card-head p { margin: 0; color: #a3abb8; font-size: 9px; }
     .scroll { width: 100%; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; color: #505a6b; font-size: 10px; }
-    th { height: 33px; border-bottom: 1px solid #eef0f4; background: #fafbfc; color: #9ca5b4; font-size: 8.5px; font-weight: 700; letter-spacing: .22px; text-align: left; text-transform: uppercase; white-space: nowrap; }
-    td { height: 51px; border-bottom: 1px solid #eff1f5; padding: 7px 10px; vertical-align: middle; }
+    table { width: 100%; border-collapse: collapse; color: #0f172a; font-size: 10px; }
+    th { height: 38px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; color: #475569; padding: 8px 14px; font-size: 8.5px; font-weight: 700; letter-spacing: .05em; text-align: left; text-transform: uppercase; white-space: nowrap; }
+    td { height: 50px; border-bottom: 1px solid #f1f5f9; padding: 8px 14px; vertical-align: middle; color: #0f172a; }
     tr:last-child td { border-bottom: 0; }
-    tbody tr:hover { background: #fbfcff; }
+    tbody tr:hover { background: #f8fafc; }
     .check { width: 36px; padding-left: 13px; }
     .check input { width: 13px; height: 13px; margin: 0; accent-color: var(--blue); }
-    .order-code { display: block; color: var(--blue); font-size: 10px; font-weight: 700; line-height: 1.15; }
-    .sub { display: block; overflow: hidden; margin-top: 3px; color: #a3abb8; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .order-code { display: block; color: #0f172a; font-size: 10.5px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+    .sub { display: block; overflow: hidden; margin-top: 3px; color: #64748b; font-size: 9px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
     .product { max-width: 176px; }
-    .product strong { display: block; overflow: hidden; color: #535d6e; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-    .product span { display: block; overflow: hidden; margin-top: 2px; color: #a3abb8; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-    .channel, .status { display: inline-flex; min-height: 19px; align-items: center; justify-content: center; border-radius: 4px; padding: 2px 7px; font-size: 8.5px; font-weight: 700; white-space: nowrap; }
-    .tiktok { background: #eff1f4; color: var(--tiktok); }
-    .shopee { background: #fff0ec; color: #d65b39; }
-    .pos { background: #edf1f6; color: #60708a; }
-    .pending { background: var(--amber-soft); color: var(--amber); }
-    .shipped { background: #eaf3ff; color: #2878bc; }
-    .delivered, .reconciled { background: var(--green-soft); color: #168b69; }
-    .cancelled, .discrepancy { background: var(--red-soft); color: #cf5155; }
-    .money { color: #3d4758; font-weight: 600; white-space: nowrap; }
-    .actions { display: flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap; }
-    .mini { min-height: 23px; border-radius: 4px; padding: 0 7px; font-size: 9px; }
-    .mini.blue { border-color: #cbd4ff; background: #f6f7ff; color: var(--blue); }
-    .mini.red { border-color: #f0d4d5; background: #fffafa; color: var(--red); }
-    .locked { color: #9ba4b2; font-size: 9px; }
+    .product strong { display: block; overflow: hidden; color: #0f172a; font-size: 10.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .product span { display: block; overflow: hidden; margin-top: 2px; color: #64748b; font-size: 9px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Unified, consistent Channel badge (no flashy colors across channels) */
+    .channel, .channel.tiktok, .channel.shopee, .channel.pos { display: inline-flex; min-height: 20px; align-items: center; justify-content: center; border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; color: #334155; padding: 1px 8px; font-size: 9px; font-weight: 600; white-space: nowrap; }
+
+    /* Unified, consistent Status badge with subtle 5px semantic dot (no flashy rainbow pastels) */
+    .status, .status.delivered, .status.reconciled, .status.shipped, .status.pending, .status.cancelled, .status.discrepancy { display: inline-flex; min-height: 20px; align-items: center; gap: 5px; border: 1px solid #e2e8f0; border-radius: 4px; background: #ffffff; color: #334155; padding: 1px 8px; font-size: 9px; font-weight: 600; white-space: nowrap; }
+    .status::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #94a3b8; flex-shrink: 0; }
+    .status.delivered::before, .status.reconciled::before { background: #107c41; }
+    .status.shipped::before { background: #0284c7; }
+    .status.pending::before { background: #d97706; }
+    .status.cancelled::before, .status.discrepancy::before { background: #dc2626; }
+
+    /* Consistent numerical typography */
+    .money { color: #0f172a; font-size: 11px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+    .negative { color: var(--red); font-size: 10.5px; font-weight: 600; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+    .zero { color: #64748b; font-size: 10.5px; font-weight: 500; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+    /* Unified, consistent Action buttons (no multi-color red/blue clutter in table rows) */
+    .actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap; }
+    .mini, .mini.blue, .mini.red { display: inline-flex; min-height: 24px; align-items: center; justify-content: center; border: 1px solid #d0d7de; border-radius: 4px; background: #ffffff; color: #24292f; padding: 0 9px; font-size: 9.5px; font-weight: 600; white-space: nowrap; transition: all .15s ease; cursor: pointer; }
+    .mini:hover, .mini.blue:hover, .mini.red:hover { border-color: #0969da; background: #f6f8fa; color: #0969da; }
+    .mini:active, .mini.blue:active, .mini.red:active { background: #f1f3f8; }
+    .locked { display: inline-flex; align-items: center; color: #64748b; font-size: 9px; font-weight: 500; padding-right: 2px; }
 
     /* Settlement */
     .settle-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-bottom: 13px; }
@@ -187,10 +196,13 @@
     .rules .rule-list { display: flex; flex: 1; gap: 14px; overflow-x: auto; white-space: nowrap; }
     .rules .rule-list span { font-size: 9px; }
     .rules .rule-list b { color: #59657d; }
-    .fee-table { min-width: 1160px; }
-    .fee-table th, .fee-table td { text-align: right; }
+    .fee-table { min-width: 1420px; }
+    .fee-table th { height: 40px; padding: 9px 16px; text-align: right; background: #f8fafc; color: #475569; font-size: 8.5px; font-weight: 700; letter-spacing: .05em; border-bottom: 2px solid #e2e8f0; }
+    .fee-table th:not(:last-child) { border-right: 1px solid #eef2f6; }
+    .fee-table td { height: 50px; padding: 8px 16px; text-align: right; }
     .fee-table th:nth-child(-n+2), .fee-table td:nth-child(-n+2) { text-align: left; }
-    .fee-table td { height: 50px; }
+    .fee-table th.status-col, .fee-table td.settle-status { text-align: center; }
+    .fee-table th.action-col, .fee-table td:last-child { text-align: center; }
     .audit { display: grid; grid-template-columns: 29px 1fr auto; gap: 11px; align-items: center; margin-top: 13px; border: 1px solid #f0dada; border-radius: 8px; background: #fffafa; padding: 11px 13px; }
     .audit-icon { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 7px; background: var(--red-soft); color: var(--red); font-size: 14px; }
     .audit strong, .audit span { display: block; }
@@ -288,90 +300,89 @@
 </head>
 <body>
   <div class="app">
-    <aside class="sidebar" aria-label="Điều hướng chính">
+    <aside class="sidebar" aria-label="Main Navigation">
       <div class="brand"><i class="brand-mark"></i><span class="brand-name">FASHION-WEB</span></div>
-      <button class="store-switch" type="button" onclick="toast('Đang làm việc tại FashionRev · Hà Nội')"><b class="store-symbol">▣</b><span><strong>FashionRev · Hà Nội</strong><small>3 kênh đang kết nối</small></span></button>
-      <div class="side-label">Tổng quan</div>
+      <button class="store-switch" type="button" onclick="toast('Active Workspace: FashionRev · Hanoi')"><b class="store-symbol">▣</b><span><strong>FashionRev · Hanoi</strong><small>3 Sales Channels</small></span></button>
+      <div class="side-label">Overview</div>
       <nav class="nav">
-        <button type="button" data-nav="analytics" onclick="view('analytics')"><span class="nav-ico">▦</span><span class="nav-text">Báo cáo điều hành</span></button>
+        <button type="button" data-nav="analytics" onclick="view('analytics')"><span class="nav-ico">▦</span><span class="nav-text">Revenue Dashboard</span></button>
       </nav>
-      <div class="side-label">Vận hành</div>
+      <div class="side-label">Operations</div>
       <nav class="nav">
-        <button type="button" class="active" data-nav="orders" onclick="view('orders')"><span class="nav-ico">▤</span><span class="nav-text">Đơn hàng đa kênh</span><span class="nav-count">42</span></button>
-        <button type="button" data-nav="settlement" onclick="view('settlement')"><span class="nav-ico">▱</span><span class="nav-text">Phí sàn &amp; Đối soát</span><span class="nav-count">3</span></button>
+        <button type="button" class="active" data-nav="orders" onclick="view('orders')"><span class="nav-ico">▤</span><span class="nav-text">Orders</span><span class="nav-count">42</span></button>
+        <button type="button" data-nav="settlement" onclick="view('settlement')"><span class="nav-ico">▱</span><span class="nav-text">Fees &amp; Settlement</span><span class="nav-count">3</span></button>
       </nav>
-      <div class="side-label">Thiết lập</div>
+      <div class="side-label">Settings</div>
       <nav class="nav">
-        <button type="button" onclick="open('fees')"><span class="nav-ico">⚙</span><span class="nav-text">Biểu phí sàn</span></button>
-        <button type="button" onclick="toast('TikTok, Shopee và POS đang đồng bộ bình thường')"><span class="nav-ico">⌁</span><span class="nav-text">Kết nối kênh bán</span></button>
+        <button type="button" onclick="open('fees')"><span class="nav-ico">⚙</span><span class="nav-text">Fee Schedules</span></button>
       </nav>
-      <div class="connection"><span class="live-dots"><i></i><i></i><i></i></span><span>Kết nối sàn ổn định</span><small>TikTok · Shopee · POS</small></div>
+      <div class="connection"><span>Workflow: Manual Entry &amp; Assisted Audit</span><small>TikTok Shop · Shopee · POS</small></div>
     </aside>
 
     <main class="main">
       <header class="topbar">
-        <div class="title"><h1 id="page-title">Đơn hàng đa kênh</h1><p id="page-subtitle">Theo dõi vận hành và trạng thái giao hàng</p></div>
+        <div class="title"><h1 id="page-title">Orders Management</h1><p id="page-subtitle">Monitor multi-channel order fulfillment and delivery lifecycle</p></div>
         <div class="top-actions">
-          <label class="search">⌕<input id="search" type="search" placeholder="Tìm mã đơn, SKU, khách hàng..." oninput="searchCurrent(this.value)"></label>
-          <button class="round add" type="button" title="Tạo đơn hàng mới" onclick="orderModal()">+</button>
-          <button class="round" type="button" title="Trợ giúp" onclick="toast('Chọn một đơn để xem thao tác phù hợp')">?</button>
-          <button class="round" type="button" title="Thông báo" onclick="toast('Bạn có 3 đơn cần hoàn tất đối soát')">♧</button>
-          <span class="health"><b>✓</b>3/3</span>
-          <span class="user"><i class="avatar">ĐH</i><span class="user-copy"><strong>Đặng Đức Hòa</strong><small>Chủ cửa hàng</small></span><b style="color:#a1a9b6;font-size:16px;font-weight:400">›</b></span>
+          <label class="search">⌕<input id="search" type="search" placeholder="Search order ID, SKU, customer..." oninput="searchCurrent(this.value)"></label>
+          <button class="round add" type="button" title="Create Order" onclick="orderModal()">+</button>
+          <button class="round" type="button" title="Help" onclick="toast('Select an order to view available actions')">?</button>
+          <button class="round" type="button" title="Notifications" onclick="toast('You have 3 orders requiring settlement reconciliation')">♧</button>
+          <span class="health"><b>✓</b>MVP</span>
+          <span class="user"><i class="avatar">DH</i><span class="user-copy"><strong>Dang Duc Hoa</strong><small>Shop Owner</small></span><b style="color:#a1a9b6;font-size:16px;font-weight:400">›</b></span>
         </div>
       </header>
 
-      <!-- SCR-01: Quản lý đơn hàng đa kênh -->
+      <!-- SCR-01: Orders Management -->
       <section class="screen active" id="orders">
-        <nav class="tabs" aria-label="Trạng thái đơn hàng">
-          <button class="tab active" type="button" onclick="orderFilter('all',this)">Tất cả đơn hàng</button>
-          <button class="tab" type="button" onclick="orderFilter('pending',this)">Chờ xử lý</button>
-          <button class="tab" type="button" onclick="orderFilter('shipped',this)">Đang vận chuyển</button>
-          <button class="tab" type="button" onclick="orderFilter('delivered',this)">Giao thành công</button>
-          <button class="tab" type="button" onclick="orderFilter('cancelled',this)">Đã hủy</button>
+        <nav class="tabs" aria-label="Order Status">
+          <button class="tab active" type="button" onclick="orderFilter('all',this)">All Orders</button>
+          <button class="tab" type="button" onclick="orderFilter('pending',this)">Pending</button>
+          <button class="tab" type="button" onclick="orderFilter('shipped',this)">Shipped</button>
+          <button class="tab" type="button" onclick="orderFilter('delivered',this)">Delivered</button>
+          <button class="tab" type="button" onclick="orderFilter('cancelled',this)">Cancelled</button>
         </nav>
         <div class="content">
           <div class="toolbar">
-            <div class="summary"><span class="s-icon">▤</span><b>1.248</b><span>đơn hàng trong kỳ này</span></div>
+            <div class="summary"><span class="s-icon">▤</span><b>1,248</b><span>orders in selected period</span></div>
             <div class="toolbar-right">
-              <select class="select" aria-label="Lọc kênh" onchange="channelFilter(this.value)"><option value="all">Tất cả kênh</option><option value="tiktok">TikTok Shop</option><option value="shopee">Shopee</option><option value="pos">Tại quầy POS</option></select>
-              <button class="btn" type="button" onclick="toast('Đã làm mới danh sách đơn hàng')">↻ Làm mới</button>
-              <button class="btn primary" type="button" onclick="orderModal()">＋ Tạo đơn hàng</button>
+              <select class="select" aria-label="Filter Channel" onchange="channelFilter(this.value)"><option value="all">All Channels</option><option value="tiktok">TikTok Shop</option><option value="shopee">Shopee</option><option value="pos">In-Store POS</option></select>
+              <button class="btn" type="button" onclick="toast('Refreshed orders list')">↻ Refresh</button>
+              <button class="btn primary" type="button" onclick="orderModal()">＋ Create Order</button>
             </div>
           </div>
 
           <div class="metrics">
-            <article class="metric"><span class="metric-label">Tổng đơn hàng</span><b class="metric-value">1.248</b><span class="metric-note">+8,4% so với tháng trước</span></article>
-            <article class="metric success"><span class="metric-label">Đã giao thành công</span><b class="metric-value">1.180</b><span class="metric-note">94,5% tỷ lệ hoàn tất</span></article>
-            <article class="metric"><span class="metric-label">Doanh thu gộp</span><b class="metric-value">184,5M ₫</b><span class="metric-note">Chỉ tính đơn DELIVERED</span></article>
-            <article class="metric"><span class="metric-label">Đang vận chuyển</span><b class="metric-value">42</b><span class="metric-note">Cần theo dõi giao hàng</span></article>
-            <article class="metric danger"><span class="metric-label">Đơn bị hủy</span><b class="metric-value">26</b><span class="metric-note">2,1% toàn bộ đơn tạo</span></article>
+            <article class="metric"><span class="metric-label">Total Orders</span><b class="metric-value">1,248</b><span class="metric-note">+8.4% vs last month</span></article>
+            <article class="metric success"><span class="metric-label">Delivered Orders</span><b class="metric-value">1,180</b><span class="metric-note">94.5% completion rate</span></article>
+            <article class="metric"><span class="metric-label">Gross Revenue</span><b class="metric-value">184,500,000 ₫</b><span class="metric-note">Exclusively DELIVERED orders</span></article>
+            <article class="metric"><span class="metric-label">In Transit</span><b class="metric-value">42</b><span class="metric-note">Handed over to carrier</span></article>
+            <article class="metric danger"><span class="metric-label">Cancelled Orders</span><b class="metric-value">26</b><span class="metric-note">2.1% of total orders</span></article>
           </div>
-          <div class="rhythm" aria-label="Nhịp độ vận hành"><div><span>Chờ chuẩn bị</span><b>14</b></div><div><span>Đang ở bưu cục</span><b>42</b></div><div><span>Giao thành công</span><b>1.180</b></div><div><span>Tỷ lệ hoàn tất</span><b>94,5%</b></div><div><span>Giá trị đơn TB</span><b>156K ₫</b></div><div><span>Tỷ lệ hủy</span><b class="red">2,1%</b></div></div>
+          <div class="rhythm" aria-label="Operational Rhythm"><div><span>Awaiting Prep</span><b>14</b></div><div><span>In Transit</span><b>42</b></div><div><span>Delivered</span><b>1,180</b></div><div><span>Completion Rate</span><b>94.5%</b></div><div><span>AOV</span><b>156K ₫</b></div><div><span>Cancellation Rate</span><b class="red">2.1%</b></div></div>
 
           <section class="card">
-            <div class="card-head"><h2>Danh sách đơn hàng</h2><span>Thao tác nhanh theo trạng thái hiện tại</span></div>
+            <div class="card-head"><h2>Orders List</h2><span>Quick actions by lifecycle status</span></div>
             <div class="scroll">
               <table id="orders-table">
-                <thead><tr><th class="check"><input aria-label="Chọn tất cả" type="checkbox"></th><th>Mã đơn / Khách hàng</th><th>Kênh bán</th><th>Sản phẩm</th><th>Thời gian tạo</th><th>Tiền khách trả</th><th>Trạng thái</th><th style="padding-right:13px;text-align:right">Thao tác</th></tr></thead>
+                <thead><tr><th class="check"><input aria-label="Select All" type="checkbox"></th><th>Order ID / Customer</th><th>Channel</th><th>SKU Line Items</th><th>Created Date</th><th>Customer Payment</th><th>Status</th><th style="padding-right:13px;text-align:right">Actions</th></tr></thead>
                 <tbody>
-                  <tr class="order-row" data-status="pending" data-channel="shopee" data-key="ord-2026-001 sp-991122 nguyễn thu hương sơ mi oxford">
-                    <td class="check"><input aria-label="Chọn ORD-2026-001" type="checkbox"></td><td><span class="order-code">ORD-2026-001</span><span class="sub">SP-991122 · Nguyễn Thu Hương</span></td><td><span class="channel shopee">Shopee</span></td><td class="product"><strong>Sơ mi Oxford trắng</strong><span>SM-OXF-TRANG-M · ×2</span></td><td>11/09/2026<span class="sub">09:34</span></td><td><span class="money">480.000 ₫</span></td><td class="status-cell"><span class="status pending">Chờ xử lý</span></td><td><span class="actions"><button class="mini blue" type="button" onclick="status(this,'shipped')">Giao hàng</button><button class="mini red" type="button" onclick="cancel(this)">Hủy</button></span></td>
+                  <tr class="order-row" data-status="pending" data-channel="shopee" data-key="ord-2026-001 sp-991122 nguyen thu huong oxford shirt">
+                    <td class="check"><input aria-label="Select ORD-2026-001" type="checkbox"></td><td><span class="order-code">ORD-2026-001</span><span class="sub">SP-991122 · Nguyen Thu Huong</span></td><td><span class="channel shopee">Shopee</span></td><td class="product"><strong>White Oxford Shirt</strong><span>SM-OXF-TRANG-M · ×2</span></td><td>11 Sep 2026<span class="sub">09:34</span></td><td><span class="money">480,000 ₫</span></td><td class="status-cell"><span class="status pending">Pending</span></td><td><span class="actions"><button class="mini" type="button" onclick="status(this,'shipped')">Ship</button><button class="mini" type="button" onclick="cancel(this)">Cancel</button></span></td>
                   </tr>
-                  <tr class="order-row" data-status="shipped" data-channel="tiktok" data-key="ord-2026-002 tt-889922 trần minh quân áo thun cotton">
-                    <td class="check"><input aria-label="Chọn ORD-2026-002" type="checkbox"></td><td><span class="order-code">ORD-2026-002</span><span class="sub">TT-889922 · Trần Minh Quân</span></td><td><span class="channel tiktok">TikTok Shop</span></td><td class="product"><strong>Áo thun cotton đen</strong><span>AT-COT-DEN-L · ×2</span></td><td>11/09/2026<span class="sub">09:18</span></td><td><span class="money">510.000 ₫</span></td><td class="status-cell"><span class="status shipped">Đang giao</span></td><td><span class="actions"><button class="mini blue" type="button" onclick="status(this,'delivered')">Đã giao</button><button class="mini red" type="button" onclick="cancel(this)">Hủy</button></span></td>
+                  <tr class="order-row" data-status="shipped" data-channel="tiktok" data-key="ord-2026-002 tt-889922 tran minh quan cotton t-shirt">
+                    <td class="check"><input aria-label="Select ORD-2026-002" type="checkbox"></td><td><span class="order-code">ORD-2026-002</span><span class="sub">TT-889922 · Tran Minh Quan</span></td><td><span class="channel tiktok">TikTok Shop</span></td><td class="product"><strong>Black Cotton T-Shirt</strong><span>AT-COT-DEN-L · ×2</span></td><td>11 Sep 2026<span class="sub">09:18</span></td><td><span class="money">510,000 ₫</span></td><td class="status-cell"><span class="status shipped">Shipped</span></td><td><span class="actions"><button class="mini" type="button" onclick="status(this,'delivered')">Mark Delivered</button><button class="mini" type="button" onclick="cancel(this)">Cancel</button></span></td>
                   </tr>
-                  <tr class="order-row" data-status="delivered" data-channel="pos" data-key="ord-2026-003 pos-44351 lê phúc khang quần jean ống rộng">
-                    <td class="check"><input aria-label="Chọn ORD-2026-003" type="checkbox"></td><td><span class="order-code">ORD-2026-003</span><span class="sub">POS-44351 · Lê Phúc Khang</span></td><td><span class="channel pos">POS · QR</span></td><td class="product"><strong>Quần jean ống rộng</strong><span>QJ-ONG-RONG-30 · ×1</span></td><td>11/09/2026<span class="sub">08:55</span></td><td><span class="money">620.000 ₫</span></td><td class="status-cell"><span class="status delivered">Đã giao</span></td><td><span class="actions"><span class="locked">✓ Đã khóa sổ</span><button class="mini" type="button" onclick="toast('Đơn DELIVERED đã được khóa để bảo toàn sổ sách')">Xem</button></span></td>
+                  <tr class="order-row" data-status="delivered" data-channel="pos" data-key="ord-2026-003 pos-44351 le phuc khang wide leg jeans">
+                    <td class="check"><input aria-label="Select ORD-2026-003" type="checkbox"></td><td><span class="order-code">ORD-2026-003</span><span class="sub">POS-44351 · Le Phuc Khang</span></td><td><span class="channel pos">POS · QR</span></td><td class="product"><strong>Wide Leg Denim Jeans</strong><span>QJ-ONG-RONG-30 · ×1</span></td><td>11 Sep 2026<span class="sub">08:55</span></td><td><span class="money">620,000 ₫</span></td><td class="status-cell"><span class="status delivered">Delivered</span></td><td><span class="actions"><span class="locked">✓ Locked</span><button class="mini" type="button" onclick="toast('DELIVERED orders are locked to preserve accounting integrity')">View</button></span></td>
                   </tr>
-                  <tr class="order-row" data-status="pending" data-channel="tiktok" data-key="ord-2026-004 tt-990267 võ thanh hạ váy lụa cổ vuông">
-                    <td class="check"><input aria-label="Chọn ORD-2026-004" type="checkbox"></td><td><span class="order-code">ORD-2026-004</span><span class="sub">TT-990267 · Võ Thanh Hạ</span></td><td><span class="channel tiktok">TikTok Shop</span></td><td class="product"><strong>Váy lụa cổ vuông xanh</strong><span>VL-CV-XANH-S · ×1</span></td><td>11/09/2026<span class="sub">08:42</span></td><td><span class="money">390.000 ₫</span></td><td class="status-cell"><span class="status pending">Chờ xử lý</span></td><td><span class="actions"><button class="mini blue" type="button" onclick="status(this,'shipped')">Giao hàng</button><button class="mini red" type="button" onclick="cancel(this)">Hủy</button></span></td>
+                  <tr class="order-row" data-status="pending" data-channel="tiktok" data-key="ord-2026-004 tt-990267 vo thanh ha square neck dress">
+                    <td class="check"><input aria-label="Select ORD-2026-004" type="checkbox"></td><td><span class="order-code">ORD-2026-004</span><span class="sub">TT-990267 · Vo Thanh Ha</span></td><td><span class="channel tiktok">TikTok Shop</span></td><td class="product"><strong>Square Neck Silk Dress</strong><span>VL-CV-XANH-S · ×1</span></td><td>11 Sep 2026<span class="sub">08:42</span></td><td><span class="money">390,000 ₫</span></td><td class="status-cell"><span class="status pending">Pending</span></td><td><span class="actions"><button class="mini" type="button" onclick="status(this,'shipped')">Ship</button><button class="mini" type="button" onclick="cancel(this)">Cancel</button></span></td>
                   </tr>
-                  <tr class="order-row" data-status="delivered" data-channel="shopee" data-key="ord-2026-005 sp-991745 ngô hoài nam blazer dáng suông">
-                    <td class="check"><input aria-label="Chọn ORD-2026-005" type="checkbox"></td><td><span class="order-code">ORD-2026-005</span><span class="sub">SP-991745 · Ngô Hoài Nam</span></td><td><span class="channel shopee">Shopee</span></td><td class="product"><strong>Blazer dáng suông</strong><span>BZ-DEN-M · ×1</span></td><td>10/09/2026<span class="sub">17:28</span></td><td><span class="money">1.250.000 ₫</span></td><td class="status-cell"><span class="status delivered">Đã giao</span></td><td><span class="actions"><span class="locked">✓ Đã khóa sổ</span><button class="mini" type="button" onclick="toast('Mở chi tiết ORD-2026-005')">Xem</button></span></td>
+                  <tr class="order-row" data-status="delivered" data-channel="shopee" data-key="ord-2026-005 sp-991745 ngo hoai nam relaxed blazer">
+                    <td class="check"><input aria-label="Select ORD-2026-005" type="checkbox"></td><td><span class="order-code">ORD-2026-005</span><span class="sub">SP-991745 · Ngo Hoai Nam</span></td><td><span class="channel shopee">Shopee</span></td><td class="product"><strong>Relaxed Tailored Blazer</strong><span>BZ-DEN-M · ×1</span></td><td>10 Sep 2026<span class="sub">17:28</span></td><td><span class="money">1,250,000 ₫</span></td><td class="status-cell"><span class="status delivered">Delivered</span></td><td><span class="actions"><span class="locked">✓ Locked</span><button class="mini" type="button" onclick="toast('Opening details for ORD-2026-005')">View</button></span></td>
                   </tr>
-                  <tr class="order-row" data-status="cancelled" data-channel="shopee" data-key="ord-2026-006 sp-990630 phạm gia linh chân váy">
-                    <td class="check"><input aria-label="Chọn ORD-2026-006" type="checkbox"></td><td><span class="order-code">ORD-2026-006</span><span class="sub">SP-990630 · Phạm Gia Linh</span></td><td><span class="channel shopee">Shopee</span></td><td class="product"><strong>Chân váy chữ A be</strong><span>CV-A-BE-M · ×1</span></td><td>10/09/2026<span class="sub">16:04</span></td><td><span class="money">340.000 ₫</span></td><td class="status-cell"><span class="status cancelled">Đã hủy</span></td><td><span class="actions"><span class="locked">Khách đổi ý</span><button class="mini" type="button" onclick="toast('Đơn hủy đã bị loại trừ khỏi doanh thu')">Chi tiết</button></span></td>
+                  <tr class="order-row" data-status="cancelled" data-channel="shopee" data-key="ord-2026-006 sp-990630 pham gia linh a-line skirt">
+                    <td class="check"><input aria-label="Select ORD-2026-006" type="checkbox"></td><td><span class="order-code">ORD-2026-006</span><span class="sub">SP-990630 · Pham Gia Linh</span></td><td><span class="channel shopee">Shopee</span></td><td class="product"><strong>Beige A-Line Skirt</strong><span>CV-A-BE-M · ×1</span></td><td>10 Sep 2026<span class="sub">16:04</span></td><td><span class="money">340,000 ₫</span></td><td class="status-cell"><span class="status cancelled">Cancelled</span></td><td><span class="actions"><span class="locked">Customer Cancelled</span><button class="mini" type="button" onclick="toast('Cancelled orders are excluded from revenue')">Details</button></span></td>
                   </tr>
                 </tbody>
               </table>
@@ -380,93 +391,93 @@
         </div>
       </section>
 
-      <!-- SCR-02: Phí sàn & Đối soát ví -->
+      <!-- SCR-02: Fees & Settlement -->
       <section class="screen" id="settlement">
-        <nav class="tabs" aria-label="Trạng thái đối soát">
-          <button class="tab active" type="button" onclick="settleFilter('all',this)">Tất cả quyết toán</button>
-          <button class="tab" type="button" onclick="settleFilter('pending',this)">Chờ đối soát</button>
-          <button class="tab" type="button" onclick="settleFilter('reconciled',this)">Đã khớp 100%</button>
-          <button class="tab" type="button" onclick="settleFilter('discrepancy',this)">Có chênh lệch</button>
+        <nav class="tabs" aria-label="Reconciliation Status">
+          <button class="tab active" type="button" onclick="settleFilter('all',this)">All Settlements</button>
+          <button class="tab" type="button" onclick="settleFilter('pending',this)">Pending Settlement</button>
+          <button class="tab" type="button" onclick="settleFilter('reconciled',this)">Reconciled</button>
+          <button class="tab" type="button" onclick="settleFilter('discrepancy',this)">Discrepancy</button>
         </nav>
         <div class="content">
           <div class="toolbar">
-            <div class="summary"><span class="s-icon">▱</span><b>1.180</b><span>đơn DELIVERED sẵn sàng quyết toán</span></div>
-            <div class="toolbar-right"><select class="select"><option>Kỳ 01–11/09/2026</option><option>Kỳ trước</option></select><button class="btn" type="button" onclick="open('fees')">⚙ Cấu hình phí</button><button class="btn primary" type="button" onclick="open('statement')">↑ Nhập sao kê</button></div>
+            <div class="summary"><span class="s-icon">▱</span><b>1,180</b><span>DELIVERED orders ready for settlement</span></div>
+            <div class="toolbar-right"><select class="select"><option>Period: 01–11 Sep 2026</option><option>Previous Period</option></select><button class="btn" type="button" onclick="open('fees')">⚙ Configure Fees</button><button class="btn primary" type="button" onclick="open('statement')">↑ Import Settlement</button></div>
           </div>
           <div class="settle-metrics">
-            <article class="metric waiting"><span class="metric-label">Chờ đối soát</span><b class="metric-value">18 đơn</b><span class="metric-note">Dự kiến nhận 6.842.000 ₫</span></article>
-            <article class="metric matched"><span class="metric-label">Đã khớp hoàn toàn</span><b class="metric-value">1.159 đơn</b><span class="metric-note" style="color:var(--green)">98,2% hồ sơ trong kỳ</span></article>
-            <article class="metric variance danger"><span class="metric-label">Bị lệch tiền</span><b class="metric-value">3 đơn</b><span class="metric-note">Cần giải trình chênh lệch</span></article>
+            <article class="metric waiting"><span class="metric-label">Pending Settlement</span><b class="metric-value">18 orders</b><span class="metric-note">Projected payout: 6,842,000 ₫</span></article>
+            <article class="metric matched"><span class="metric-label">Reconciled</span><b class="metric-value">1,159 orders</b><span class="metric-note" style="color:var(--green)">98.2% matched</span></article>
+            <article class="metric variance danger"><span class="metric-label">Discrepancy</span><b class="metric-value">3 orders</b><span class="metric-note">Requires discrepancy review</span></article>
           </div>
-          <div class="rules"><b>⚙ Biểu phí đang áp dụng</b><div class="rule-list"><span><b>TikTok:</b> 4% HH + 3% TT + 2.000 ₫</span><span><b>Shopee:</b> 4,5% HH + 4% TT + 2% Freeship</span><span><b>POS:</b> tiền mặt 0 ₫ · thẻ/QR 1%</span></div><button class="mini" type="button" onclick="open('fees')">Chi tiết</button></div>
+          <div class="rules"><b>⚙ Active Fee Schedules</b><div class="rule-list"><span><b>TikTok Shop:</b> 4% Comm + 3% Pay + 2,000 ₫</span><span><b>Shopee:</b> 4.5% Comm + 4% Pay + 2% Freeship</span><span><b>POS:</b> Cash 0 ₫ · Card/QR 1%</span></div><button class="mini" type="button" onclick="open('fees')">Details</button></div>
           <section class="card">
-            <div class="card-head"><h2>Bảng kê bóc tách phí và thực nhận ví</h2><span>Thực thu dự kiến = Tiền khách trả − Tổng phí sàn</span></div>
+            <div class="card-head"><h2>Fee Deduction Ledger &amp; Settlement Reconciliation</h2><span>Projected Settlement = Customer Payment − Total Platform Fees</span></div>
             <div class="scroll">
               <table class="fee-table" id="settlement-table">
-                <thead><tr><th>Mã đơn</th><th>Kênh</th><th>Tiền khách trả</th><th>Phí hoa hồng</th><th>Phí thanh toán</th><th>Phí DV / Freeship</th><th>Tổng phí sàn</th><th>Dự kiến thực thu</th><th>Thực nhận ví</th><th>Chênh lệch</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+                <thead><tr><th>Order ID</th><th>Channel</th><th>Customer Payment</th><th>Platform Commission</th><th>Payment Fee</th><th>Service Fee</th><th>Total Platform Fees</th><th>Projected Settlement</th><th>Actual Settlement</th><th>Settlement Variance</th><th class="status-col">Status</th><th class="action-col">Actions</th></tr></thead>
                 <tbody>
-                  <tr data-settle="pending" data-id="ORD-2026-001" data-project="429600" data-key="ord-2026-001 shopee nguyễn thu hương"><td><span class="order-code">ORD-2026-001</span><span class="sub">Nguyễn Thu Hương</span></td><td><span class="channel shopee">Shopee</span></td><td><span class="money">480.000 ₫</span></td><td class="negative">−21.600</td><td class="negative">−19.200</td><td class="negative">−9.600</td><td class="negative">−50.400</td><td><span class="money">429.600 ₫</span></td><td class="actual">—</td><td class="variance">—</td><td class="settle-status"><span class="status pending">Chờ ví về</span></td><td><button class="mini blue" type="button" onclick="reconcile('ORD-2026-001',429600)">Đối soát</button></td></tr>
-                  <tr data-settle="reconciled" data-id="ORD-2026-002" data-project="472300" data-key="ord-2026-002 tiktok trần minh quân"><td><span class="order-code">ORD-2026-002</span><span class="sub">Trần Minh Quân</span></td><td><span class="channel tiktok">TikTok</span></td><td><span class="money">510.000 ₫</span></td><td class="negative">−20.400</td><td class="negative">−15.300</td><td class="negative">−2.000</td><td class="negative">−37.700</td><td><span class="money">472.300 ₫</span></td><td class="actual"><span class="money">472.300 ₫</span></td><td class="variance">0 ₫</td><td class="settle-status"><span class="status reconciled">Khớp 100%</span></td><td><button class="mini" type="button" onclick="reconcile('ORD-2026-002',472300)">Xem</button></td></tr>
-                  <tr data-settle="discrepancy" data-id="ORD-2026-007" data-project="358000" data-key="ord-2026-007 shopee hồ minh anh"><td><span class="order-code">ORD-2026-007</span><span class="sub">Hồ Minh Anh</span></td><td><span class="channel shopee">Shopee</span></td><td><span class="money">400.000 ₫</span></td><td class="negative">−18.000</td><td class="negative">−16.000</td><td class="negative">−8.000</td><td class="negative">−42.000</td><td><span class="money">358.000 ₫</span></td><td class="actual"><span class="money">338.000 ₫</span></td><td class="variance"><span class="negative">20.000 ₫</span></td><td class="settle-status"><span class="status discrepancy">Lệch tiền</span></td><td><button class="mini red" type="button" onclick="reconcile('ORD-2026-007',358000,338000,'Sàn truy thu phí vận chuyển bù 20k')">Giải trình</button></td></tr>
-                  <tr data-settle="reconciled" data-id="ORD-2026-003" data-project="613800" data-key="ord-2026-003 pos lê phúc khang"><td><span class="order-code">ORD-2026-003</span><span class="sub">Lê Phúc Khang</span></td><td><span class="channel pos">POS · QR</span></td><td><span class="money">620.000 ₫</span></td><td class="negative">0</td><td class="negative">−6.200</td><td class="negative">0</td><td class="negative">−6.200</td><td><span class="money">613.800 ₫</span></td><td class="actual"><span class="money">613.800 ₫</span></td><td class="variance">0 ₫</td><td class="settle-status"><span class="status reconciled">Khớp 100%</span></td><td><button class="mini" type="button" onclick="reconcile('ORD-2026-003',613800)">Xem</button></td></tr>
-                  <tr data-settle="pending" data-id="ORD-2026-005" data-project="1123750" data-key="ord-2026-005 shopee ngô hoài nam"><td><span class="order-code">ORD-2026-005</span><span class="sub">Ngô Hoài Nam</span></td><td><span class="channel shopee">Shopee</span></td><td><span class="money">1.250.000 ₫</span></td><td class="negative">−56.250</td><td class="negative">−50.000</td><td class="negative">−20.000</td><td class="negative">−126.250</td><td><span class="money">1.123.750 ₫</span></td><td class="actual">—</td><td class="variance">—</td><td class="settle-status"><span class="status pending">Chờ ví về</span></td><td><button class="mini blue" type="button" onclick="reconcile('ORD-2026-005',1123750)">Đối soát</button></td></tr>
+                  <tr data-settle="pending" data-id="ORD-2026-001" data-project="429600" data-key="ord-2026-001 shopee nguyen thu huong"><td><span class="order-code">ORD-2026-001</span><span class="sub">Nguyen Thu Huong</span></td><td><span class="channel shopee">Shopee</span></td><td><span class="money">480,000 ₫</span></td><td class="negative">−21,600 ₫</td><td class="negative">−19,200 ₫</td><td class="negative">−9,600 ₫</td><td class="negative">−50,400 ₫</td><td><span class="money">429,600 ₫</span></td><td class="actual">—</td><td class="variance">—</td><td class="settle-status"><span class="status pending">Pending Settlement</span></td><td><button class="mini" type="button" onclick="reconcile('ORD-2026-001',429600)">Reconcile</button></td></tr>
+                  <tr data-settle="reconciled" data-id="ORD-2026-002" data-project="472300" data-key="ord-2026-002 tiktok tran minh quan"><td><span class="order-code">ORD-2026-002</span><span class="sub">Tran Minh Quan</span></td><td><span class="channel tiktok">TikTok</span></td><td><span class="money">510,000 ₫</span></td><td class="negative">−20,400 ₫</td><td class="negative">−15,300 ₫</td><td class="negative">−2,000 ₫</td><td class="negative">−37,700 ₫</td><td><span class="money">472,300 ₫</span></td><td class="actual"><span class="money">472,300 ₫</span></td><td class="variance zero">0 ₫</td><td class="settle-status"><span class="status reconciled">Reconciled</span></td><td><button class="mini" type="button" onclick="reconcile('ORD-2026-002',472300)">View</button></td></tr>
+                  <tr data-settle="discrepancy" data-id="ORD-2026-007" data-project="358000" data-key="ord-2026-007 shopee ho minh anh"><td><span class="order-code">ORD-2026-007</span><span class="sub">Ho Minh Anh</span></td><td><span class="channel shopee">Shopee</span></td><td><span class="money">400,000 ₫</span></td><td class="negative">−18,000 ₫</td><td class="negative">−16,000 ₫</td><td class="negative">−8,000 ₫</td><td class="negative">−42,000 ₫</td><td><span class="money">358,000 ₫</span></td><td class="actual"><span class="money">338,000 ₫</span></td><td class="variance"><span class="negative">−20,000 ₫</span></td><td class="settle-status"><span class="status discrepancy">Discrepancy</span></td><td><button class="mini" type="button" onclick="reconcile('ORD-2026-007',358000,338000,'Carrier dimensional weight surcharge adjusted by platform')">Review Note</button></td></tr>
+                  <tr data-settle="reconciled" data-id="ORD-2026-003" data-project="613800" data-key="ord-2026-003 pos le phuc khang"><td><span class="order-code">ORD-2026-003</span><span class="sub">Le Phuc Khang</span></td><td><span class="channel pos">POS · QR</span></td><td><span class="money">620,000 ₫</span></td><td class="zero">0 ₫</td><td class="negative">−6,200 ₫</td><td class="zero">0 ₫</td><td class="negative">−6,200 ₫</td><td><span class="money">613,800 ₫</span></td><td class="actual"><span class="money">613,800 ₫</span></td><td class="variance zero">0 ₫</td><td class="settle-status"><span class="status reconciled">Reconciled</span></td><td><button class="mini" type="button" onclick="reconcile('ORD-2026-003',613800)">View</button></td></tr>
+                  <tr data-settle="pending" data-id="ORD-2026-005" data-project="1123750" data-key="ord-2026-005 shopee ngo hoai nam"><td><span class="order-code">ORD-2026-005</span><span class="sub">Ngo Hoai Nam</span></td><td><span class="channel shopee">Shopee</span></td><td><span class="money">1,250,000 ₫</span></td><td class="negative">−56,250 ₫</td><td class="negative">−50,000 ₫</td><td class="negative">−20,000 ₫</td><td class="negative">−126,250 ₫</td><td><span class="money">1,123,750 ₫</span></td><td class="actual">—</td><td class="variance">—</td><td class="settle-status"><span class="status pending">Pending Settlement</span></td><td><button class="mini" type="button" onclick="reconcile('ORD-2026-005',1123750)">Reconcile</button></td></tr>
                 </tbody>
               </table>
             </div>
           </section>
-          <aside class="audit"><i class="audit-icon">!</i><span><strong>Hồ sơ chênh lệch gần nhất · #DIS-002</strong><span>ORD-2026-007 thiếu nhận 20.000 ₫ — sàn truy thu phí vận chuyển bù theo sai lệch kích thước kiện hàng.</span></span><a href="#settlement" onclick="reconcile('ORD-2026-007',358000,338000,'Sàn truy thu phí vận chuyển bù 20k');return false">Mở hồ sơ →</a></aside>
+          <aside class="audit"><i class="audit-icon">!</i><span><strong>Recent Discrepancy Record · #DIS-002</strong><span>ORD-2026-007 shortfall of 20,000 ₫ — carrier dimensional weight surcharge deducted by platform.</span></span><a href="#settlement" onclick="reconcile('ORD-2026-007',358000,338000,'Carrier dimensional weight surcharge adjusted by platform');return false">Open Record →</a></aside>
         </div>
       </section>
 
-      <!-- SCR-03: Dashboard doanh thu & báo cáo điều hành -->
+      <!-- SCR-03: Revenue Dashboard -->
       <section class="screen" id="analytics">
-        <nav class="tabs" aria-label="Góc nhìn báo cáo">
-          <button class="tab active" type="button">Tổng quan dòng tiền</button>
-          <button class="tab" type="button" onclick="toast('Mở phân tích theo từng kênh bán')">Theo kênh bán</button>
-          <button class="tab" type="button" onclick="toast('Mở bảng xếp hạng SKU')">Top SKU</button>
+        <nav class="tabs" aria-label="Reporting Perspectives">
+          <button class="tab active" type="button">Cash Flow Overview</button>
+          <button class="tab" type="button" onclick="toast('Channel breakdown active')">By Channel</button>
+          <button class="tab" type="button" onclick="toast('SKU leaderboard active')">Top SKUs</button>
         </nav>
         <div class="content">
           <div class="toolbar">
-            <div class="summary"><span class="s-icon">▦</span><b>Tháng 09</b><span>Số liệu chốt đến 11/09/2026</span></div>
-            <div class="toolbar-right"><span class="periods"><button type="button" onclick="period(this)">Hôm nay</button><button type="button" class="active" onclick="period(this)">7 ngày qua</button><button type="button" onclick="period(this)">Tháng này</button></span><select class="select" onchange="toast('Đã áp dụng bộ lọc: '+this.options[this.selectedIndex].text)"><option>Tất cả kênh</option><option>TikTok Shop</option><option>Shopee</option><option>Tại quầy POS</option></select><button class="btn primary" type="button" onclick="exportCsv()">↓ Xuất CSV</button></div>
+            <div class="summary"><span class="s-icon">▦</span><b>September 2026</b><span>Realized through 11 Sep 2026</span></div>
+            <div class="toolbar-right"><span class="periods"><button type="button" onclick="period(this)">Today</button><button type="button" class="active" onclick="period(this)">Last 7 Days</button><button type="button" onclick="period(this)">This Month</button></span><select class="select" onchange="toast('Applied filter: '+this.options[this.selectedIndex].text)"><option>All Channels</option><option>TikTok Shop</option><option>Shopee</option><option>In-Store POS</option></select><button class="btn primary" type="button" onclick="exportCsv()">↓ Export CSV</button></div>
           </div>
           <div class="kpis">
-            <button class="metric" type="button" onclick="open('drill')"><span class="metric-label">Doanh thu gộp</span><b class="metric-value">184.500.000 ₫</b><span class="metric-note">1.180 đơn DELIVERED · Xem đơn gốc</span></button>
-            <article class="metric danger"><span class="metric-label">Tổng phí sàn khấu trừ</span><b class="metric-value">28.620.000 ₫</b><span class="metric-note">15,5% trên doanh thu gộp</span></article>
-            <button class="metric" type="button" onclick="open('drill')"><span class="metric-label">Thực thu về ví</span><b class="metric-value">155.880.000 ₫</b><span class="metric-note">Gross − phí sàn · Xem đơn gốc</span></button>
-            <article class="metric"><span class="metric-label">Đơn giao thành công</span><b class="metric-value">1.180 đơn</b><span class="metric-note">94,5% tỷ lệ hoàn tất</span></article>
+            <button class="metric" type="button" onclick="open('drill')"><span class="metric-label">Gross Revenue</span><b class="metric-value">184,500,000 ₫</b><span class="metric-note">1,180 DELIVERED orders · View source orders</span></button>
+            <article class="metric danger"><span class="metric-label">Total Platform Fees</span><b class="metric-value">28,620,000 ₫</b><span class="metric-note">15.5% revenue erosion</span></article>
+            <button class="metric" type="button" onclick="open('drill')"><span class="metric-label">Net Realized Revenue</span><b class="metric-value">155,880,000 ₫</b><span class="metric-note">Gross − platform fees · View source orders</span></button>
+            <article class="metric"><span class="metric-label">Delivered Orders</span><b class="metric-value">1,180 orders</b><span class="metric-note">94.5% fulfillment rate</span></article>
           </div>
-          <div class="notice"><i>✓</i><span><b>Nguyên tắc ghi nhận:</b> Dashboard chỉ tổng hợp đơn <b>DELIVERED</b>; PENDING, SHIPPED và CANCELLED bị loại trừ 100% khỏi số liệu.</span></div>
+          <div class="notice"><i>✓</i><span><b>Accounting Integrity:</b> Revenue is recognized exclusively upon confirmed Delivery. Pending, Shipped, and Cancelled orders are strictly excluded.</span></div>
           <div class="dash">
             <section class="card">
-              <div class="card-head"><span><h2>Xu hướng dòng tiền 7 ngày gần nhất</h2><p>Đối chiếu doanh thu khách trả và số tiền thực thu sau phí sàn</p></span><span class="legend"><span><i></i>Doanh thu gộp</span><span><i class="net"></i>Thực thu về ví</span></span></div>
+              <div class="card-head"><span><h2>7-Day Cash Flow Trend</h2><p>Customer payment vs. net settlement payout realized per day</p></span><span class="legend"><span><i></i>Gross Revenue</span><span><i class="net"></i>Net Realized Revenue</span></span></div>
               <div class="chart-wrap">
-                <div class="chart" aria-label="Biểu đồ cột doanh thu gộp và thực thu">
+                <div class="chart" aria-label="Grouped Bar Chart: Gross Revenue vs Net Realized Revenue">
                   <div class="axis"><span>30M</span><span>20M</span><span>10M</span><span>0</span></div>
-                  <div class="day"><div class="bars"><i class="bar" style="height:54%"></i><i class="bar net" style="height:46%"></i></div><label>05/09</label></div>
-                  <div class="day"><div class="bars"><i class="bar" style="height:66%"></i><i class="bar net" style="height:56%"></i></div><label>06/09</label></div>
-                  <div class="day"><div class="bars"><i class="bar" style="height:47%"></i><i class="bar net" style="height:39%"></i></div><label>07/09</label></div>
-                  <div class="day"><div class="bars"><i class="bar" style="height:74%"></i><i class="bar net" style="height:63%"></i></div><label>08/09</label></div>
-                  <div class="day"><div class="bars"><i class="bar" style="height:88%"></i><i class="bar net" style="height:74%"></i></div><label>09/09</label></div>
-                  <div class="day"><div class="bars"><i class="bar" style="height:70%"></i><i class="bar net" style="height:60%"></i></div><label>10/09</label></div>
-                  <div class="day"><div class="bars"><i class="bar" style="height:60%"></i><i class="bar net" style="height:51%"></i></div><label>11/09</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:54%"></i><i class="bar net" style="height:46%"></i></div><label>05 Sep</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:66%"></i><i class="bar net" style="height:56%"></i></div><label>06 Sep</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:47%"></i><i class="bar net" style="height:39%"></i></div><label>07 Sep</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:74%"></i><i class="bar net" style="height:63%"></i></div><label>08 Sep</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:88%"></i><i class="bar net" style="height:74%"></i></div><label>09 Sep</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:70%"></i><i class="bar net" style="height:60%"></i></div><label>10 Sep</label></div>
+                  <div class="day"><div class="bars"><i class="bar" style="height:60%"></i><i class="bar net" style="height:51%"></i></div><label>11 Sep</label></div>
                 </div>
               </div>
             </section>
             <div class="stack">
               <section class="card">
-                <div class="card-head"><span><h2>Cơ cấu doanh thu theo kênh</h2><p>Nhấn biểu đồ để truy vết</p></span><button class="drill" type="button" onclick="open('drill')">Drilldown</button></div>
+                <div class="card-head"><span><h2>Revenue Contribution by Channel</h2><p>Click chart to drill down</p></span><button class="drill" type="button" onclick="open('drill')">Drilldown</button></div>
                 <div class="donut-area">
-                  <button class="donut" type="button" aria-label="Mở truy vết doanh thu" onclick="open('drill')"><span class="donut-center"><strong>184,5M</strong><span>Doanh thu gộp</span></span></button>
-                  <div class="channel-list"><div><span><i class="dot"></i>TikTok Shop</span><b>48,0%</b></div><div><span><i class="dot s"></i>Shopee</span><b>37,0%</b></div><div><span><i class="dot p"></i>Tại quầy POS</span><b>15,0%</b></div></div>
+                  <button class="donut" type="button" aria-label="Open revenue drilldown" onclick="open('drill')"><span class="donut-center"><strong>184.5M ₫</strong><span>Gross Revenue</span></span></button>
+                  <div class="channel-list"><div><span><i class="dot"></i>TikTok Shop</span><b>48.0%</b></div><div><span><i class="dot s"></i>Shopee</span><b>37.0%</b></div><div><span><i class="dot p"></i>In-Store POS</span><b>15.0%</b></div></div>
                 </div>
               </section>
               <section class="card">
-                <div class="card-head"><span><h2>Top 5 SKU mang doanh thu cao</h2><p>Xếp theo doanh thu gộp</p></span></div>
+                <div class="card-head"><span><h2>Top 5 Revenue Generating SKUs</h2><p>Ranked by Gross Revenue</p></span></div>
                 <table class="sku"><tbody>
-                  <tr><td style="width:28px;padding-left:13px"><span class="rank">01</span></td><td><span class="sku-name">SM-OXF-TRANG-M</span><span class="sub">Sơ mi Oxford trắng</span></td><td class="sku-meta">128 bán</td><td style="padding-right:13px;text-align:right"><span class="money">25.000.000 ₫</span></td></tr>
-                  <tr><td style="padding-left:13px"><span class="rank">02</span></td><td><span class="sku-name">AT-COT-DEN-L</span><span class="sub">Áo thun cotton đen</span></td><td class="sku-meta">112 bán</td><td style="padding-right:13px;text-align:right"><span class="money">15.000.000 ₫</span></td></tr>
-                  <tr><td style="padding-left:13px"><span class="rank">03</span></td><td><span class="sku-name">QJ-ONG-RONG-30</span><span class="sub">Quần jean ống rộng</span></td><td class="sku-meta">76 bán</td><td style="padding-right:13px;text-align:right"><span class="money">10.000.000 ₫</span></td></tr>
+                  <tr><td style="width:28px;padding-left:13px"><span class="rank">01</span></td><td><span class="sku-name">SM-OXF-TRANG-M</span><span class="sub">White Oxford Shirt</span></td><td class="sku-meta">128 sold</td><td style="padding-right:13px;text-align:right"><span class="money">25,000,000 ₫</span></td></tr>
+                  <tr><td style="padding-left:13px"><span class="rank">02</span></td><td><span class="sku-name">AT-COT-DEN-L</span><span class="sub">Black Cotton T-Shirt</span></td><td class="sku-meta">112 sold</td><td style="padding-right:13px;text-align:right"><span class="money">15,000,000 ₫</span></td></tr>
+                  <tr><td style="padding-left:13px"><span class="rank">03</span></td><td><span class="sku-name">QJ-ONG-RONG-30</span><span class="sub">Wide Leg Denim Jeans</span></td><td class="sku-meta">76 sold</td><td style="padding-right:13px;text-align:right"><span class="money">10,000,000 ₫</span></td></tr>
                 </tbody></table>
               </section>
             </div>
@@ -476,108 +487,108 @@
     </main>
   </div>
 
-  <!-- MOD-01: tạo đơn thủ công, gồm xem trước fee-engine -->
+  <!-- MOD-01: Manual order entry with real-time fee preview -->
   <div class="overlay" id="order-modal" hidden role="dialog" aria-modal="true" aria-labelledby="order-modal-title">
     <section class="modal">
-      <header class="modal-head"><span><h2 id="order-modal-title">Tạo đơn hàng đa kênh</h2><p>Nhập đơn thủ công và xem trước dòng tiền thực thu.</p></span><button class="close" type="button" onclick="close('order')">×</button></header>
+      <header class="modal-head"><span><h2 id="order-modal-title">Create Multi-Channel Order</h2><p>Manual order entry with real-time backend fee preview.</p></span><button class="close" type="button" onclick="close('order')">×</button></header>
       <form onsubmit="createOrder(event)">
         <div class="modal-body"><div class="modal-grid">
           <div>
             <div class="form-grid">
-              <label class="field"><span>Kênh bán <b class="negative">*</b></span><select id="channel" onchange="preview()"><option value="tiktok">TikTok Shop</option><option value="shopee">Shopee</option><option value="pos">Tại quầy POS</option></select></label>
-              <label class="field"><span>Mã đơn ngoài</span><input id="external" value="TT-990445" required></label>
-              <label class="field"><span>Khách hàng <b class="negative">*</b></span><input id="customer" value="Khách vãng lai" required></label>
-              <label class="field"><span>Thanh toán</span><select id="payment" onchange="preview()"><option value="wallet">Ví sàn</option><option value="cash">Tiền mặt</option><option value="card">Quẹt thẻ / QR</option></select></label>
-              <label class="field full"><span>Voucher shop tài trợ (₫)</span><input id="voucher" type="number" min="0" value="30000" oninput="preview()"></label>
+              <label class="field"><span>Sales Channel <b class="negative">*</b></span><select id="channel" onchange="preview()"><option value="tiktok">TikTok Shop</option><option value="shopee">Shopee</option><option value="pos">In-Store POS</option></select></label>
+              <label class="field"><span>External Order ID</span><input id="external" value="TT-990445" required></label>
+              <label class="field"><span>Customer Name <b class="negative">*</b></span><input id="customer" value="Walk-in Customer" required></label>
+              <label class="field"><span>Payment Method</span><select id="payment" onchange="preview()"><option value="wallet">Platform Wallet</option><option value="cash">Cash</option><option value="card">Card / QR Code</option></select></label>
+              <label class="field full"><span>Shop Voucher Discount (₫)</span><input id="voucher" type="number" min="0" value="30000" oninput="preview()"></label>
             </div>
-            <div class="items"><div class="items-head"><span>Dòng sản phẩm <b class="negative">*</b></span><button type="button" onclick="addItem()">+ Thêm dòng</button></div><div id="item-list">
-              <div class="item"><input class="item-name" value="AT-COT-DEN-L · Áo thun cotton đen"><input class="qty" type="number" min="1" value="2" oninput="preview()"><input class="price" type="number" min="0" value="180000" oninput="preview()"></div>
-              <div class="item"><input class="item-name" value="AT-COT-TRANG-M · Áo thun cotton trắng"><input class="qty" type="number" min="1" value="1" oninput="preview()"><input class="price" type="number" min="0" value="150000" oninput="preview()"></div>
+            <div class="items"><div class="items-head"><span>Order Line Items <b class="negative">*</b></span><button type="button" onclick="addItem()">+ Add Line Item</button></div><div id="item-list">
+              <div class="item"><input class="item-name" value="AT-COT-DEN-L · Black Cotton T-Shirt"><input class="qty" type="number" min="1" value="2" oninput="preview()"><input class="price" type="number" min="0" value="180000" oninput="preview()"></div>
+              <div class="item"><input class="item-name" value="AT-COT-TRANG-M · White Cotton T-Shirt"><input class="qty" type="number" min="1" value="1" oninput="preview()"><input class="price" type="number" min="0" value="150000" oninput="preview()"></div>
             </div></div>
             <div class="error" id="order-error"></div>
           </div>
           <aside class="preview">
-            <h3>Dòng tiền dự tính</h3>
-            <div class="preview-row"><span>Tiền hàng (Subtotal)</span><strong id="pre-subtotal">510.000 ₫</strong></div>
-            <div class="preview-row neg"><span>Voucher shop</span><strong id="pre-voucher">−30.000 ₫</strong></div>
-            <div class="preview-row"><span>Tiền khách trả (Gross)</span><strong id="pre-gross">480.000 ₫</strong></div>
-            <div class="preview-row neg"><span>Phí hoa hồng</span><strong id="pre-commission">−19.200 ₫</strong></div>
-            <div class="preview-row neg"><span>Phí thanh toán</span><strong id="pre-payment">−14.400 ₫</strong></div>
-            <div class="preview-row neg"><span>Phí dịch vụ / Freeship</span><strong id="pre-service">−2.000 ₫</strong></div>
-            <div class="preview-row total"><span>Dự kiến thực thu</span><strong id="pre-net">444.400 ₫</strong></div>
-            <div class="rule-note" id="pre-rule">TikTok: 4% tiền hàng + 3% tổng thanh toán + 2.000 ₫/đơn.</div>
+            <h3>Projected Cash Flow</h3>
+            <div class="preview-row"><span>Subtotal</span><strong id="pre-subtotal">510,000 ₫</strong></div>
+            <div class="preview-row neg"><span>Shop Voucher</span><strong id="pre-voucher">−30,000 ₫</strong></div>
+            <div class="preview-row"><span>Gross Revenue</span><strong id="pre-gross">480,000 ₫</strong></div>
+            <div class="preview-row neg"><span>Platform Commission</span><strong id="pre-commission">−19,200 ₫</strong></div>
+            <div class="preview-row neg"><span>Payment Fee</span><strong id="pre-payment">−14,400 ₫</strong></div>
+            <div class="preview-row neg"><span>Service Fee</span><strong id="pre-service">−2,000 ₫</strong></div>
+            <div class="preview-row total"><span>Projected Settlement</span><strong id="pre-net">444,400 ₫</strong></div>
+            <div class="rule-note" id="pre-rule">TikTok: 4% Subtotal + 3% Gross + 2,000 ₫/order.</div>
           </aside>
         </div></div>
-        <footer class="modal-foot"><button class="btn" type="button" onclick="close('order')">Hủy</button><button class="btn primary" type="submit">＋ Tạo đơn hàng</button></footer>
+        <footer class="modal-foot"><button class="btn" type="button" onclick="close('order')">Cancel</button><button class="btn primary" type="submit">＋ Create Order</button></footer>
       </form>
     </section>
   </div>
 
-  <!-- MOD-02: hủy đơn -->
+  <!-- MOD-02: Cancel order modal -->
   <div class="overlay" id="cancel-modal" hidden role="dialog" aria-modal="true">
     <section class="modal small">
-      <header class="modal-head"><span><h2>Xác nhận hủy đơn hàng</h2><p>Đơn hủy sẽ bị loại trừ hoàn toàn khỏi số liệu doanh thu.</p></span><button class="close" type="button" onclick="close('cancel')">×</button></header>
-      <div class="modal-body"><div class="notice"><i>!</i><span id="cancel-summary">Bạn đang hủy đơn hàng.</span></div><label class="field"><span>Lý do hủy <b class="negative">*</b></span><select id="cancel-reason"><option value="">Chọn lý do</option><option>Khách đổi ý / boom hàng</option><option>Sai thông tin giao hàng</option><option>Hết hàng</option><option>Lý do khác</option></select></label><div class="error" id="cancel-error"></div></div>
-      <footer class="modal-foot"><button class="btn" type="button" onclick="close('cancel')">Quay lại</button><button class="btn primary" style="border-color:var(--red);background:var(--red)" type="button" onclick="confirmCancel()">Xác nhận hủy</button></footer>
+      <header class="modal-head"><span><h2>Confirm Order Cancellation</h2><p>Cancelled orders are 100% excluded from recognized revenue.</p></span><button class="close" type="button" onclick="close('cancel')">×</button></header>
+      <div class="modal-body"><div class="notice"><i>!</i><span id="cancel-summary">You are cancelling an order.</span></div><label class="field"><span>Cancellation Reason <b class="negative">*</b></span><select id="cancel-reason"><option value="">Select a reason</option><option>Customer Unreachable</option><option>Wrong Shipping Info</option><option>Out of Stock</option><option>Customer Request</option></select></label><div class="error" id="cancel-error"></div></div>
+      <footer class="modal-foot"><button class="btn" type="button" onclick="close('cancel')">Close</button><button class="btn primary" style="border-color:var(--red);background:var(--red)" type="button" onclick="confirmCancel()">Confirm Cancellation</button></footer>
     </section>
   </div>
 
-  <!-- MOD-03: đối soát một đơn -->
+  <!-- MOD-03: Reconcile single order modal -->
   <div class="overlay" id="reconcile-modal" hidden role="dialog" aria-modal="true">
     <section class="modal small">
-      <header class="modal-head"><span><h2>Đối soát thực nhận ví</h2><p>Nhập số tiền sàn đã chuyển về tài khoản.</p></span><button class="close" type="button" onclick="close('reconcile')">×</button></header>
+      <header class="modal-head"><span><h2>Record Actual Settlement</h2><p>Enter the verified payout disbursed to the platform wallet.</p></span><button class="close" type="button" onclick="close('reconcile')">×</button></header>
       <div class="modal-body">
-        <div class="recap"><div><span>Mã đơn</span><b id="rec-id">ORD-2026-001</b></div><div><span>Dự kiến thực thu</span><b id="rec-project">429.600 ₫</b></div><div><span>Chênh lệch</span><b class="red" id="rec-variance">0 ₫</b></div></div>
-        <label class="field"><span>Thực nhận về ví (₫) <b class="negative">*</b></span><input id="rec-actual" type="number" min="0" oninput="recPreview()"></label>
-        <label class="field" style="margin-top:11px"><span>Giải trình chênh lệch <b class="negative" id="note-star">*</b></span><textarea id="rec-note" placeholder="Bắt buộc khi số thực nhận khác dự kiến"></textarea></label>
+        <div class="recap"><div><span>Order ID</span><b id="rec-id">ORD-2026-001</b></div><div><span>Projected Settlement</span><b id="rec-project">429,600 ₫</b></div><div><span>Settlement Variance</span><b id="rec-variance">0 ₫</b></div></div>
+        <label class="field"><span>Actual Settlement (₫) <b class="negative">*</b></span><input id="rec-actual" type="number" min="0" oninput="recPreview()"></label>
+        <label class="field" style="margin-top:11px"><span>Discrepancy Explanation Note <b class="negative" id="note-star">*</b></span><textarea id="rec-note" placeholder="Required when actual settlement differs from projected amount"></textarea></label>
         <div class="error" id="rec-error"></div>
       </div>
-      <footer class="modal-foot"><button class="btn" type="button" onclick="close('reconcile')">Hủy</button><button class="btn primary" type="button" onclick="saveReconcile()">Xác nhận đối soát</button></footer>
+      <footer class="modal-foot"><button class="btn" type="button" onclick="close('reconcile')">Cancel</button><button class="btn primary" type="button" onclick="saveReconcile()">Save Settlement</button></footer>
     </section>
   </div>
 
-  <!-- MOD-04/05: sao kê và biểu phí -->
+  <!-- MOD-04/05: Import statement and fee configuration -->
   <div class="overlay" id="statement-modal" hidden role="dialog" aria-modal="true">
     <section class="modal small">
-      <header class="modal-head"><span><h2>Nhập file sao kê ví</h2><p>Tải sao kê TikTok Shop, Shopee hoặc biến động ngân hàng.</p></span><button class="close" type="button" onclick="close('statement')">×</button></header>
-      <div class="modal-body"><div class="drop"><i style="display:grid;width:31px;height:31px;place-items:center;border-radius:50%;background:#edf1ff;color:var(--blue);font-style:normal;font-size:18px">↑</i><strong>Kéo thả file .xlsx hoặc .csv vào đây</strong><span>Hệ thống sẽ đối chiếu theo mã đơn và số tiền thực nhận.</span><button class="btn soft" style="margin-top:10px" type="button" onclick="toast('Đây là prototype UI — khu vực đã sẵn sàng kết nối API tải tệp')">Chọn file từ máy</button></div><label class="field" style="margin-top:12px"><span>Kỳ quyết toán</span><select><option>01–11/09/2026</option><option>Tháng 09/2026</option></select></label></div>
-      <footer class="modal-foot"><button class="btn" type="button" onclick="close('statement')">Hủy</button><button class="btn primary" type="button" onclick="close('statement');toast('Đã đưa file sao kê vào hàng đợi đối soát')">Bắt đầu đối soát</button></footer>
+      <header class="modal-head"><span><h2>Import Settlement Statement</h2><p>Upload platform wallet statement (.xlsx, .csv) for assisted reconciliation.</p></span><button class="close" type="button" onclick="close('statement')">×</button></header>
+      <div class="modal-body"><div class="drop"><i style="display:grid;width:31px;height:31px;place-items:center;border-radius:50%;background:#edf1ff;color:var(--blue);font-style:normal;font-size:18px">↑</i><strong>Drag and drop .xlsx or .csv statement file here</strong><span>Assisted matching against delivered orders and projected payouts.</span><button class="btn soft" style="margin-top:10px" type="button" onclick="toast('UI Prototype: Upload endpoint will process batch records')">Browse Files</button></div><label class="field" style="margin-top:12px"><span>Settlement Period</span><select><option>01–11 Sep 2026</option><option>September 2026</option></select></label></div>
+      <footer class="modal-foot"><button class="btn" type="button" onclick="close('statement')">Cancel</button><button class="btn primary" type="button" onclick="close('statement');toast('Settlement statement queued for assisted reconciliation')">Start Reconciliation</button></footer>
     </section>
   </div>
   <div class="overlay" id="fees-modal" hidden role="dialog" aria-modal="true">
     <section class="modal small">
-      <header class="modal-head"><span><h2>Cấu hình biểu phí bán hàng</h2><p>Biểu phí được dùng cho ước tính thực thu khi tạo đơn.</p></span><button class="close" type="button" onclick="close('fees')">×</button></header>
-      <div class="modal-body" style="padding:0"><div class="scroll"><table><thead><tr><th style="padding-left:17px">Kênh</th><th>Hoa hồng</th><th>Thanh toán</th><th>Dịch vụ / Freeship</th></tr></thead><tbody>
-        <tr><td style="padding-left:17px"><span class="channel tiktok">TikTok Shop</span></td><td>4,0%</td><td>3,0%</td><td>2.000 ₫ / đơn</td></tr>
-        <tr><td style="padding-left:17px"><span class="channel shopee">Shopee</span></td><td>4,5%</td><td>4,0%</td><td>2,0% · tối đa 20.000 ₫</td></tr>
-        <tr><td style="padding-left:17px"><span class="channel pos">POS</span></td><td>0%</td><td>1,0% thẻ/QR</td><td>0 ₫</td></tr>
+      <header class="modal-head"><span><h2>Channel Fee Schedule Configuration</h2><p>Fee parameters used for calculating projected settlement upon order creation.</p></span><button class="close" type="button" onclick="close('fees')">×</button></header>
+      <div class="modal-body" style="padding:0"><div class="scroll"><table><thead><tr><th style="padding-left:17px">Channel</th><th>Commission Fee</th><th>Payment Fee</th><th>Service Fee</th></tr></thead><tbody>
+        <tr><td style="padding-left:17px"><span class="channel tiktok">TikTok Shop</span></td><td>4.0%</td><td>3.0%</td><td>2,000 ₫ / order</td></tr>
+        <tr><td style="padding-left:17px"><span class="channel shopee">Shopee</span></td><td>4.5%</td><td>4.0%</td><td>2.0% · max 20,000 ₫</td></tr>
+        <tr><td style="padding-left:17px"><span class="channel pos">POS</span></td><td>0%</td><td>1.0% card/QR</td><td>0 ₫</td></tr>
       </tbody></table></div></div>
-      <footer class="modal-foot"><button class="btn" type="button" onclick="close('fees')">Hủy</button><button class="btn primary" type="button" onclick="close('fees');toast('Đã lưu biểu phí mới cho kỳ kế tiếp')">Lưu biểu phí</button></footer>
+      <footer class="modal-foot"><button class="btn" type="button" onclick="close('fees')">Close</button><button class="btn primary" type="button" onclick="close('fees');toast('Fee schedule updated successfully')">Save Fee Schedule</button></footer>
     </section>
   </div>
 
-  <!-- MOD-06: truy vết dashboard -->
+  <!-- MOD-06: Source orders drilldown modal -->
   <div class="overlay" id="drill-modal" hidden role="dialog" aria-modal="true">
     <section class="modal">
-      <header class="modal-head"><span><h2>Truy vết đơn gốc DELIVERED</h2><p>Các đơn cấu thành số liệu doanh thu và thực thu trong bộ lọc hiện tại.</p></span><button class="close" type="button" onclick="close('drill')">×</button></header>
-      <div class="modal-body"><div class="notice"><i>✓</i><span><b>1.180 đơn DELIVERED</b> · Doanh thu gộp 184.500.000 ₫ · Phí sàn 28.620.000 ₫ · Thực thu 155.880.000 ₫</span></div>
-        <section class="card"><div class="scroll"><table style="min-width:600px"><thead><tr><th style="padding-left:12px">Mã đơn</th><th>Kênh</th><th>Khách hàng</th><th>Tiền khách trả</th><th>Phí sàn</th><th>Thực thu</th><th>Giao thành công</th></tr></thead><tbody>
-          <tr><td style="padding-left:12px"><span class="order-code">ORD-2026-005</span></td><td><span class="channel shopee">Shopee</span></td><td>Ngô Hoài Nam</td><td><span class="money">1.250.000 ₫</span></td><td><span class="negative">−126.250 ₫</span></td><td><span class="money">1.123.750 ₫</span></td><td>10/09/2026</td></tr>
-          <tr><td style="padding-left:12px"><span class="order-code">ORD-2026-003</span></td><td><span class="channel pos">POS · QR</span></td><td>Lê Phúc Khang</td><td><span class="money">620.000 ₫</span></td><td><span class="negative">−6.200 ₫</span></td><td><span class="money">613.800 ₫</span></td><td>11/09/2026</td></tr>
-          <tr><td style="padding-left:12px"><span class="order-code">ORD-2026-002</span></td><td><span class="channel tiktok">TikTok</span></td><td>Trần Minh Quân</td><td><span class="money">510.000 ₫</span></td><td><span class="negative">−37.700 ₫</span></td><td><span class="money">472.300 ₫</span></td><td>11/09/2026</td></tr>
+      <header class="modal-head"><span><h2>Source Orders Audit (DELIVERED)</h2><p>Delivered order records constituting recognized revenue and fee totals.</p></span><button class="close" type="button" onclick="close('drill')">×</button></header>
+      <div class="modal-body"><div class="notice"><i>✓</i><span><b>1,180 DELIVERED Orders</b> · Gross Revenue: 184,500,000 ₫ · Total Fees: 28,620,000 ₫ · Net Realized Revenue: 155,880,000 ₫</span></div>
+        <section class="card"><div class="scroll"><table style="min-width:600px"><thead><tr><th style="padding-left:12px">Order ID</th><th>Channel</th><th>Customer Name</th><th>Customer Payment</th><th>Platform Fees</th><th>Net Settlement</th><th>Delivered Date</th></tr></thead><tbody>
+          <tr><td style="padding-left:12px"><span class="order-code">ORD-2026-005</span></td><td><span class="channel shopee">Shopee</span></td><td>Ngo Hoai Nam</td><td><span class="money">1,250,000 ₫</span></td><td><span class="negative">−126,250 ₫</span></td><td><span class="money">1,123,750 ₫</span></td><td>10 Sep 2026</td></tr>
+          <tr><td style="padding-left:12px"><span class="order-code">ORD-2026-003</span></td><td><span class="channel pos">POS · QR</span></td><td>Le Phuc Khang</td><td><span class="money">620,000 ₫</span></td><td><span class="negative">−6,200 ₫</span></td><td><span class="money">613,800 ₫</span></td><td>11 Sep 2026</td></tr>
+          <tr><td style="padding-left:12px"><span class="order-code">ORD-2026-002</span></td><td><span class="channel tiktok">TikTok</span></td><td>Tran Minh Quan</td><td><span class="money">510,000 ₫</span></td><td><span class="negative">−37,700 ₫</span></td><td><span class="money">472,300 ₫</span></td><td>11 Sep 2026</td></tr>
         </tbody></table></div></section>
       </div>
-      <footer class="modal-foot"><button class="btn" type="button" onclick="close('drill')">Đóng</button><button class="btn primary" type="button" onclick="exportCsv()">↓ Xuất CSV các đơn đã lọc</button></footer>
+      <footer class="modal-foot"><button class="btn" type="button" onclick="close('drill')">Close</button><button class="btn primary" type="button" onclick="exportCsv()">↓ Export CSV (Filtered Orders)</button></footer>
     </section>
   </div>
 
-  <div class="toast" id="toast" aria-live="polite"><i>✓</i><span id="toast-text">Đã cập nhật dữ liệu.</span></div>
+  <div class="toast" id="toast" aria-live="polite"><i>✓</i><span id="toast-text">Data updated successfully.</span></div>
 
   <script>
     const meta = {
-      orders: ["Đơn hàng đa kênh", "Theo dõi vận hành và trạng thái giao hàng"],
-      settlement: ["Phí sàn & Đối soát ví", "Bóc tách khoản khấu trừ và kiểm tra tiền thực nhận"],
-      analytics: ["Báo cáo dòng tiền", "Tổng hợp doanh thu đã giao và thực thu về ví"]
+      orders: ["Orders Management", "Monitor multi-channel order fulfillment and delivery lifecycle"],
+      settlement: ["Fees & Settlement", "Channel fee deduction audit and wallet payout reconciliation"],
+      analytics: ["Revenue Dashboard", "Executive gross revenue vs. net realized revenue reporting"]
     };
     let activeView = "orders", orderState = "all", orderChannel = "all", cancelRow = null;
     let rec = { id: "", project: 0 }, toastTimer;
@@ -619,33 +630,33 @@
     }
     function status(button, next) {
       const row = button.closest(".order-row");
-      if (next === "delivered" && row.dataset.status !== "shipped") { toast("Đơn online phải chuyển sang Đang giao trước khi Giao thành công."); return; }
+      if (next === "delivered" && row.dataset.status !== "shipped") { toast("Online orders must advance to Shipped before being marked as Delivered."); return; }
       row.dataset.status = next;
       const cell = row.querySelector(".status-cell"), action = button.closest("td");
       if (next === "shipped") {
-        cell.innerHTML = '<span class="status shipped">Đang giao</span>';
-        action.innerHTML = '<span class="actions"><button class="mini blue" type="button" onclick="status(this,&#39;delivered&#39;)">Đã giao</button><button class="mini red" type="button" onclick="cancel(this)">Hủy</button></span>';
-        toast("Đã chuyển đơn sang trạng thái SHIPPED.");
+        cell.innerHTML = '<span class="status shipped">Shipped</span>';
+        action.innerHTML = '<span class="actions"><button class="mini" type="button" onclick="status(this,&#39;delivered&#39;)">Mark Delivered</button><button class="mini" type="button" onclick="cancel(this)">Cancel</button></span>';
+        toast("Order status updated to SHIPPED.");
       } else {
-        cell.innerHTML = '<span class="status delivered">Đã giao</span>';
-        action.innerHTML = '<span class="actions"><span class="locked">✓ Đã khóa sổ</span><button class="mini" type="button" onclick="toast(&#39;Đơn DELIVERED đã khóa để bảo toàn sổ sách&#39;)">Xem</button></span>';
-        toast("Đã giao thành công — doanh thu được ghi nhận chính thức.");
+        cell.innerHTML = '<span class="status delivered">Delivered</span>';
+        action.innerHTML = '<span class="actions"><span class="locked">✓ Locked</span><button class="mini" type="button" onclick="toast(&#39;DELIVERED orders are locked to preserve accounting integrity&#39;)">View</button></span>';
+        toast("Order marked as DELIVERED — revenue officially recognized.");
       }
       applyOrders();
     }
     function cancel(button) {
       cancelRow = button.closest(".order-row");
-      document.getElementById("cancel-summary").textContent = "Đơn " + cancelRow.querySelector(".order-code").textContent + " sẽ không được tính vào bất kỳ KPI doanh thu nào.";
+      document.getElementById("cancel-summary").textContent = "Order " + cancelRow.querySelector(".order-code").textContent + " will be excluded from all revenue KPIs.";
       document.getElementById("cancel-reason").value = ""; document.getElementById("cancel-error").textContent = ""; open("cancel");
     }
     function confirmCancel() {
       const reason = document.getElementById("cancel-reason").value;
-      if (!reason) { document.getElementById("cancel-error").textContent = "Vui lòng chọn lý do hủy đơn."; return; }
-      if (!cancelRow || cancelRow.dataset.status === "delivered") { close("cancel"); toast("Không thể hủy đơn hàng đã giao thành công."); return; }
+      if (!reason) { document.getElementById("cancel-error").textContent = "Please select a cancellation reason."; return; }
+      if (!cancelRow || cancelRow.dataset.status === "delivered") { close("cancel"); toast("Delivered orders cannot be cancelled."); return; }
       cancelRow.dataset.status = "cancelled";
-      cancelRow.querySelector(".status-cell").innerHTML = '<span class="status cancelled">Đã hủy</span>';
+      cancelRow.querySelector(".status-cell").innerHTML = '<span class="status cancelled">Cancelled</span>';
       cancelRow.querySelector("td:last-child").innerHTML = '<span class="actions"><span class="locked">' + escapeHtml(reason) + '</span></span>';
-      close("cancel"); applyOrders(); toast("Đã hủy đơn và loại trừ giá trị đơn khỏi doanh thu.");
+      close("cancel"); applyOrders(); toast("Order cancelled and excluded from recognized revenue.");
     }
     function values() {
       let subtotal = 0;
@@ -653,9 +664,9 @@
       const voucher = Math.max(0, Number(document.getElementById("voucher").value) || 0);
       const gross = Math.max(0, subtotal - voucher), channel = document.getElementById("channel").value, payment = document.getElementById("payment").value;
       let commission = 0, paymentFee = 0, service = 0, rule = "";
-      if (channel === "tiktok") { commission = subtotal * .04; paymentFee = gross * .03; service = 2000; rule = "TikTok: 4% tiền hàng + 3% tổng thanh toán + 2.000 ₫/đơn."; }
-      else if (channel === "shopee") { commission = subtotal * .045; paymentFee = gross * .04; service = Math.min(subtotal * .02, 20000); rule = "Shopee: 4,5% tiền hàng + 4% tổng thanh toán + 2% Freeship (tối đa 20.000 ₫)."; }
-      else { paymentFee = payment === "card" ? gross * .01 : 0; rule = payment === "card" ? "POS thẻ/QR: phí xử lý ngân hàng 1% tổng thanh toán." : "POS tiền mặt: không có phí sàn hoặc phí thanh toán."; }
+      if (channel === "tiktok") { commission = subtotal * .04; paymentFee = gross * .03; service = 2000; rule = "TikTok: 4% Subtotal + 3% Gross + 2,000 ₫/order."; }
+      else if (channel === "shopee") { commission = subtotal * .045; paymentFee = gross * .04; service = Math.min(subtotal * .02, 20000); rule = "Shopee: 4.5% Subtotal + 4% Gross + 2% Freeship (max 20,000 ₫)."; }
+      else { paymentFee = payment === "card" ? gross * .01 : 0; rule = payment === "card" ? "POS Card/QR: 1% payment gateway fee." : "POS Cash: 0 ₫ platform or payment fee."; }
       return { subtotal: subtotal, voucher: voucher, gross: gross, commission: commission, payment: paymentFee, service: service, net: gross - commission - paymentFee - service, channel: channel, rule: rule };
     }
     function preview() {
@@ -665,20 +676,20 @@
     }
     function addItem() {
       const item = document.createElement("div"); item.className = "item";
-      item.innerHTML = '<input class="item-name" value="SKU mới · Sản phẩm"><input class="qty" type="number" min="1" value="1" oninput="preview()"><input class="price" type="number" min="0" value="0" oninput="preview()">';
+      item.innerHTML = '<input class="item-name" value="New SKU · Product"><input class="qty" type="number" min="1" value="1" oninput="preview()"><input class="price" type="number" min="0" value="0" oninput="preview()">';
       document.getElementById("item-list").appendChild(item); item.querySelector(".item-name").focus(); preview();
     }
     function createOrder(event) {
       event.preventDefault(); const v = values(), error = document.getElementById("order-error");
-      if (v.subtotal <= 0) { error.textContent = "Đơn hàng phải chứa ít nhất một sản phẩm có giá trị."; return; }
-      if (v.voucher > v.subtotal) { error.textContent = "Voucher giảm giá không được vượt quá tổng tiền hàng."; return; }
+      if (v.subtotal <= 0) { error.textContent = "At least one order item with valid price is required."; return; }
+      if (v.voucher > v.subtotal) { error.textContent = "Shop voucher cannot exceed order subtotal."; return; }
       const code = "ORD-2026-" + String(100 + document.querySelectorAll("#orders-table tbody tr").length + 1).padStart(3, "0");
-      const ext = document.getElementById("external").value.trim() || "Đơn thủ công", customer = document.getElementById("customer").value.trim() || "Khách vãng lai", product = document.querySelector(".item-name").value.trim() || "Sản phẩm mới";
-      const state = v.channel === "pos" ? "delivered" : "pending", stateText = state === "delivered" ? "Đã giao" : "Chờ xử lý", channelText = v.channel === "tiktok" ? "TikTok Shop" : v.channel === "shopee" ? "Shopee" : "POS";
+      const ext = document.getElementById("external").value.trim() || "Manual Entry", customer = document.getElementById("customer").value.trim() || "Walk-in Customer", product = document.querySelector(".item-name").value.trim() || "New Product Item";
+      const state = v.channel === "pos" ? "delivered" : "pending", stateText = state === "delivered" ? "Delivered" : "Pending", channelText = v.channel === "tiktok" ? "TikTok Shop" : v.channel === "shopee" ? "Shopee" : "POS";
       const row = document.createElement("tr"); row.className = "order-row"; row.dataset.status = state; row.dataset.channel = v.channel; row.dataset.key = (code+" "+ext+" "+customer+" "+product).toLowerCase();
-      row.innerHTML = '<td class="check"><input type="checkbox"></td><td><span class="order-code">'+code+'</span><span class="sub">'+escapeHtml(ext)+' · '+escapeHtml(customer)+'</span></td><td><span class="channel '+v.channel+'">'+channelText+'</span></td><td class="product"><strong>'+escapeHtml(product)+'</strong><span>Đơn nhập thủ công</span></td><td>11/09/2026<span class="sub">Vừa tạo</span></td><td><span class="money">'+money(v.gross)+'</span></td><td class="status-cell"><span class="status '+state+'">'+stateText+'</span></td><td><span class="actions">'+(state === "delivered" ? '<span class="locked">✓ Đã khóa sổ</span>' : '<button class="mini blue" type="button" onclick="status(this,&#39;shipped&#39;)">Giao hàng</button><button class="mini red" type="button" onclick="cancel(this)">Hủy</button>')+'</span></td>';
+      row.innerHTML = '<td class="check"><input type="checkbox"></td><td><span class="order-code">'+code+'</span><span class="sub">'+escapeHtml(ext)+' · '+escapeHtml(customer)+'</span></td><td><span class="channel '+v.channel+'">'+channelText+'</span></td><td class="product"><strong>'+escapeHtml(product)+'</strong><span>Manual Entry</span></td><td>11 Sep 2026<span class="sub">Just now</span></td><td><span class="money">'+money(v.gross)+'</span></td><td class="status-cell"><span class="status '+state+'">'+stateText+'</span></td><td><span class="actions">'+(state === "delivered" ? '<span class="locked">✓ Locked</span>' : '<button class="mini" type="button" onclick="status(this,&#39;shipped&#39;)">Ship</button><button class="mini" type="button" onclick="cancel(this)">Cancel</button>')+'</span></td>';
       document.querySelector("#orders-table tbody").prepend(row); close("order"); view("orders");
-      toast(state === "delivered" ? "Đơn POS đã tạo ở trạng thái DELIVERED và được ghi nhận doanh thu." : "Đã tạo đơn hàng mới ở trạng thái PENDING.");
+      toast(state === "delivered" ? "POS order created in DELIVERED state and revenue recognized." : "Order created successfully in PENDING state.");
     }
     function settleFilter(state, button) {
       document.querySelectorAll("#settlement .tab").forEach(function (el) { el.classList.remove("active"); }); button.classList.add("active");
@@ -692,25 +703,26 @@
     }
     function recPreview() {
       const variance = rec.project - (Number(document.getElementById("rec-actual").value) || 0), el = document.getElementById("rec-variance");
-      el.textContent = variance === 0 ? "0 ₫" : money(Math.abs(variance)); el.style.color = variance === 0 ? "var(--green)" : "var(--red)";
+      el.textContent = variance === 0 ? "0 ₫" : "−" + money(Math.abs(variance));
+      el.style.color = variance === 0 ? "var(--ink)" : "var(--red)";
       document.getElementById("note-star").style.visibility = variance === 0 ? "hidden" : "visible";
     }
     function saveReconcile() {
       const actual = Number(document.getElementById("rec-actual").value), note = document.getElementById("rec-note").value.trim(), variance = rec.project - actual, error = document.getElementById("rec-error");
-      if (!Number.isFinite(actual) || actual < 0) { error.textContent = "Vui lòng nhập số tiền thực nhận hợp lệ."; return; }
-      if (variance !== 0 && !note) { error.textContent = "Bắt buộc nhập giải trình khi số thực nhận có chênh lệch."; return; }
+      if (!Number.isFinite(actual) || actual < 0) { error.textContent = "Please enter a valid actual settlement amount."; return; }
+      if (variance !== 0 && !note) { error.textContent = "Discrepancy explanation note is required when variance is non-zero."; return; }
       const row = document.querySelector('[data-id="'+rec.id+'"]');
-      if (row) { row.dataset.settle = variance === 0 ? "reconciled" : "discrepancy"; row.querySelector(".actual").innerHTML = '<span class="money">'+money(actual)+'</span>'; row.querySelector(".variance").innerHTML = variance === 0 ? "0 ₫" : '<span class="negative">'+money(Math.abs(variance))+'</span>'; row.querySelector(".settle-status").innerHTML = variance === 0 ? '<span class="status reconciled">Khớp 100%</span>' : '<span class="status discrepancy">Lệch tiền</span>'; }
-      close("reconcile"); toast(variance === 0 ? "Đã lưu đối soát khớp 100%." : "Đã lưu chênh lệch và giải trình vào hồ sơ kiểm toán.");
+      if (row) { row.dataset.settle = variance === 0 ? "reconciled" : "discrepancy"; row.querySelector(".actual").innerHTML = '<span class="money">'+money(actual)+'</span>'; row.querySelector(".variance").innerHTML = variance === 0 ? '<span class="zero">0 ₫</span>' : '<span class="negative">−'+money(Math.abs(variance))+'</span>'; row.querySelector(".settle-status").innerHTML = variance === 0 ? '<span class="status reconciled">Reconciled</span>' : '<span class="status discrepancy">Discrepancy</span>'; }
+      close("reconcile"); toast(variance === 0 ? "Settlement reconciled successfully." : "Discrepancy and explanation note recorded in audit log.");
     }
-    function period(button) { document.querySelectorAll(".periods button").forEach(function (el) { el.classList.remove("active"); }); button.classList.add("active"); toast("Đã áp dụng khoảng thời gian: "+button.textContent+"."); }
+    function period(button) { document.querySelectorAll(".periods button").forEach(function (el) { el.classList.remove("active"); }); button.classList.add("active"); toast("Applied timeframe: "+button.textContent+"."); }
     function searchCurrent(query) {
       query = query.trim().toLowerCase();
       if (activeView === "orders") { applyOrders(); return; }
       if (activeView === "settlement") { document.querySelectorAll("#settlement-table tbody tr").forEach(function (row) { row.hidden = !!query && row.dataset.key.indexOf(query) === -1; }); return; }
-      if (query) toast("Tìm kiếm báo cáo theo: "+query);
+      if (query) toast("Search analytics for: "+query);
     }
-    function exportCsv() { close("drill"); toast("Đã chuẩn bị Bao_Cao_Doanh_Thu_20260911.csv để xuất."); }
+    function exportCsv() { close("drill"); toast("Prepared Revenue_Report_20260911.csv for export."); }
     function escapeHtml(text) { return String(text).replace(/[&<>"']/g,function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]; }); }
     document.querySelectorAll(".overlay").forEach(function (el) { el.addEventListener("click",function (event) { if (event.target === el) close(el.id.replace("-modal","")); }); });
     document.addEventListener("keydown",function (event) { if (event.key === "Escape") document.querySelectorAll(".overlay").forEach(function (el) { if (!el.hidden) close(el.id.replace("-modal","")); }); });
