@@ -1,21 +1,9 @@
 # C4 Container Specification: Fashion Revenue & Profit Management System
 
----
 
-## 1. Objective & Purpose of P02
+## 1. Target Container Scope (MVP Target)
 
-### 1.1. Purpose of this Document
-This specification represents **C4 Level 2: Target Container Architecture** for the **Fashion Revenue & Profit Management System**. Building directly on the foundational System Context defined in [c4-context_en.md](c4-context_en.md), this document opens the single "Software System" boundary from P01 to identify the high-level application, service, and data containers that compose the system.
-
-### 1.2. Architecture Scope & Nature
-- **Target MVP Architecture:** This document specifies the target container architecture required to fulfill the Minimum Viable Product (MVP) requirements. It is **not** an as-built diagram of interim prototype code, **not** a physical deployment/infrastructure diagram (e.g., Kubernetes pods, cloud virtual networks), and **not** a source code directory layout.
-- **Single System Boundary:** All internal containers belong to and execute within the boundary of the **Fashion Revenue & Profit Management System**. External systems defined in P01 remain strictly outside this boundary.
-
----
-
-## 2. Target Container Scope (MVP Target)
-
-### 2.1. Core MVP Containers
+### 1.1. Core MVP Containers
 To satisfy the verified functional requirements of the MVP with minimum operational complexity, high cohesion, and low operational overhead, the target architecture establishes exactly **three deployable/executable containers**:
 
 1. **React Web SPA:** Client-side Single Page Application serving the presentation and user interaction needs of all three human actors.
@@ -31,7 +19,7 @@ To satisfy the verified functional requirements of the MVP with minimum operatio
 +-------------------------------------------------------------------------+
 ```
 
-### 2.2. Architectural Exclusions (What is NOT a Container)
+### 1.2. Architectural Exclusions (What is NOT a Container)
 To maintain strict C4 modeling rigor, the following elements are explicitly defined as non-containers:
 
 | Candidate Element | Current Codebase / Technology Reference | Reason for Exclusion from Container Status |
@@ -49,7 +37,7 @@ To maintain strict C4 modeling rigor, the following elements are explicitly defi
 
 ---
 
-## 3. Container Catalog
+## 2. Container Catalog
 
 The following catalog defines each target container, its runtime type, technology foundation, core responsibilities, and data ownership:
 
@@ -61,7 +49,7 @@ The following catalog defines each target container, its runtime type, technolog
 
 ---
 
-## 4. Target Container Diagram
+## 3. Target Container Diagram
 
 The diagram below represents the **Target Container Architecture** for the MVP. All user roles access the system strictly via the React Web SPA. In turn, the SPA communicates exclusively with the Backend API, which orchestrates persistence with the PostgreSQL Database. External systems operate via the user workflows defined in P01.
 
@@ -125,11 +113,11 @@ flowchart TB
 
 ---
 
-## 5. Container Responsibilities & Boundaries
+## 4. Container Responsibilities & Boundaries
 
 To preserve clean separation of concerns, each container is governed by explicit operational boundaries defining what it **owns** and what it **must not do**.
 
-### 5.1. Container 1: React Web SPA
+### 4.1. Container 1: React Web SPA
 - **What It Does:**
   - Renders user interfaces tailored to Sales & Operations Staff, Finance Manager, and Shop Owner.
   - Manages client-side routing, user input capture, form validation, and reactive view state.
@@ -142,7 +130,7 @@ To preserve clean separation of concerns, each container is governed by explicit
   - **No Canonical Business Rule Ownership:** The SPA must not be the authoritative decision-maker for financial calculations. Canonical commission deductions, net revenue amounts, and revenue recognition must be validated and determined by the Backend API.
   - **No Persistent State Storage:** Client-side local storage or memory state must not serve as the canonical source of truth for business transactions.
 
-### 5.2. Container 2: ASP.NET Core Backend API
+### 4.2. Container 2: ASP.NET Core Backend API
 - **What It Does:**
   - Exposes RESTful API endpoints documented via OpenAPI/Swagger specifications.
   - Validates request payloads (e.g., verifying that line items exist and discounts do not exceed item totals).
@@ -156,7 +144,7 @@ To preserve clean separation of concerns, each container is governed by explicit
   - **No Delegated Business Calculation:** The API must never trust client-computed totals for persistence; it must independently recalculate all financial values from canonical rates.
   - **No Direct External API Coupling (in MVP):** The API must not maintain synchronous blocking dependencies on external marketplace APIs that are outside the MVP scope.
 
-### 5.3. Container 3: PostgreSQL Database
+### 4.3. Container 3: PostgreSQL Database
 - **What It Does:**
   - Stores relational transactional tables: `Orders`, `OrderItems`, `FeeSchedules`, `ReconciliationRecords`, `DiscrepancyAudits`.
   - Enforces schema integrity, data types, foreign keys, unique indexes, and audit timestamps.
@@ -168,7 +156,7 @@ To preserve clean separation of concerns, each container is governed by explicit
 
 ---
 
-## 6. Container Communication Protocols
+## 5. Container Communication Protocols
 
 The table below catalogs all runtime communication paths between containers and actors within the MVP architecture:
 
@@ -188,11 +176,11 @@ The table below catalogs all runtime communication paths between containers and 
 
 ---
 
-## 7. Current Implementation Status
+## 6. Current Implementation Status
 
 This section evaluates the active state of the repository codebase against the target container architecture.
 
-### 7.1. Container Implementation Reality
+### 6.1. Container Implementation Reality
 
 | Container | Architectural Target | Active Repository Implementation State | Status |
 |---|---|---|:---:|
@@ -200,7 +188,7 @@ This section evaluates the active state of the repository codebase against the t
 | **ASP.NET Core Backend API** | Centralized REST API orchestrating business rules and database persistence | • Web API project exists (`FashionWeb.Api`, `net8.0`, `Microsoft.NET.Sdk.Web`).<br>• Controllers exist (`OrdersController`, `SettlementController`, `DashboardController`).<br>• Swagger/OpenAPI configured (`AddSwaggerGen()`, `UseSwagger()`, `UseSwaggerUI()`).<br>• Dependency Injection, CORS, and Class Library project references are established.<br>• *Current Gap:* Several service methods currently return prototype/hardcoded responses rather than fully executing database persistence. | **Partial** |
 | **PostgreSQL Database** | Relational transactional database storing canonical operational and financial data | • Data access project exists (`FashionWeb.Data`) referencing `Npgsql.EntityFrameworkCore.PostgreSQL 8.0.0`.<br>• `AppDbContext` is defined with DbSets (`Orders`, `OrderItems`, `FeeSchedules`, `ReconciliationRecords`, `DiscrepancyAudits`).<br>• PostgreSQL connection string and `UseNpgsql(...)` registration configured in `Program.cs`.<br>• *Current Gap:* Database migrations and end-to-end relational data persistence are partially utilized across active runtime workflows. | **Partial** |
 
-### 7.2. Inter-Container Relationship Reality
+### 6.2. Inter-Container Relationship Reality
 
 | Relationship Path | Target Protocol | Active Implementation Status | Current Technical Reality |
 |---|---|:---:|---|
@@ -210,7 +198,7 @@ This section evaluates the active state of the repository codebase against the t
 
 ---
 
-## 8. Target vs. Current Gap Analysis
+## 7. Target vs. Current Gap Analysis
 
 | Gap Identifier | Architecture Domain | Target State (MVP Container Architecture) | Current Codebase State (AS-IS) | Architectural Gap Resolution Path |
 |---|---|---|---|---|
@@ -225,7 +213,7 @@ This section evaluates the active state of the repository codebase against the t
 
 ---
 
-## 9. Architectural Decisions (ADR Summary)
+## 8. Architectural Decisions (ADR Summary)
 
 The container architecture is governed by six foundational architectural decisions:
 
@@ -255,7 +243,7 @@ The container architecture is governed by six foundational architectural decisio
 
 ---
 
-## 10. Traceability: Mapping P01 Context to P02 Containers
+## 9. Traceability Matrix
 
 The table below demonstrates 100% traceability from the Level 1 System Context defined in [c4-context_en.md](c4-context_en.md) to the Level 2 Containers defined in this specification:
 
@@ -275,12 +263,3 @@ The table below demonstrates 100% traceability from the Level 1 System Context d
 
 ---
 
-## 11. Architectural Verification & Conclusion
-
-### 11.1. Container Architectural Verification
-- **Clear Independent Deployability:** The architecture answers precisely what independently executable units compose the system: one frontend web application, one backend REST API service, and one relational database management system.
-- **No Premature Component Ingestion:** Internal implementation classes (`OrderService`, `Repository`, `FeeStrategy`, individual table schemas) are intentionally reserved for **P03: Component Diagram**.
-- **No Technology Bloat:** In-memory caching (Redis), asynchronous message queues (RabbitMQ/Kafka), and API gateways are deliberately excluded, keeping the architecture lean and aligned with verified MVP requirements.
-
-### 11.2. Progression to P03
-With the Target Container Architecture formalized and implementation gaps clearly delineated, the architectural progression proceeds naturally to **P03: Component Architecture**, which will decompose the **ASP.NET Core Backend API** container into its internal domain services, strategy engines, controllers, and data access repositories.
