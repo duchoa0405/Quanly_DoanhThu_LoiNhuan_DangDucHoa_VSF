@@ -1,9 +1,5 @@
 # 05 — Sequence Diagrams: Core API Workflows
 
-> **Project:** FASHION-WEB — Multi-Channel Revenue & Cash Flow Settlement Management  
-> **Layer Scope:** Client SPA, Presentation (`FashionWeb.Api`), Business (`FashionWeb.Business`), Data (`FashionWeb.Data`), PostgreSQL 16  
-> **Architecture Pattern:** Clean Architecture 3-Tier, Strategy Pattern, Eventual Consistency, RBAC Enforcement
-
 ---
 
 ## 1. Scope & Execution Scenarios
