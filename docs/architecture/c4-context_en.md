@@ -81,42 +81,67 @@ To maintain complete architectural integrity between documentation and working s
 The following diagram defines the system boundary, primary human actors, active external systems, and future planned integrations:
 
 ```mermaid
-C4Context
-    title System Context Diagram (C4 Level 1) — Fashion Revenue & Profit Management System
+flowchart TB
+    %% Human Actors (C4 Person)
+    subgraph Actors [" 👥 Human Roles & Stakeholders "]
+        direction LR
+        sales["👤 <b>Sales & Operations Staff</b><br/><small>Captures orders & tracks delivery</small>"]
+        fin["👤 <b>Finance Manager</b><br/><small>Uploads statements & audits variances</small>"]
+        owner["👤 <b>Shop Owner / Executive</b><br/><small>Monitors KPIs & approves disputes</small>"]
+    end
 
-    Person(sales, "Sales & Operations Staff", "Captures multi-channel orders, monitors fulfillment progress, and processes order cancellations.")
-    Person(finance, "Finance Manager", "Uploads settlement statements, executes payout reconciliation, and files discrepancy audit cases.")
-    Person(owner, "Shop Owner / Executive", "Monitors revenue/profit KPIs, approves financial dispute resolutions, and configures platform fee rates.")
+    %% External Operational Channels
+    subgraph ExternalSources [" 🌐 External Operational Channels "]
+        mktPlace["🛒 <b>Marketplace Channels</b><br/><small>(TikTok Shop, Shopee)</small><br/><i>Customer orders & store listings</i>"]
+        stmtFiles["📄 <b>Bank & Wallet Statements</b><br/><small>(Excel / CSV Files)</small><br/><i>Settled disbursements & fee deductions</i>"]
+    end
 
-    Enterprise_Boundary(b0, "Fashion Retail Enterprise Boundary") {
-        System(system, "Fashion Revenue & Profit Management System", "Central financial control platform that orchestrates multi-channel orders, estimates and freezes marketplace fees, executes two-way settlement reconciliation, and analyzes net profitability.")
-        
-        System_Ext(posTerminal, "In-Store POS & QR Terminal", "Physical counter checkout terminal providing in-store sales transactions and VietQR payment confirmations.")
-    }
+    %% Core System Boundary
+    subgraph EnterpriseBoundary [" 🏢 Fashion Retail Enterprise Boundary "]
+        direction TB
+        system["🏢 <b>Fashion Revenue & Profit Management System</b><br/><i>[Core Software System]</i><br/>Orchestrates orders, estimates & freezes platform fees,<br/>reconciles wallet payouts, and analyzes net profit"]
+        posTerminal["📠 <b>In-Store POS & QR Terminal</b><br/><i>[Operational Hardware]</i><br/>Processes counter walk-in sales & VietQR payments"]
+    end
 
-    System_Ext(statementFiles, "Marketplace & Bank Statement Files", "Spreadsheet files (.xlsx / .csv) exported from TikTok Shop, Shopee, and banking portals containing settled payouts and deductions.")
+    %% Future Planned Integrations
+    subgraph PlannedBoundary [" 🚀 Future Automated Integrations (Phase 2 Roadmap) "]
+        direction LR
+        mktApis["⚡ <b>Marketplace Open APIs</b><br/><small>(TikTok / Shopee Webhooks)</small><br/><i>Automated real-time order stream [Planned]</i>"]
+        bankApi["🏦 <b>Open Banking API Gateway</b><br/><small>(Direct Bank Feeds)</small><br/><i>Automated statement sync [Planned]</i>"]
+    end
 
-    System_Ext(marketplaceChannels, "Marketplace Seller Channels (TikTok Shop, Shopee)", "External multi-channel marketplaces where end-customers browse, order garments, and make payments.")
+    %% Actor Interactions
+    sales -->|"Creates orders & updates stages<br/>[Web Interface]"| system
+    fin -->|"Audits variances & files disputes<br/>[Web Interface]"| system
+    owner -->|"Inspects KPIs & approves cases<br/>[Web Interface]"| system
 
-    Boundary(bFuture, "Future Automated Integrations (Phase 2 Roadmap)", "dashed") {
-        System_Ext(marketplaceApis, "Marketplace Open APIs (TikTok / Shopee)", "Direct open platform webhook APIs for real-time order stream and dynamic payout synchronization. [Status: Planned]")
-        System_Ext(bankingApi, "Open Banking API Gateway", "Direct commercial bank connection for automated daily statement feeds. [Status: Planned]")
-    }
+    %% External System Interactions
+    mktPlace -->|"Originates online orders<br/>[Seller Center]"| sales
+    sales -->|"Operates counter checkout<br/>[Physical POS]"| posTerminal
+    posTerminal -->|"Transmits counter sales & payments<br/>[Local POS Feed]"| system
 
-    Rel(sales, system, "Creates orders, previews fees, and updates delivery stages", "Web Interface")
-    Rel(finance, system, "Uploads statement files, reconciles payouts, and submits dispute cases", "Web Interface")
-    Rel(owner, system, "Inspects executive KPIs, approves discrepancy claims, and updates fee rules", "Web Interface")
+    fin -->|"Downloads payout sheets<br/>[Manual Export]"| stmtFiles
+    stmtFiles -->|"Supplies statement lines for matching<br/>[File Upload .xlsx / .csv]"| system
 
-    Rel(sales, posTerminal, "Records counter walk-in sales and scans payment QR", "Physical Operation")
-    Rel(posTerminal, system, "Provides counter sales records and customer payments", "Manual / Local POS Feed")
+    %% Future Planned Connections
+    system -.->|"Future: Webhook sync [HTTPS / JSON]"| mktApis
+    system -.->|"Future: Statement feeds [Open Banking API]"| bankApi
 
-    Rel(finance, statementFiles, "Downloads settlement reports from seller dashboards and bank accounts", "Manual Export")
-    Rel(statementFiles, system, "Supplies itemized transaction lines and actual net disbursements for reconciliation", "File Upload (.xlsx / .csv)")
+    %% C4 Theme Styling
+    classDef personStyle fill:#08427b,stroke:#052e56,color:#ffffff,stroke-width:2px;
+    classDef systemStyle fill:#1168bd,stroke:#0b4884,color:#ffffff,stroke-width:2px;
+    classDef extStyle fill:#6c757d,stroke:#495057,color:#ffffff,stroke-width:2px;
+    classDef plannedStyle fill:#ffffff,stroke:#94a3b8,color:#475569,stroke-width:2px,stroke-dasharray: 4 4;
 
-    Rel(marketplaceChannels, sales, "Generates customer orders on online stores", "Seller Center Notifications")
-    
-    Rel_D(system, marketplaceApis, "Will sync automated order webhooks and escrow releases", "HTTPS / JSON [Planned]")
-    Rel_D(system, bankingApi, "Will ingest automated transaction statements", "HTTPS / Open Banking API [Planned]")
+    class sales,fin,owner personStyle;
+    class system systemStyle;
+    class mktPlace,stmtFiles,posTerminal extStyle;
+    class mktApis,bankApi plannedStyle;
+
+    style EnterpriseBoundary fill:#f8f9fa,stroke:#0b4884,stroke-width:2px;
+    style Actors fill:#eef2f7,stroke:#cbd5e1,stroke-width:1px;
+    style ExternalSources fill:#f1f5f9,stroke:#94a3b8,stroke-width:1px;
+    style PlannedBoundary fill:#fafafa,stroke:#94a3b8,stroke-width:2px,stroke-dasharray: 5 5;
 ```
 
 ---
@@ -180,3 +205,4 @@ The system boundary demarcates the software capabilities owned, maintained, and 
 | **Marketplace & Bank Statement Files** | `US-REC-01` (Statement Import) | `UC06: Reconcile & Confirm Settlement` | `MOD-03: Statement Import Modal` |
 | **Fashion Revenue & Profit Management System** | All functional user stories (`US-ORD-*`, `US-REC-*`, `US-ANA-*`) | All core use cases (`UC01` through `UC11`) | All system screens (`SCR-01`, `SCR-02`, `SCR-03`) |
 
+---
