@@ -1,184 +1,211 @@
-# C4 Context Diagram: Fashion Revenue & Profit Management System
+# C4 Context Specification: Fashion Revenue & Profit Management System
 
 ---
 
-## 1. System Name & Purpose
+## 1. System Name & Target Purpose
 
 ### 1.1. System Name
-The official, standardized name of the system used consistently across all architectural diagrams, specifications, and documentation is:
+The official, standardized name of the system used consistently across all architectural models, specifications, and project assets is:
 
 **Fashion Revenue & Profit Management System**  
 *(Vietnamese: Hệ Thống Quản Lý Doanh Thu & Lợi Nhuận Bán Hàng Đa Kênh Thời Trang)*
 
-### 1.2. Purpose of the System
-The **Fashion Revenue & Profit Management System** exists to resolve the critical "Paper Profit, Negative Cash Flow" problem faced by modern multi-channel fashion retail merchants. The system manages the ingestion and lifecycle tracking of multi-channel orders (TikTok Shop, Shopee, and In-Store POS), systematically unbundles complex marketplace fee deductions (commissions, payment gateway charges, service fees), supports manual and prototype settlement reconciliation against actual bank and platform wallet payout statements, records deduction variances through audit trails, and delivers executive analytics on true net revenue and profitability.
+### 1.2. Target Purpose
+The **Fashion Revenue & Profit Management System** is designed to resolve the critical "Paper Profit, Negative Cash Flow" dilemma encountered by multi-channel fashion retail enterprises. When fully realized, the system serves as the centralized financial and operational control platform that:
+- Ingests and standardizes customer orders across online e-commerce marketplaces (TikTok Shop, Shopee) and in-store retail channels.
+- Enforces rigorous order lifecycle transitions (`Pending` $\rightarrow$ `Shipped` $\rightarrow$ `Delivered` / `Cancelled`) to guarantee that revenue is recognized officially only upon confirmed delivery.
+- Systematically unbundles and freezes complex sales channel fees (marketplace commissions, payment gateway surcharges, service/shipping vouchers, fixed fees) via configurable fee strategy policies.
+- Governs settlement audit workflows to detect, investigate, and reconcile variances between projected net receivables and actual wallet deposits.
+- Delivers real-time executive visibility into net realized revenue, channel-level financial performance, and top-selling merchandise.
 
 ---
 
 ## 2. Scope of the System
 
-### 2.1. In-Scope Capabilities (P01)
-The system boundary encompasses the following core operational capabilities:
+### 2.1. In-Scope Capabilities (Target Architecture)
+The target system boundary encompasses the following core operational and financial capabilities:
 
-1. **Multi-Channel Order Management:** Ingestion of customer orders across TikTok Shop, Shopee, and In-Store POS, tracking order lifecycle states (`Pending`, `Shipped`, `Delivered`, `Cancelled`), and enforcing strict revenue recognition upon verified delivery.
-2. **Platform Fee Calculation & Policy Configuration:** Itemized estimation of sales channel fees (marketplace commission, payment processing, shipping subsidies/caps, fixed fees) and maintenance of active fee schedules.
-3. **Settlement Review & Variance Auditing (AS-IS Manual / Prototype):** Reviewing delivered orders, recording actual wallet payouts from platform/bank statements, identifying deduction variances, and updating settlement status.
-4. **Discrepancy Auditing & Justification Governance:** Structured recording of justification claims for platform over-deductions (such as courier weight or dimensional surcharge penalties) with documentary evidence, governed by role-based executive approval workflows.
-5. **Revenue & Profit Analytics:** Consolidated executive KPI reporting (Gross Sales, Platform Fee Deductions, Net Realized Revenue, Delivered Order Counts), daily cash flow trend visualization, sales channel revenue distribution, best-performing SKU rankings, and itemized source order audit drilldowns.
+1. **Multi-Channel Order Lifecycle Management:** Ingesting multi-item orders from TikTok Shop, Shopee, and in-store retail sales, maintaining full order state machines, and enforcing revenue recognition upon verified delivery.
+2. **Platform Fee Calculation & Dynamic Policy Engine:** Itemized estimation and automated freezing of platform deductions based on channel-specific fee schedules and transaction terms.
+3. **Settlement Reconciliation & Variance Auditing:** Matching delivered order revenue against external payout records, identifying net disbursement variances, and updating settlement status.
+4. **Discrepancy Justification Governance:** Structured recording and role-based review of platform over-deductions (e.g., courier dimensional weight penalties) backed by audit proof.
+5. **Channel-Level Revenue & Performance Analytics:** Real-time calculation of key financial metrics (Gross Sales, Total Channel Fees, Net Realized Revenue, Delivered Counts), channel share distribution, top-performing SKU rankings, and itemized source order drilldowns.
 
-### 2.2. Out-of-Scope (Deliberate System Exclusions)
-To maintain an explicit, uncompromised system boundary, the following domains are strictly outside the system's ownership and responsibility:
+### 2.2. Out-of-Scope (Deliberate Architectural Exclusions)
+To ensure high cohesion and maintain an uncompromised system boundary, the following domains are strictly outside the system's target ownership:
 
-- **Human Resource Management (HR) & Payroll:** Staff attendance, shift scheduling, and wage processing.
-- **Customer Relationship Management (CRM) & Loyalty:** Direct consumer marketing campaigns, loyalty points, and post-sale messaging.
-- **Full-Scale Warehouse Management (WMS):** Multi-warehouse bin/aisle tracking, wave picking, and automated inventory reordering.
-- **Logistics Fleet Operations:** Fleet dispatch, delivery driver routing, and vehicle telematics.
-- **Marketplace Seller Account Management:** Direct management of marketplace seller shop profiles, buyer customer support chat, and ad campaign bidding within TikTok/Shopee seller centers.
-- **Manufacturing & Bill of Materials (BOM):** Raw material sourcing, garment manufacturing processes, and factory vendor procurement.
+- **Enterprise General Ledger & Tax Accounting:** Corporate balance sheets, asset depreciation, tax compliance filing, and chart of accounts.
+- **Human Resources (HR) & Payroll:** Staff scheduling, attendance tracking, commissions, and payroll disbursement.
+- **Customer Relationship Management (CRM):** Direct consumer marketing, loyalty point programs, and pre-purchase customer service chat.
+- **Full-Scale Warehouse Management (WMS):** Bin/aisle location routing, wave picking, and automated inventory replenishment.
+- **Logistics Fleet Operations:** Vehicle fleet dispatch, courier routing, and physical package transit telematics.
+- **Garment Manufacturing & Bill of Materials (BOM):** Raw fabric procurement, yarn costing, and factory production workflows.
+
+> [!NOTE]
+> **Clarification on "Profit" Scope:**  
+> Within this system, "Profit" specifically denotes **Channel-Level Financial Performance** and **Net Realized Revenue** (Gross Sales minus platform commissions, transaction fees, service vouchers, and settlement variances). It does **not** represent full corporate net accounting profit, as corporate overhead (store lease, central warehouse rent, administrative payroll, and income taxes) is handled outside this system's boundary.
 
 ---
 
-## 3. Human Actors & Responsibilities
+## 3. Human Actors & Business Responsibilities
 
-All actors are strictly derived from verified project requirements (`requirements_invest.md` and `usecase.md`). No unverified aliases are included.
+All human actors are verified against the system requirements (`requirements_invest.md` and `usecase.md`):
 
-| Actor Name | Business Goal | Main System Interactions & Boundaries |
+| Actor Name | Business Responsibility | Target System Interactions |
 |---|---|---|
-| **Sales & Operations Staff** | Accurately capture multi-channel orders, record order progress, and ensure timely fulfillment handover. | • Ingests orders from live streams, hotlines, and walk-in counter sales.<br>• Previews estimated platform fee deductions before order submission.<br>• Updates fulfillment delivery milestones (`Pending` $\rightarrow$ `Shipped` $\rightarrow$ `Delivered`).<br>• Records customer cancellations before carrier dispatch.<br>• *Restricted:* Cannot view wallet payouts, perform settlement audits, or approve financial variances. |
-| **Finance Manager** | Verify wallet cash receipts against internal books, recover shortfall losses, and maintain tax-compliant records. | • Reviews external bank and marketplace payout statements.<br>• Records actual payout deposits and performs manual/prototype reconciliation.<br>• Investigates payment discrepancies and files audit justification cases.<br>• Attaches documentary proof (carrier scale slips, packaging photos) for review.<br>• Exports standardized CSV ledger files for corporate accounting and tax filing.<br>• *Restricted:* Cannot approve own discrepancy claims; cannot input orders. |
-| **Shop Owner** | Maximize take-home profit, prevent platform fee leakage, and ensure cash flow solvency. | • Evaluates top-level financial KPI cards and net cash flow trends.<br>• Configures marketplace commission rates and operational fee schedules.<br>• Reviews and signs off on discrepancy audit cases (`Approve` to accept variance as expense / `Reject` to remand for carrier claim).<br>• Inspects underlying itemized source orders via audit drilldown views. |
+| **Sales & Operations Staff** | Manage multi-channel order intake, monitor fulfillment progress, and handle order adjustments. | • Records multi-channel orders (TikTok Shop, Shopee, in-store sales).<br>• Previews estimated platform fee deductions before order confirmation.<br>• Advances order fulfillment milestones (`Pending` $\rightarrow$ `Shipped` $\rightarrow$ `Delivered`).<br>• Processes customer order cancellations before dispatch.<br>• *Access Boundary:* Excluded from wallet payout audits, fee configuration, and financial approval flows. |
+| **Finance Manager** | Safeguard realized cash flow, reconcile wallet payouts, and investigate fee deductions. | • Reconciles actual marketplace wallet deposits against expected settlement totals.<br>• Identifies payout shortfalls and compiles variance audit justifications with documentary proof.<br>• Reviews channel fee deductions and monitors settlement compliance.<br>• Exports reconciled financial transaction logs to standardized CSV/Excel formats for corporate accounting.<br>• *Access Boundary:* Cannot approve own discrepancy claims; excluded from order creation. |
+| **Shop Owner** | Direct store growth, evaluate multi-channel profitability, and enforce financial governance. | • Evaluates top-level executive KPI cards (Gross Sales, Platform Fees, Net Realized Revenue).<br>• Analyzes sales channel revenue share and top-performing apparel SKUs.<br>• Configures marketplace commission rates, service fee tiers, and operational policies.<br>• Formally reviews and approves/rejects financial discrepancy justification cases.<br>• Inspects underlying itemized source orders via audit drilldown views. |
 
 ---
 
-## 4. Candidate External Systems (AS-IS vs. Planned)
+## 4. Target External Systems
 
-The table below catalogs external software systems interacting across the system boundary. Document files (such as `.xlsx` / `.csv` spreadsheets) and manual POS operations are categorized by their true nature rather than mislabeled as external software systems:
+The target architecture defines the external software systems with which the system interacts to achieve end-to-end operational automation:
 
-| External System / Channel | Classification | Data Exchanged | Current AS-IS Status | Architectural Justification |
-|---|---|---|:---:|---|
-| **Marketplace Seller Centers (TikTok Shop, Shopee)** | External Web Portals | Customer Orders, Retail Prices, Voucher Subsidies, Settlement Payout Reports | **Operational (Manual / Web Export)** | External seller portals where shoppers place orders and where merchants download payout reports. Order data is captured into the system via operator manual entry. |
-| **In-Store POS (Counter Checkout)** | Operational Channel (No Direct System Integration) | Walk-In Counter Sales, Cash / Card Payments, QR Payment Confirmation | **Operational (Manual Entry)** | Walk-in counter sales. Operators input counter sales directly into the system's order interface; no direct hardware or external POS software integration exists in AS-IS. |
-| **Commercial Banking Portals (VCB, MB)** | External Financial Web Portals | Payout Credit Entries, Account Statements | **Operational (Manual Review)** | Banking web portals accessed by Finance to inspect actual received funds; statements are downloaded and reviewed manually. |
-| **TikTok Shop Open API Webhooks** | Automated Platform Webhooks | Real-Time Order Feeds, Instant Fulfillment Status Sync | **Planned (Future Scope)** | Direct bidirectional HTTP webhook integration to be enabled in a future phase once formal marketplace partner licenses are secured. |
-| **Shopee Open Platform API** | Automated Platform Webhooks | Real-Time Marketplace Orders, Automated Settlement Feeds | **Planned (Future Scope)** | Direct open API connection planned for future release; not active in AS-IS. |
-| **Open Banking Core API** | Commercial Banking Gateway | Automated Direct Bank Feeds, Real-Time Deposit Notifications | **Planned (Future Scope)** | Commercial bank direct connectivity planned for future enterprise scale. |
+| Target External System | System Nature | Target Business Role & Data Exchanged | Architectural Justification |
+|---|---|---|---|
+| **TikTok Shop** | External E-Commerce Platform | Provides online order details (customer purchases, product SKUs, vouchers) and supplies official fee deduction and wallet settlement payout data. | Required by `US-ORD-01`, `US-ORD-02`, `US-FEE-01`, and `US-SET-01` to capture TikTok sales and reconcile TikTok Shop wallet disbursements. |
+| **Shopee** | External E-Commerce Platform | Provides online order records (order items, transaction amounts, promotional discounts) and supplies official fee deduction and wallet settlement payout data. | Required by `US-ORD-01`, `US-ORD-02`, `US-FEE-01`, and `US-SET-01` to capture Shopee sales and reconcile Shopee seller wallet disbursements. |
 
----
-
-## 5. Current AS-IS Limitations & Assumptions
-
-To maintain complete architectural integrity between documentation and working software, the following operating assumptions and limitations are explicitly recognized for the AS-IS baseline:
-
-1. **No Live Marketplace Webhooks (AS-IS Baseline):** The system does not connect via live developer APIs to TikTok Shop or Shopee. Online orders are captured through operator manual entry.
-2. **Manual / Prototype Settlement Review:** Payout statements from marketplaces and commercial banks are reviewed manually or uploaded through prototype settlement import views; reconciliation is an assisted manual audit rather than autonomous real-time bank matching.
-3. **No Direct POS Hardware Integration:** Counter sales are recorded manually by sales staff through the web interface; no direct serial, network, or third-party POS software integration exists.
-4. **Internal Fee Strategy Configuration:** Marketplace commission and service fee rates are configured inside the system's fee schedule settings based on published platform rules, without live external fee query APIs.
+> [!IMPORTANT]
+> **Boundary Notes on In-Store POS & Banking Integration:**
+> 1. **In-Store Retail Sales:** In-store POS transactions represent a sales channel operated directly by Sales & Operations Staff via the system's order interface (`US-ORD-01`, `US-FEE-01`). There is no requirement for an external standalone POS software system boundary.
+> 2. **Commercial Banking:** Commercial bank statements and internet banking portals serve as external financial verification references used by the Finance Manager during settlement auditing (`US-SET-02`). Automated direct bank gateway APIs are deliberately excluded from scope.
 
 ---
 
-## 6. C4 Level 1: System Context Diagram (AS-IS Architecture)
+## 5. Target System Context Diagram
 
-The following diagram defines the active AS-IS system context, including human actors, the software system under development, and verified external operational systems:
+The following diagram represents the **Target System Context**, depicting human actors, the central software system, and required target external software systems connected through business-level relationships:
 
 ```mermaid
 flowchart TB
-    %% Human Actors (C4 Person)
+    %% Human Actors
     subgraph Actors [" 👥 Human Roles & Stakeholders "]
         direction LR
-        sales["👤 <b>Sales & Operations Staff</b><br/><small>Captures orders & updates fulfillment</small>"]
-        fin["👤 <b>Finance Manager</b><br/><small>Audits settlements & records discrepancies</small>"]
-        owner["👤 <b>Shop Owner</b><br/><small>Monitors KPIs & approves disputes</small>"]
+        sales["👤 <b>Sales & Operations Staff</b><br/><small>Sales & fulfillment operations</small>"]
+        fin["👤 <b>Finance Manager</b><br/><small>Financial audit & reconciliation</small>"]
+        owner["👤 <b>Shop Owner</b><br/><small>Executive oversight & policy</small>"]
     end
 
-    %% External Operational Systems (AS-IS Only)
-    subgraph ExternalSystems [" 🌐 External Operational Portals "]
-        mktPlace["🛒 <b>Marketplace Seller Centers</b><br/><small>(TikTok Shop, Shopee Seller Portals)</small><br/><i>Hosts online stores & settlement reports</i>"]
-        bankPortal["🏦 <b>Commercial Banking Portals</b><br/><small>(Internet Banking)</small><br/><i>Receives merchant payout deposits</i>"]
+    %% Target External Systems
+    subgraph TargetExternalSystems [" 🌐 Target External Systems "]
+        direction LR
+        tiktok["🛒 <b>TikTok Shop</b><br/><i>[External E-Commerce Platform]</i><br/><small>Marketplace orders & settlement feeds</small>"]
+        shopee["🛒 <b>Shopee</b><br/><i>[External E-Commerce Platform]</i><br/><small>Marketplace orders & settlement feeds</small>"]
     end
 
-    %% Core System Boundary
+    %% Central System Boundary
     subgraph EnterpriseBoundary [" 🏢 Fashion Retail Enterprise Boundary "]
-        direction TB
-        system["🏢 <b>Fashion Revenue & Profit Management System</b><br/><i>[Core Software System]</i><br/>Orchestrates orders, estimates and freezes platform fees,<br/>supports settlement audits, and analyzes net profitability"]
+        system["🏢 <b>Fashion Revenue & Profit Management System</b><br/><i>[Core Software System]</i><br/>Centralizes multi-channel orders, automates fee deductions,<br/>governs settlement audits, and analyzes channel-level profitability"]
     end
 
-    %% Actor Interactions with System
-    sales -->|"Creates orders & updates delivery stages<br/>[Web Interface]"| system
-    fin -->|"Audits settlements & submits dispute justifications<br/>[Web Interface]"| system
-    owner -->|"Inspects revenue/profit KPIs & approves disputes<br/>[Web Interface]"| system
+    %% Business Relationships - Actors to System
+    sales -->|"Manages multi-channel orders & updates fulfillment"| system
+    fin -->|"Reconciles payouts & reviews settlement discrepancies"| system
+    owner -->|"Monitors revenue & channel-level financial performance"| system
 
-    %% Interactions with External Systems
-    mktPlace -->|"Notifies sales of new customer orders<br/>[Seller Portal]"| sales
-    sales -->|"Manually records counter & online orders<br/>[Order Form]"| system
-
-    mktPlace -->|"Provides downloadable settlement reports<br/>[Web Export]"| fin
-    bankPortal -->|"Provides account deposit history<br/>[Web Review]"| fin
+    %% Business Relationships - External Systems to Core System
+    tiktok -->|"Supplies marketplace order & settlement deduction data"| system
+    shopee -->|"Supplies marketplace order & settlement deduction data"| system
 
     %% Styling
     classDef personStyle fill:#08427b,stroke:#052e56,color:#ffffff,stroke-width:2px;
     classDef systemStyle fill:#1168bd,stroke:#0b4884,color:#ffffff,stroke-width:2px;
-    classDef extStyle fill:#6c757d,stroke:#495057,color:#ffffff,stroke-width:2px;
+    classDef extStyle fill:#4b5563,stroke:#374151,color:#ffffff,stroke-width:2px;
 
     class sales,fin,owner personStyle;
     class system systemStyle;
-    class mktPlace,bankPortal extStyle;
+    class tiktok,shopee extStyle;
 
     style EnterpriseBoundary fill:#f8f9fa,stroke:#0b4884,stroke-width:2px;
     style Actors fill:#eef2f7,stroke:#cbd5e1,stroke-width:1px;
-    style ExternalSystems fill:#f1f5f9,stroke:#94a3b8,stroke-width:1px;
+    style TargetExternalSystems fill:#f1f5f9,stroke:#94a3b8,stroke-width:1px;
 ```
 
 ---
 
-## 7. System Boundary Definition (Narrative)
+## 6. System Boundary Definition (Business Responsibility)
 
-The system boundary demarcates the business capabilities owned, maintained, and operated within the **Fashion Revenue & Profit Management System**:
+The system boundary defines the operational and financial responsibilities owned by the **Fashion Revenue & Profit Management System**:
 
-### Inside the Boundary (Owned by System):
-- Maintaining canonical records of multi-channel orders and line items.
-- Itemized estimation and immutable freezing of channel-specific fee deductions upon confirmed delivery.
-- Recording actual settlement payouts and calculating variance between expected net payout and received funds.
-- Discrepancy audit case management with role-based approval governance.
-- Aggregation and rendering of executive financial metrics (Gross Sales, Total Fee Deductions, Net Realized Revenue).
+### Inside the System Boundary (Owned Responsibilities)
+- Ingesting, validating, and cataloging multi-channel orders and itemized line items.
+- Enforcing order fulfillment status lifecycles and officially recognizing revenue upon confirmed delivery.
+- Maintaining active channel fee policies and calculating platform commission, payment, and service fees.
+- Tracking expected net payouts, recording actual wallet settlements, and calculating financial variances.
+- Managing discrepancy justification cases with role-based sign-off controls.
+- Aggregating and visualizing financial metrics (Gross Revenue, Total Fees, Net Realized Revenue) and ranking SKU performance.
 
-### Outside the Boundary (External to System):
-- Customer card acquiring and payment processing networks.
-- Logistics fulfillment, parcel warehousing, and courier delivery fleet operations.
-- Consumer-facing storefront checkout and cart experiences hosted on TikTok Shop and Shopee.
-- Physical counter checkout hardware devices (operated via manual entry into system).
-- Enterprise general ledger accounting and corporate tax filing software.
+### Outside the System Boundary (External Responsibilities)
+- Consumer e-commerce shopping storefronts, shopping carts, and consumer order placement hosted on marketplace platforms.
+- Credit/debit card processing, payment gateway clearing, and commercial bank interbank transfers.
+- Physical parcel sorting, warehousing, linehaul dispatch, and last-mile courier fulfillment.
+- In-store retail register hardware maintenance.
+- Corporate general ledger accounting, tax declaration, and annual auditing.
 
 ---
 
-## 8. C4 Elements Catalog
+## 7. Target C4 Elements Catalog
 
-| Element Name | C4 Type | Responsibility & Business Function | Current Implementation Status |
+| Element Name | C4 Type | Primary Business Responsibility | Role in Target Architecture |
 |---|---|---|:---:|
-| **Fashion Revenue & Profit Management System** | `Software System` | Core platform responsible for order intake, fee estimation, settlement auditing, dispute recording, and profit analytics. | **Core System (In-Scope)** |
-| **Sales & Operations Staff** | `Person` | Inputs orders, monitors delivery stages, and processes order cancellations. | **Active Actor** |
-| **Finance Manager** | `Person` | Audits wallet payouts, records fee discrepancies, and compiles audit evidence. | **Active Actor** |
-| **Shop Owner** | `Person` | Sets fee schedule policies, evaluates store profitability, and approves financial dispute resolutions. | **Active Actor** |
-| **Marketplace Seller Centers** | `External System` | External seller portals (TikTok Shop, Shopee) originating customer orders and payout reports. | **Operational (External Web Portal)** |
-| **Commercial Banking Portals** | `External System` | External internet banking portals displaying account balances and incoming deposits. | **Operational (External Web Portal)** |
+| **Fashion Revenue & Profit Management System** | `Software System` | Central engine orchestrating multi-channel orders, fee policies, settlement audits, and profit analytics. | **Core System** |
+| **Sales & Operations Staff** | `Person` | Creates orders, tracks order progress, and manages cancellations before shipment. | **Human Actor** |
+| **Finance Manager** | `Person` | Reconciles wallet payouts, investigates deduction variances, and exports financial reports. | **Human Actor** |
+| **Shop Owner** | `Person` | Sets fee strategy policies, evaluates store performance KPIs, and approves discrepancy justifications. | **Human Actor** |
+| **TikTok Shop** | `External System` | External e-commerce marketplace providing online orders, fee schedules, and payout settlements. | **Target Integration** |
+| **Shopee** | `External System` | External e-commerce marketplace providing online orders, fee schedules, and payout settlements. | **Target Integration** |
 
 ---
 
-## 9. External Systems Specification
+## 8. Target External Systems Specification
 
-| External System | Why External to Boundary? | Primary Data Exchanged | AS-IS Interaction Mode | Target Future Protocol |
+| Target System | Ownership & Domain | Primary Data Exchanged | Interaction Pattern | Target Justification |
 |---|---|---|---|---|
-| **Marketplace Seller Centers** | Third-party multi-tenant e-commerce platforms with proprietary data models. | Order identifiers, purchased apparel items, applied promotion vouchers, settlement payout reports. | Operator manual review and manual data entry / file download. | Automated REST Webhooks (Future Scope). |
-| **Commercial Banking Portals** | Regulated external financial institution portals. | Payout deposit amounts, credit transaction references. | Finance manual review via web banking interface. | Automated Direct Bank Feed (Future Scope). |
+| **TikTok Shop** | ByteDance Ltd. / Multi-Tenant E-Commerce Platform | Incoming customer orders, SKU line items, discount vouchers, platform fees, and wallet disbursement records. | Automated marketplace data ingestion and settlement synchronization. | Satisfies `US-ORD-01`, `US-ORD-02`, and `US-SET-01` by eliminating manual sales transcriptions from TikTok Shop. |
+| **Shopee** | Sea Group / Multi-Tenant E-Commerce Platform | Incoming customer orders, SKU line items, discount vouchers, platform fees, and wallet disbursement records. | Automated marketplace data ingestion and settlement synchronization. | Satisfies `US-ORD-01`, `US-ORD-02`, and `US-SET-01` by eliminating manual sales transcriptions from Shopee. |
 
 ---
 
-## 10. Traceability Matrix: C4 Context to Requirements & Use Cases
+## 9. Traceability Matrix: Elements to Requirements & Use Cases
 
-| C4 Context Element | Target Requirement ID (`requirements_invest.md`) | Target Use Case (`usecase.md`) | Operational UI Screen / Modal |
+| Architecture Element | Target Requirement ID (`requirements_invest.md`) | Target Use Case (`usecase.md`) | Business Scope & Coverage |
 |---|---|---|---|
-| **Sales & Operations Staff** | `US-ORD-01`<br>`US-ORD-02`<br>`US-ORD-03`<br>`US-FEE-01` | `UC01: Ingest Multi-Channel Orders`<br>`UC02: Automated Platform Fee Estimation`<br>`UC03: Update Order Status`<br>`UC04: Cancel Order & Reverse Revenue` | `SCR-01: Order Management`<br>`MOD-01: Create Order Modal`<br>`MOD-02: Cancel Order Modal` |
-| **Finance Manager** | `US-FEE-01`<br>`US-SET-01`<br>`US-SET-02`<br>`US-DASH-02`<br>`US-DASH-04` | `UC05: View Fee Breakdown`<br>`UC06: Reconcile & Confirm Settlement`<br>`UC07: Generate Settlement Variance Report`<br>`UC11: Drillthrough Source Orders & Export CSV` | `SCR-02: Fees & Settlement`<br>`MOD-03: Statement Import Modal`<br>`Discrepancy Drawer (Settlement Audit)`<br>`SCR-03: Revenue Dashboard` |
-| **Shop Owner** | `US-FEE-01`<br>`US-SET-01`<br>`US-DASH-01`<br>`US-DASH-02`<br>`US-DASH-03`<br>`US-DASH-04` | `UC08: View Top 3 Revenue KPI Cards`<br>`UC09: Filter Revenue by Date & Channel`<br>`UC10: View Channel Breakdown & Top SKUs`<br>`UC11: Drillthrough Source Orders & Export CSV` | `SCR-03: Revenue Dashboard`<br>`MOD-04: Fee Schedule Modal`<br>`MOD-05: Source Order Drilldown Modal` |
-| **Marketplace Seller Centers** | `US-ORD-01`<br>`US-SET-01`<br>`US-SET-02` | `UC01: Ingest Multi-Channel Orders`<br>`UC06: Reconcile & Confirm Settlement` | `MOD-01: Create Order Modal`<br>`MOD-03: Statement Import Modal` |
-| **Commercial Banking Portals** | `US-SET-02` | `UC06: Reconcile & Confirm Settlement` | `SCR-02: Fees & Settlement` |
-| **Fashion Revenue & Profit Management System** | All system user stories (`US-ORD-*`, `US-FEE-*`, `US-SET-*`, `US-DASH-*`) | All system use cases (`UC01` through `UC11`) | All system screens (`SCR-01`, `SCR-02`, `SCR-03`) |
+| **Sales & Operations Staff** | `US-ORD-01`<br>`US-ORD-02`<br>`US-ORD-03`<br>`US-FEE-01` | `UC01: Ingest Multi-Channel Orders`<br>`UC02: Automated Platform Fee Estimation`<br>`UC03: Update Order Status`<br>`UC04: Cancel Order & Reverse Revenue` | Order capture across TikTok Shop, Shopee, and retail channels; fee preview; order lifecycle transitions. |
+| **Finance Manager** | `US-FEE-01`<br>`US-SET-01`<br>`US-SET-02`<br>`US-DASH-02`<br>`US-DASH-04` | `UC05: View Fee Breakdown`<br>`UC06: Reconcile & Confirm Settlement`<br>`UC07: Generate Settlement Variance Report`<br>`UC11: Drillthrough Source Orders & Export CSV` | Fee transparency; wallet settlement auditing; variance identification; source order drillthrough and CSV export. |
+| **Shop Owner** | `US-FEE-01`<br>`US-SET-01`<br>`US-DASH-01`<br>`US-DASH-02`<br>`US-DASH-03`<br>`US-DASH-04` | `UC08: View Top 3 Revenue KPI Cards`<br>`UC09: Filter Revenue by Date & Channel`<br>`UC10: View Channel Breakdown & Top SKUs`<br>`UC11: Drillthrough Source Orders & Export CSV` | Executive dashboard; KPI cards (Gross, Fees, Net); channel share charts; SKU leaderboard; policy governance. |
+| **TikTok Shop** | `US-ORD-01`<br>`US-ORD-02`<br>`US-FEE-01`<br>`US-SET-01` | `UC01: Ingest Multi-Channel Orders`<br>`UC02: Automated Platform Fee Estimation`<br>`UC05: View Fee Breakdown` | Automated source of TikTok customer orders, channel fee deductions, and wallet payout statements. |
+| **Shopee** | `US-ORD-01`<br>`US-ORD-02`<br>`US-FEE-01`<br>`US-SET-01` | `UC01: Ingest Multi-Channel Orders`<br>`UC02: Automated Platform Fee Estimation`<br>`UC05: View Fee Breakdown` | Automated source of Shopee customer orders, channel fee deductions, and wallet payout statements. |
+| **Fashion Revenue & Profit Management System** | All Stories (`US-ORD-*`, `US-FEE-*`, `US-SET-*`, `US-DASH-*`) | All Use Cases (`UC01` through `UC11`) | Core system fulfilling end-to-end multi-channel order, fee, settlement, and analytics requirements. |
+
+---
+
+## 10. Current Implementation Status
+
+This section explicitly documents the **current implementation baseline (AS-IS)** and highlights the architectural progression required to reach the target architecture.
+
+### 10.1. Target Elements vs. Current Status
+
+| Target Element | Target Architectural Role | Current Implementation Status | Notes / Operational Reality |
+|---|---|:---:|---|
+| **Sales Workflows** | Multi-channel order creation & lifecycle management | **Operational (Partial)** | Staff manually enters orders via UI form; lifecycle transitions (`Pending` $\rightarrow$ `Shipped` $\rightarrow$ `Delivered` / `Cancelled`) are functional. |
+| **Finance Workflows** | Settlement review, variance auditing, CSV export | **Operational (Partial)** | Settlement review and manual deposit entry are functional; dispute drawer is operational. |
+| **Owner Workflows** | KPI oversight, fee policy management, dispute approval | **Operational (Partial)** | Top 3 KPI cards, channel filters, and dispute approval workflows are functional. |
+| **TikTok Shop Integration** | Automated direct order & settlement ingestion | **Not Implemented (Manual)** | Current orders from TikTok Shop are transcribed manually by sales operators. |
+| **Shopee Integration** | Automated direct order & settlement ingestion | **Not Implemented (Manual)** | Current orders from Shopee are transcribed manually by sales operators. |
+| **Settlement Workflow** | End-to-end automated reconciliation | **Prototype** | Assisted manual reconciliation using uploaded/entered wallet statement values. |
+| **Analytics Engine** | Real-time database-backed financial metrics | **Operational (Partial)** | Financial totals are calculated from active orders with partially preset sample baseline data. |
+
+### 10.2. Capability Gap: Target vs. Current
+
+| Capability Area | Target Architecture | Current Implementation (AS-IS) | Architectural Evolution Path |
+|---|---|---|---|
+| **Marketplace Orders** | Automated continuous marketplace order feed synchronization | Manual data entry by sales staff via web order modal | Implement secure marketplace connector services (P02/P03). |
+| **Settlement & Audit** | Defined settlement audit matching against official payout feeds | Prototype settlement interface with manual deposit confirmation | Connect verified marketplace settlement statements to automated reconciliation logic. |
+| **Analytics & Reporting** | Fully dynamic database-backed KPI calculation & drilldown | Partially hard-coded baseline data combined with active order aggregates | Complete end-to-end relational database persistence across all reporting views. |
+| **Platform Fee Policy** | Dynamically configurable strategy engine with active versioning | Prototype fee schedules based on preset channel parameters | Support dynamic administrative fee rule editing and effective-date versioning. |
+
+### 10.3. Architectural Conclusion
+By clearly bifurcating the **Target System Context** (what the system will interact with upon full completion) from the **Current Implementation Status** (where current code stands today), the architecture establishes a clean, forward-compatible blueprint that guides subsequent container (P02) and component (P03) designs without confusing interim implementation constraints with architectural intent.
