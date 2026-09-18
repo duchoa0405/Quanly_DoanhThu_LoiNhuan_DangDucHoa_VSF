@@ -24,14 +24,14 @@ The matrix defines **Which Feature is performed by Which Role on Which Screen**:
 
 | UI Screen (Workspace) | Use Case / Feature Name | User Role | Business Responsibility & Controls |
 |---|---|:---:|---|
-| **Screen 1: Order Management** *(Orders Tab)* | **UC01: Ingest Multi-Channel Orders (TikTok/Shopee/POS)** | `Sales / Ops`<br>`Shop Owner` | Records order details from TikTok Shop, Shopee, and POS (SKU, quantity, unit price, discounts). Supports multi-line items. |
+| **Screen 1: Orders Management** *(Orders Tab)* | **UC01: Ingest Multi-Channel Orders (TikTok/Shopee/POS)** | `Sales / Ops`<br>`Shop Owner` | Records order details from TikTok Shop, Shopee, and POS (SKU, quantity, unit price, discounts). Supports multi-line items. |
 | | **UC02: Automated Platform Fee Estimation (Strategy)** | `Platform Fee Engine`<br>*(Automated Engine)* | Automatically applies channel-specific fee deduction formulas (commission, payment, service fees). |
 | | **UC03: Update Order Status (Shipped $\rightarrow$ Delivered)** | `Sales / Ops` | Upon successful delivery (`DELIVERED`), the system **officially recognizes revenue** into the accounting period. |
 | | **UC04: Cancel Order & Reverse Revenue (Cancelled)** | `Sales / Ops` | Handles customer cancellations/returns before fulfillment, automatically excluding them from realized revenue. |
-| **Screen 2: Fees & Settlement** *(Settlement Tab)* | **UC05: View Fee Breakdown & Estimated Settlement** | `Finance Manager`<br>`Shop Owner` | Transparently breaks down: Gross Sales $\rightarrow$ Commission Fees $\rightarrow$ Transaction Fees $\rightarrow$ Net Payout. |
+| **Screen 2: Fees & Settlement** *(Settlement Tab)* | **UC05: View Fee Breakdown & Estimated Settlement** | `Finance Manager`<br>`Shop Owner` | Transparently breaks down: Gross Revenue $\rightarrow$ Commission Fees $\rightarrow$ Transaction Fees $\rightarrow$ Net Payout. |
 | | **UC06: Reconcile & Confirm Settlement (On Variance)** | `Finance Manager` | Audits platform wallet payout statements and updates `Actual Settlement Amount` if unexpected deductions occur. |
 | | **UC07: Generate Settlement Variance Report** | `Finance Manager`<br>`Shop Owner` | Analyzes variances between projected payout vs. actual wallet deposit to identify discrepancies. |
-| **Screen 3: Revenue Dashboard** *(Dashboard Tab)* | **UC08: View Top 3 Revenue KPI Cards** | `Shop Owner`<br>`Finance Manager` | Monitors 3 core financial KPIs: **Gross Sales**, **Total Platform Fees Deducted**, **Net Realized Revenue**. |
+| **Screen 3: Revenue Dashboard** *(Dashboard Tab)* | **UC08: View Top 3 Revenue KPI Cards** | `Shop Owner`<br>`Finance Manager` | Monitors 3 core financial KPIs: **Gross Revenue**, **Total Platform Fees Deducted**, **Net Realized Revenue**. |
 | | **UC09: Filter Revenue by Date & Channel** | `Shop Owner`<br>`Finance Manager` | Filters financial metrics dynamically by timeframe (Today, Last 7 Days, This Month) and by sales channel. |
 | | **UC10: View Channel Breakdown & Top SKUs** | `Shop Owner`<br>`Finance Manager` | Visualizes revenue share pie/bar charts across channels and ranks top-performing product SKUs. |
 | | **UC11: Drillthrough Source Orders & Export CSV** | `Finance Manager`<br>`Shop Owner` | Drills through KPI totals to inspect granular source orders and exports reconciliation CSV/Excel files. |
@@ -53,7 +53,7 @@ The matrix defines **Which Feature is performed by Which Role on Which Screen**:
 
 ### 4.1. Scenario 1: Multi-Channel Order Ingestion & Fee Estimation (UC-ORDER-01)
 * **Primary Actor:** `Sales & Ops Staff`
-* **Workspace:** Screen 1: Order Management
+* **Workspace:** Screen 1: Orders Management
 * **Main Flow:**
   1. Operator selects Channel (*TikTok Shop, Shopee, or POS*) and enters external Order ID.
   2. Adds order line items (SKU, quantity, unit price) and inputs voucher discounts.
@@ -64,7 +64,7 @@ The matrix defines **Which Feature is performed by Which Role on Which Screen**:
 
 ### 4.2. Scenario 2: Order Lifecycle & Revenue Recognition (UC-REV-02)
 * **Primary Actor:** `Sales & Ops Staff`
-* **Workspace:** Screen 1: Order Management
+* **Workspace:** Screen 1: Orders Management
 * **Rules:**
   1. **Dispatch (`SHIPPED`):** Revenue is marked as *In-Transit Revenue*.
   2. **Delivery (`DELIVERED`):** System **officially credits realized revenue** to the accounting dashboard.

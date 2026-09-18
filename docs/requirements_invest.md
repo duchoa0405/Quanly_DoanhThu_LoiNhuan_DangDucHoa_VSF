@@ -20,9 +20,9 @@ This document standardizes the functional requirements of the system into **User
 
 | Module | Story ID | User Story Title | Primary Role | Screen | Priority |
 |---|---|---|:---:|---|:---:|
-| **M01: Multi-Channel Order Management** | `US-ORD-01` | Ingest Multi-Channel Multi-Line Orders | Sales & Ops | Screen 1: Order Management | P1 (Must) |
-| | `US-ORD-02` | Track Order Lifecycle & Official Revenue Recognition | Sales & Ops | Screen 1: Order Management | P1 (Must) |
-| | `US-ORD-03` | Cancel Orders & Exclude from Net Revenue | Sales & Ops | Screen 1: Order Management | P1 (Must) |
+| **M01: Multi-Channel Order Management** | `US-ORD-01` | Ingest Multi-Channel Multi-Line Orders | Sales & Ops | Screen 1: Orders Management | P1 (Must) |
+| | `US-ORD-02` | Track Order Lifecycle & Official Revenue Recognition | Sales & Ops | Screen 1: Orders Management | P1 (Must) |
+| | `US-ORD-03` | Cancel Orders & Exclude from Net Revenue | Sales & Ops | Screen 1: Orders Management | P1 (Must) |
 | **M02: Sales Fees & Settlement** | `US-FEE-01` | Preview fees by sales channel and payment method, including in-store purchases | Finance Manager / Shop Owner | Screen 1 & Screen 2 | P1 (Must) |
 | | `US-SET-01` | Transparent Platform Fee Breakdown & Projected Net | Finance Manager | Screen 2: Fees & Settlement | P1 (Must) |
 | | `US-SET-02` | Settlement Audit & Actual Wallet Deposit Update | Finance Manager | Screen 2: Fees & Settlement | P2 (Should) |

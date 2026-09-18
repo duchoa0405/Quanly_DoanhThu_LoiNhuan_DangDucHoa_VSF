@@ -1,5 +1,7 @@
 # C4 Context Specification: Fashion Revenue & Profit Management System
 
+> **Status:** LOCKED (Target MVP Baseline)
+
 ---
 
 ## 1. System Name & Target Purpose

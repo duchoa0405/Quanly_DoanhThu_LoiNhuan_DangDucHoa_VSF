@@ -1,5 +1,6 @@
 # C4 Container Specification: Fashion Revenue & Profit Management System
 
+> **Status:** LOCKED (Target MVP Baseline)
 
 ## 1. Target Container Scope (MVP Target)
 
@@ -43,7 +44,7 @@ The following catalog defines each target container, its runtime type, technolog
 
 | Container | Type | Technology | Primary Responsibilities | Data Ownership |
 |---|---|---|---|---|
-| **React Web SPA** | Client-Side Web Application | React 18, TypeScript, React Router 6, Axios *(Vite build tool)* | • Presents intuitive workspaces for Sales/Ops, Finance, and Shop Owner.<br>• Collects order details and provides real-time client-side fee previews.<br>• Renders settlement reconciliation workflows and discrepancy review drawers.<br>• Visualizes financial dashboards, channel share distributions, and top SKU charts.<br>• Dispatches HTTP REST requests to the Backend API. | **Transient Presentation State Only.**<br>Does not own or persist authoritative business data. |
+| **React Web SPA** | Client-Side Web Application | React 18, TypeScript, React Router 6, Axios *(Vite build tool)* | • Presents intuitive workspaces for Sales/Ops, Finance, and Shop Owner.<br>• Collects order details and requests and displays fee previews calculated by the Backend API.<br>• Renders settlement reconciliation workflows and discrepancy review drawers.<br>• Visualizes financial dashboards, channel share distributions, and top SKU charts.<br>• Dispatches HTTP REST requests to the Backend API. | **Transient Presentation State Only.**<br>Does not own or persist authoritative business data. |
 | **ASP.NET Core Backend API** | Server-Side Application | ASP.NET Core 8 (`net8.0`), C# 12, Microsoft.NET.Sdk.Web | • Exposes structured RESTful JSON endpoints.<br>• Validates request payloads and enforces authorization boundaries.<br>• Authoritatively computes platform fee deductions via Strategy logic.<br>• Executes order state transitions (`Pending` $\rightarrow$ `Shipped` $\rightarrow$ `Delivered` / `Cancelled`).<br>• Enforces official revenue recognition upon verified delivery.<br>• Manages settlement variance calculation and discrepancy audit workflows.<br>• Executes dynamic financial aggregation queries for analytics dashboards.<br>• Exposes interactive OpenAPI/Swagger contract. | **Authoritative Business Rules & Workflow State.**<br>Orchestrates data operations, but relies on PostgreSQL for physical persistence. |
 | **PostgreSQL Database** | Relational Database Management System | PostgreSQL 16 *(Accessed via EF Core 8 & Npgsql provider)* | • Guarantees ACID transactional integrity for all enterprise operations.<br>• Stores relational schemas: orders, order items, fee schedules, settlement reconciliations, discrepancy records.<br>• Enforces referential integrity, foreign key constraints, and unique indices.<br>• Serves indexed queries for financial analytics, channel distributions, and drilldowns. | **Authoritative Transactional Source of Truth.**<br>Owns all persistent business and financial records. |
 
@@ -74,7 +75,7 @@ flowchart TB
     subgraph SystemBoundary [" 🏢 Fashion Revenue & Profit Management System (System Boundary) "]
         direction TB
 
-        spa["💻 <b>React Web SPA</b><br/><i>[Container: Client-Side Web Application]</i><br/>React 18, TypeScript, React Router, Axios<br/>Delivers multi-role workspaces, fee preview,<br/>settlement UI, and financial analytics dashboard"]
+        spa["💻 <b>React Web SPA</b><br/><i>[Container: Client-Side Web Application]</i><br/>React 18, TypeScript, React Router, Axios<br/>Delivers multi-role workspaces, displays fee previews,<br/>settlement UI, and financial analytics dashboard"]
 
         api["⚙️ <b>ASP.NET Core Backend API</b><br/><i>[Container: Server-Side Application]</i><br/>ASP.NET Core 8, C# 12, REST API, Swagger<br/>Authoritative fee strategy calculation, order lifecycle,<br/>settlement reconciliation, discrepancy logic, and analytics queries"]
 
@@ -121,7 +122,7 @@ To preserve clean separation of concerns, each container is governed by explicit
 - **What It Does:**
   - Renders user interfaces tailored to Sales & Operations Staff, Finance Manager, and Shop Owner.
   - Manages client-side routing, user input capture, form validation, and reactive view state.
-  - Computes instant client-side fee previews for immediate operator feedback during order creation.
+  - Requests and displays fee previews calculated by the Backend API for immediate operator feedback during order creation.
   - Displays settlement audit discrepancy drawers and status badges (`Pending Review`, `Reviewed`).
   - Renders executive KPI summary cards, channel distribution pie charts, and top SKU performance bar charts.
   - Communicates asynchronously with the Backend API via standardized HTTP REST calls.
@@ -136,7 +137,7 @@ To preserve clean separation of concerns, each container is governed by explicit
   - Validates request payloads (e.g., verifying that line items exist and discounts do not exceed item totals).
   - Enforces domain state machine lifecycles (`Pending` $\rightarrow$ `Shipped` $\rightarrow$ `Delivered` / `Cancelled`) and official revenue recognition on `Delivered`.
   - Authoritatively calculates platform fee deductions using the Strategy pattern based on active fee schedules.
-  - Calculates settlement variances (`Variance = Projected Net - Actual Settlement`) and maintains discrepancy audit trails.
+  - Calculates settlement variances (`variance_amount = projected_settlement - actual_settlement`) and maintains discrepancy audit trails.
   - Executes dynamic aggregation queries for executive financial KPIs across filtered dates and channels.
   - Manages database transactions, connection lifetimes, and entity mapping via Entity Framework Core.
 - **What It MUST NOT Do:**

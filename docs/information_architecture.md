@@ -76,9 +76,9 @@ All business data in FASHION-WEB is organized into 3 domains:
 * Purpose: Provide real-time financial metrics and channel performance insights.
 * Field specifications:
   * 3 High-level KPI Cards (aggregated strictly from `DELIVERED` orders within selected period):
-    1. Total Gross Sales: sum(gross_revenue)
+    1. Gross Revenue: sum(gross_revenue)
     2. Total Platform Fees: sum(total_platform_fees)
-    3. Total Net Settlement: sum(projected_net_settlement)
+    3. Net Realized Revenue: sum(projected_net_settlement)
   * Channel Breakdown: Revenue and percentage contribution per channel (`TIKTOK`, `SHOPEE`, `POS`).
   * Top 5 SKU Leaderboard: Top 5 products ranked descending by sales volume and revenue.
   * CSV Export Dataset: Detailed transaction ledger with reconciliation metrics for audit.
@@ -130,8 +130,8 @@ The screen hierarchy of FASHION-WEB follows the 3-click rule and enforces clear 
 The application interface consists of 5 interactive layers:
 
 #### 3.1. Level 0: Global Shell & Topbar
-* Persistent topbar containing: FASHION-WEB branding, live channel connection badges (TikTok Shop, Shopee, POS), and active user context with assigned role.
-* Navigation tab bar providing zero-latency switching across the 3 primary Level 1 screens.
+* Persistent topbar containing: FASHION-WEB branding, workflow mode tag (`Workflow: Manual Entry & Assisted Audit`), and active user context with assigned role.
+* Navigation tab bar providing zero-latency switching across the 3 primary Level 1 screens: `Orders Management`, `Fees & Settlement`, `Revenue Dashboard`.
 
 #### 3.2. Level 1 & Level 2: 3 Main Screens & View Panels
 
@@ -140,15 +140,15 @@ The application interface consists of 5 interactive layers:
 * Panel 1.1 (Toolbar & Filters): Status filter tabs (All, Pending, Shipped, Delivered, Cancelled), quick search (Order ID, SKU, customer name), and action button to open MOD-01.
 * Panel 1.2 (Multi-Channel Orders Table): Master table listing Order ID, channel badge, creation date, customer, items summary, paid total, and current status. Row actions provide quick status transitions (Ship, Deliver) and button to open MOD-02 cancellation modal.
 
-##### Screen 2: Fees & Wallet Settlement (SCR-02)
+##### Screen 2: Fees & Settlement (SCR-02)
 * Primary Users: Finance Manager, Shop Owner.
 * Panel 2.1 (Settlement Counters): 3 KPI counters (Pending Settlement, Reconciled 100%, Discrepancy) with date-range and status filters.
 * Panel 2.2 (Fee Breakdown & Reconciliation Table): Granular columns for commission fee, payment fee, service fee, total platform fees, projected net, actual received amount, and variance. Row action opens MOD-03 settlement modal.
 
-##### Screen 3: Revenue Dashboard & Analytics (SCR-03)
+##### Screen 3: Revenue Dashboard (SCR-03)
 * Primary Users: Shop Owner, Finance Manager.
 * Panel 3.1 (Global Filters & Actions): Time presets (Today, Last 7 Days, This Month, Custom Date Range), channel dropdown filter, and CSV export action.
-* Panel 3.2 (Executive KPI Cards): Displays Total Gross Sales (DELIVERED orders only), Total Platform Fees, and Total Net Settlement.
+* Panel 3.2 (Executive KPI Cards): Displays Gross Revenue (DELIVERED orders only), Total Platform Fees, and Net Realized Revenue.
 * Panel 3.3 (Visual Analytics Panels): Donut Chart illustrating revenue contribution by channel (%) and Top 5 best-selling SKUs leaderboard.
 
 #### 3.3. Level 3: 4 Transactional Modals
@@ -169,7 +169,7 @@ The application interface consists of 5 interactive layers:
 | Level 1 | Screen 1: Orders Management (SCR-01) | Full Access | View Only | Full Access |
 | Level 3 | • Create Order Modal (MOD-01) | Allowed | Hidden | Allowed |
 | Level 3 | • Cancel Order Modal (MOD-02) | Allowed | Hidden | Allowed |
-| Level 1 | Screen 2: Fees & Wallet Settlement (SCR-02) | No Access (Hidden) | Full Access | Full Access |
+| Level 1 | Screen 2: Fees & Settlement (SCR-02) | No Access (Hidden) | Full Access | Full Access |
 | Level 3 | • Wallet Settlement Modal (MOD-03) | No Access | Allowed | Allowed & Approve |
 | Level 1 | Screen 3: Revenue Dashboard (SCR-03) | No Access (Hidden) | Full View | Full View |
 | Level 2 | • Export CSV Report (Panel 3.1) | No Access | Allowed | Allowed |

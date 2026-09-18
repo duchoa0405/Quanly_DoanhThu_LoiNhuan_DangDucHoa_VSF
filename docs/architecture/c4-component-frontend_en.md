@@ -1,5 +1,7 @@
 # C4 Component Specification: React Web SPA
 
+> **Status:** LOCKED (Target MVP Baseline)
+
 ---
 
 ## 1. Target Component Scope & Boundary Definition
@@ -47,7 +49,7 @@ This document specifies the **C4 Level 3 Component Architecture** for the **Reac
 
 ### 1.2. Strict Architectural Boundaries & Invariants
 1. **Presentation & Interaction Boundary:** The SPA is strictly a presentation, interaction, and workflow orchestration layer. It possesses **zero authoritative financial calculation logic**. All canonical fee formulas, voucher deductions, net settlements, and discrepancy evaluations are computed exclusively by the `ASP.NET Core Backend API`.
-2. **External Boundary & Database Isolation:** The frontend SPA communicates exclusively with the Backend API over HTTPS / REST / JSON. The frontend has **zero direct connectivity** to PostgreSQL and **zero direct integration** with third-party marketplace APIs (TikTok Shop, Shopee, or Bank APIs). All platform data ingestion and webhook processing are mediated authoritatively by the Backend API.
+2. **External Boundary & Database Isolation:** The frontend SPA communicates exclusively with the Backend API over HTTPS / REST / JSON. The frontend has **zero direct connectivity** to PostgreSQL and **zero direct integration** with third-party marketplace APIs (TikTok Shop, Shopee, or Bank APIs). Any future third-party integration must terminate at the Backend API.
 3. **Presentation-Only RBAC vs. Production Authenticated Session:**
    - **Persona Switcher:** Strictly a **prototype/demo role simulation aid** for evaluating role-specific UI visibility (`Sales/Ops`, `Finance Manager`, `Shop Owner`). It does not constitute actual authentication or security enforcement.
    - **Target Production Architecture:** Built upon `Authenticated User Session` $\rightarrow$ `RoleAwareNavigation`. Frontend RBAC strictly governs UI element visibility; actual authorization is authoritatively enforced by Backend API controller filters (`[Authorize]`).
@@ -66,7 +68,8 @@ This document specifies the **C4 Level 3 Component Architecture** for the **Reac
    │   ├── api/
    │   │   └── SettlementService.ts
    │   └── hooks/
-   │       └── useSettlement.ts
+   │       ├── useSettlement.ts
+   │       └── useFeeSchedule.ts
    ├── discrepancies/
    │   ├── api/
    │   │   └── DiscrepancyService.ts
@@ -133,7 +136,8 @@ Features reside in `src/features/` and are organized strictly by **business doma
 ### 2.4. Group 4: Feature Hooks
 Feature hooks reside in `src/features/*/hooks/` and serve as the explicit intermediate orchestration layer between React components and API services. They manage asynchronous server-state lifecycle (fetching, caching, mutation state, loading, error handling):
 - **`useOrders` (`src/features/orders/hooks/useOrders.ts`):** Manages order remote data queries, order creation mutations, status transitions, and cancellations (`useCancelOrder`) via `OrderService`.
-- **`useFeePreview` (`src/features/orders/hooks/useFeePreview.ts`):** Manages real-time backend fee calculation requests and fee schedule queries via `FeeService`.
+- **`useFeePreview` (`src/features/orders/hooks/useFeePreview.ts`):** Manages real-time backend fee calculation preview requests during order composition via `FeeService.previewFee()`.
+- **`useFeeSchedule` (`src/features/settlements/hooks/useFeeSchedule.ts`):** Manages fee schedule retrieval and configuration updates via `FeeService.getFeeSchedule()` and `FeeService.updateFeeSchedule()`.
 - **`useSettlement` (`src/features/settlements/hooks/useSettlement.ts`):** Manages settlement ledger queries, statement imports, and wallet payout submission mutations via `SettlementService`.
 - **`useDiscrepancies` (`src/features/discrepancies/hooks/useDiscrepancies.ts`):** Manages discrepancy audit queries and review note persistence via `DiscrepancyService`.
 - **`useAnalytics` (`src/features/analytics/hooks/useAnalytics.ts`):** Manages executive KPI aggregations, cash flow chart data, channel share distributions, and CSV export triggers via `AnalyticsService`.
@@ -190,7 +194,7 @@ The React Web SPA is decomposed into logical frontend component groups. Only arc
 | **`SettlementFilters`** | Status filter tabs and settlement period dropdown selector. | `src/features/settlements/components/SettlementFilters.tsx` | `Select`, `uiCopy` |
 | **`SettlementLedger`** | Fee deduction audit table with itemized commission, payment, and service fees. | `src/features/settlements/components/SettlementLedger.tsx` | `Table`, `Badge`, `formatters`, `useSettlement` |
 | **`RecordSettlementModal`** | Modal capturing verified wallet payout figures and explanation notes (MOD-03). | `src/features/settlements/components/RecordSettlementModal.tsx` | `Modal`, `Input`, `Button`, `useSettlement`, `formatters` |
-| **`FeeScheduleModal`** | Form for configuring channel-specific fee percentage schedules (MOD-04). | `src/features/settlements/components/FeeScheduleModal.tsx` | `Modal`, `Table`, `Input`, `Button`, `useFeePreview`, `formatters` |
+| **`FeeScheduleModal`** | Form for configuring channel-specific fee percentage schedules (MOD-04). | `src/features/settlements/components/FeeScheduleModal.tsx` | `Modal`, `Table`, `Input`, `Button`, `useFeeSchedule`, `formatters` |
 | **`DiscrepancyPanel`** | Slide-over drawer presenting audit discrepancies and resolution actions. | `src/features/discrepancies/components/DiscrepancyPanel.tsx` | `Modal`, `DiscrepancyDetails`, `DiscrepancyReviewAction`, `useDiscrepancies` |
 | **`DiscrepancyDetails`** | Subcomponent rendering itemized comparison between projected and actual values. | `src/features/discrepancies/components/DiscrepancyDetails.tsx` | `Table`, `Badge`, `formatters`, `useDiscrepancies` |
 | **`DiscrepancyReviewAction`** | Subcomponent capturing resolution explanation notes and save action. | `src/features/discrepancies/components/DiscrepancyReviewAction.tsx` | `Input`, `Button`, `useDiscrepancies` |
@@ -200,7 +204,8 @@ The React Web SPA is decomposed into logical frontend component groups. Only arc
 | **`TopSkuTable`** | Leaderboard table ranking Top 5 revenue-generating SKUs. | `src/features/analytics/components/TopSkuTable.tsx` | `Table`, `formatters`, `useAnalytics` |
 | **`SourceOrderDrilldown`** | Modal listing constituent delivered orders with CSV export trigger (MOD-05). | `src/features/analytics/components/SourceOrderDrilldown.tsx` | `Modal`, `Table`, `Button`, `formatters`, `useAnalytics` |
 | **`useOrders`** | Feature hook managing order queries, mutations, and status transitions. | `src/features/orders/hooks/useOrders.ts` | `OrderService` |
-| **`useFeePreview`** | Feature hook managing real-time fee calculation preview and schedules. | `src/features/orders/hooks/useFeePreview.ts` | `FeeService` |
+| **`useFeePreview`** | Feature hook managing real-time fee calculation preview for order creation. | `src/features/orders/hooks/useFeePreview.ts` | `FeeService` |
+| **`useFeeSchedule`** | Feature hook managing retrieval and updates of fee schedules. | `src/features/settlements/hooks/useFeeSchedule.ts` | `FeeService` |
 | **`useSettlement`** | Feature hook managing settlement queries, payout records, and statement imports. | `src/features/settlements/hooks/useSettlement.ts` | `SettlementService` |
 | **`useDiscrepancies`** | Feature hook managing discrepancy audit queue and resolution note submission. | `src/features/discrepancies/hooks/useDiscrepancies.ts` | `DiscrepancyService` |
 | **`useAnalytics`** | Feature hook managing executive KPI aggregations, cash flow charts, and CSV download. | `src/features/analytics/hooks/useAnalytics.ts` | `AnalyticsService` |
@@ -275,7 +280,7 @@ flowchart TB
         subgraph HooksLayer [" 🪝 4. Feature Hooks Layer: Server-State Lifecycle "]
             direction LR
             ordersHooks["<b>Orders Hooks</b><br/><i>(useOrders, useFeePreview)</i><br/>Remote state, mutations & fee preview"]
-            settleHooks["<b>Settlement & Discrepancy Hooks</b><br/><i>(useSettlement, useDiscrepancies)</i><br/>Ledger queries, payout recording & audit notes"]
+            settleHooks["<b>Settlement & Discrepancy Hooks</b><br/><i>(useSettlement, useFeeSchedule, useDiscrepancies)</i><br/>Ledger queries, fee schedule, payout recording & audit notes"]
             analyticsHooks["<b>Analytics Hooks</b><br/><i>(useAnalytics)</i><br/>Executive KPIs, trend data & CSV export"]
         end
 
@@ -331,7 +336,7 @@ flowchart TB
     settleServices -->|"Dispatches HTTP"| apiClient
     analyticsServices -->|"Dispatches HTTP"| apiClient
 
-    SharedLayer -.->|"Provides Primitives, Formatters & Tokens"| FeaturesLayer
+    FeaturesLayer -.->|"Consumes Primitives, Formatters & Tokens"| SharedLayer
 
     apiClient -->|"HTTPS / REST / JSON"| backendApi
 
@@ -424,7 +429,7 @@ ApplicationShell
        $$\text{KpiCards / Charts / SourceOrderDrilldown} \longrightarrow \text{useAnalytics} \longrightarrow \text{AnalyticsService} \longrightarrow \text{ApiClient} \longrightarrow \text{Backend API}$$
 3. **Canonical Fee Calculation Authority:**
    The frontend has **zero canonical fee formulas**. Fee Preview is an interactive backend estimation flow:
-   $$\text{CreateOrderModal} \xrightarrow{\text{input items}} \text{useFeePreview} \xrightarrow{\text{previewFee()}} \text{FeeService} \xrightarrow{\text{POST /api/fees/preview}} \text{Backend Strategy Engine}$$
+   $$\text{CreateOrderModal} \xrightarrow{\text{input items}} \text{useFeePreview} \xrightarrow{\text{previewFee()}} \text{FeeService} \longrightarrow \text{Backend Fee Preview API} \longrightarrow \text{Backend Strategy Engine}$$
    The modal renders whatever breakdown is computed and returned by the backend.
 4. **Shared Frontend Foundation Independence:**
    - Primitives in `src/shared/ui/` (`Button`, `Input`, `Modal`, `Table`, `Badge`, `Card`, `Toast`, `EmptyState`) must remain completely domain-agnostic and possess zero knowledge of business concepts (`Order`, `Settlement`, `Commission`, `TikTok`, `Shopee`, or `OrderStatus`).
@@ -454,7 +459,7 @@ ApplicationShell
 | **Discrepancy View Location** | Standalone top-level tab (`currentTab === 'discrepancies'`). | Embedded audit drawer (`DiscrepancyPanel`) inside `SettlementPage` (SCR-02). | Remove top-level `/discrepancies` tab; mount `DiscrepancyPanel` inside `SettlementPage`. |
 | **Data Access & Services** | Hardcoded in-memory arrays (`sampleOrders`) inline in components. | Co-located feature services (`features/*/api/`) backed by shared `ApiClient`. | Create `src/shared/api/ApiClient.ts` and domain services; eliminate inline sample data arrays. |
 | **Feature Hooks** | State logic mixed directly inside JSX presentation components. | Dedicated hooks (`useOrders`, `useFeePreview`, `useSettlement`, `useDiscrepancies`, `useAnalytics`). | Extract asynchronous operations and state management into co-located `hooks/`. |
-| **Fee Calculation** | Inline JavaScript formulas inside modal component inputs. | Canonical backend fee preview via `POST /api/fees/preview`. | Connect `CreateOrderModal` $\rightarrow$ `useFeePreview` $\rightarrow$ `FeeService` $\rightarrow$ `ApiClient`. |
+| **Fee Calculation** | Inline JavaScript formulas inside modal component inputs. | Canonical backend fee preview via Backend Fee Preview API. | Connect `CreateOrderModal` $\rightarrow$ `useFeePreview` $\rightarrow$ `FeeService` $\rightarrow$ `ApiClient`. |
 | **UI Copy & Localization** | Hardcoded JSX literals with mixed English/Vietnamese strings. | 100% English-only string tokens centralized in `uiCopy.ts` (P03.5). | Consolidate all user-facing copy into `src/shared/constants/uiCopy.ts`. |
 | **Financial Color Standards** | Ad-hoc CSS classes with red figures on zero amounts. | Strict tokens: `#0f172a` for values, `#c5221f` only for real loss, `#64748b` for zero. | Enforce `tokens.css` with `.negative` and `.zero` classes across all financial tables. |
 
@@ -486,7 +491,7 @@ ApplicationShell
 | **MOD-01: Create Order Modal** | `OrdersPage` | `CreateOrderModal` | `useFeePreview` | `FeeService` | `Modal`, `Input`, `Select`, `Button`, `formatters.ts` |
 | **MOD-02: Cancel Order Modal** | `OrdersPage` | `CancelOrderModal` | `useOrders` (`useCancelOrder`) | `OrderService` | `Modal`, `Select`, `Input`, `Button`, `uiCopy.ts` |
 | **MOD-03: Record Settlement Modal**| `SettlementPage` | `RecordSettlementModal` | `useSettlement` | `SettlementService` | `Modal`, `Input`, `Button`, `formatters.ts` |
-| **MOD-04: Fee Schedule Modal** | `SettlementPage` | `FeeScheduleModal` | `useFeePreview` | `FeeService` | `Modal`, `Table`, `Input`, `Button`, `formatters.ts` |
+| **MOD-04: Fee Schedule Modal** | `SettlementPage` | `FeeScheduleModal` | `useFeeSchedule` | `FeeService` | `Modal`, `Table`, `Input`, `Button`, `formatters.ts` |
 | **MOD-05: Source Order Drilldown** | `RevenueDashboardPage` | `SourceOrderDrilldown` | `useAnalytics` | `AnalyticsService` | `Modal`, `Table`, `Button`, `formatters.ts` |
 | **Persona Role Simulation** | `ApplicationShell` | `Topbar` (Persona Switcher) | Demo Persona Context | — | `uiCopy.ts` (Visibility simulation only; target production: Authenticated User Session) |
 | **P03.5 English-Only Copy** | All Pages | All Features | — | — | `uiCopy.ts` (Centralized English terminology, ADR-FE-06) |

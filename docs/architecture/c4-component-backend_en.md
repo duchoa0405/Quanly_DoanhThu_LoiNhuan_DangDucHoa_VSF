@@ -1,5 +1,7 @@
 # C4 Component Specification: ASP.NET Core Backend API
 
+> **Status:** LOCKED (Target MVP Baseline)
+
 ---
 
 ## 1. Target Component Scope & Context
@@ -32,30 +34,31 @@ This document specifies the **C4 Level 3: Component Architecture** for the **ASP
 
 ## 2. Component Catalog
 
-The Backend API is decomposed into five logical tiers comprising nineteen architectural components:
+The backend is decomposed into logical component groups across architectural tiers:
 
 | Component Name | Architectural Tier | Concrete Implementation | Primary Responsibility | Dependencies | Target Status |
 |---|---|---|---|---|:---:|
-| **Orders API** | Presentation | `OrdersController.cs` | Receives HTTP requests, validates boundary input, dispatches commands, returns HTTP status codes. | `IOrderService`, `IDynamicFeeEngine` | **Partial** |
+| **Orders API** | Presentation | `OrdersController.cs` | Receives HTTP requests, validates boundary input, dispatches commands, returns HTTP status responses. | `IOrderService`, `IDynamicFeeEngine` | **Partial** |
 | **Settlement API** | Presentation | `SettlementController.cs` | Exposes ledger query and statement import endpoints, delegating processing to service. | `ISettlementService` | **Partial** |
-| **Discrepancy API** | Presentation | `DiscrepancyController.cs` | Exposes dispute/variance query and audit update endpoints. | `IDiscrepancyService` | **Partial** |
-| **Analytics API** | Presentation | `DashboardController.cs` | Exposes KPI cards, trend, channel share, top SKU, and CSV export endpoints. | `IAnalyticsService` | **Partial** |
+| **Discrepancy API** | Presentation | `DiscrepanciesController.cs` | Exposes dispute/variance query and audit update endpoints. | `IDiscrepancyService` | **Partial** |
+| **Analytics API** | Presentation | `AnalyticsController.cs` | Exposes KPI cards, trend, channel share, top SKU, and CSV export endpoints. *(Prototype was named `DashboardController.cs`)*. | `IAnalyticsService` | **Partial** |
+| **API Contracts & Mapping** | Presentation Boundary | `Contracts/**/*.cs` | Defines typed request/response DTOs, API contracts, and commands (`CreateOrderCommand`, `CreateDiscrepancyCommand`). | Domain Entities | **Partial** |
 | **Order Application Service** | Application Service | `OrderService.cs` | Orchestrates order creation, lifecycle state machine (`Pending` $\rightarrow$ `Shipped` $\rightarrow$ `Delivered`), cancellation rules, and delivery fee snapshot generation. | `IOrderRepository`, `IDynamicFeeEngine` | **Partial** |
-| **Dynamic Fee Engine** | Application Service | `DynamicFeeEngine.cs` | Authoritative calculation entry point for fee preview and delivery fee snapshots. Resolves strategies internally. | `FeeStrategySubsystem`, `IFeeScheduleRepository` *(opt)* | **Partial** |
+| **Dynamic Fee Engine** | Application Service | `DynamicFeeEngine.cs` | Authoritative calculation entry point for fee preview and delivery fee snapshots. Resolves strategies internally. | `FeeStrategySubsystem`, `IFeeScheduleRepository` | **Partial** |
 | **Settlement Service** | Application Service | `StatementMatchingService.cs` | Executes two-way matching between delivered orders and wallet payout statements; calculates net variances. | `IReconciliationRepository` | **Prototype** |
 | **Discrepancy Service** | Application Service | `DiscrepancyService.cs` | Manages variance audit records, reviewer notes, and operational status transitions (`Pending Review` $\rightarrow$ `Reviewed`). | `IDiscrepancyRepository` | **Partial** |
 | **Analytics Service** | Application Service | `AnalyticsService.cs` | Calculates real-time financial KPIs, daily cash flow trends, channel share, and SKU rankings from persistent records. | `IAnalyticsRepository` *(Target Query Port)* | **Prototype** |
-| **Fee Strategy Subsystem** | Domain & Rules | `Strategies/*.cs` | Channel-specific calculation formulas (TikTok Shop, Shopee, POS). `FeeStrategyFactory` serves as internal resolver. | `IPlatformFeeStrategy` | **Implemented** |
+| **Fee Strategy Subsystem** | Domain & Rules | `Strategies/*.cs` | Channel-specific calculation formulas (TikTok Shop, Shopee, POS). `FeeStrategyFactory` serves as internal resolver. | `IPlatformFeeStrategy` | **Structurally defined; business-rule alignment pending** |
 | **Domain Model** | Domain & Rules | `Domain/Entities/*.cs`, `Enums/*.cs`, `ValueObjects/*.cs` | Authoritative entities (`Order`, `OrderFeeSnapshot`, `DiscrepancyAudit`), enums (`OrderStatus`), and value objects (`FeeBreakdown`). | *None* | **Implemented** |
 | **Order Repository Port** | Persistence Port | `IOrderRepository.cs` | Contract defining CRUD and query operations for orders and item line trees. | Domain Entities | **Implemented** |
 | **Reconciliation Port** | Persistence Port | `IReconciliationRepository.cs` | Contract defining persistence for statement imports and reconciliation records. | Domain Entities | **Implemented** |
 | **Discrepancy Port** | Persistence Port | `IDiscrepancyRepository.cs` | Contract defining persistence for discrepancy audit logs and notes. | Domain Entities | **Implemented** |
-| **Analytics Query Port** | Persistence Port | `IAnalyticsRepository.cs` *(New)* | Target contract defining dynamic reporting and aggregation queries. | Domain Entities / DTOs | **Target Only** |
+| **Fee Schedule Port** | Persistence Port | `IFeeScheduleRepository.cs` | Contract defining retrieval of active configurable fee schedules. | Domain Entities | **Target Only** |
+| **Analytics Query Port** | Persistence Port | `IAnalyticsRepository.cs` | Target contract defining dynamic reporting and aggregation queries. | Domain Entities / DTOs | **Target Only** |
 | **Persistence Adapters** | Persistence Adapter | `Repositories/*.cs` | Implements repository ports using EF Core 8 and LINQ queries in `FashionWeb.Data`. | Repository Ports, `AppDbContext` | **Partial** |
 | **EF Core DbContext** | Infrastructure | `AppDbContext.cs` | Manages relational mapping, change tracking, and Npgsql PostgreSQL connectivity. | `Npgsql.EntityFrameworkCore.PostgreSQL` | **Implemented** |
-| **API Contracts & Mapping** | Cross-Cutting | `Contracts/**/*.cs` | Defines typed request/response DTOs and application commands (`CreateOrderCommand`, `CreateDiscrepancyCommand`). | Domain Entities | **Partial** |
 | **Authorization / RBAC** | Cross-Cutting | ASP.NET Core Policy Middleware | Enforces role permissions (Sales/Ops, Finance, Shop Owner) at controller action boundaries. | ClaimsPrincipal / Roles | **Partial** |
-| **Validation & Error Handling** | Cross-Cutting | Global Middleware Pipeline | Validates inbound payloads and converts domain exceptions into standardized `RFC 7807` problem details. | ASP.NET Core Middleware | **Partial** |
+| **Validation & Error Handling** | Cross-Cutting | Global Middleware Pipeline | Validates inbound payloads and converts domain exceptions into standardized `RFC 7807` problem details via centralized global error handling. | ASP.NET Core Middleware | **Partial** |
 
 ---
 
@@ -79,19 +82,19 @@ flowchart TB
         direction TB
 
         %% Tier 1: Presentation Layer
-        subgraph PresentationLayer [" 🌐 Presentation Tier: REST API Controllers "]
+        subgraph PresentationLayer [" 🌐 Presentation Tier: REST API Controllers & Boundary "]
             ordersCtrl["Orders API<br/><i>(OrdersController)</i>"]
             settleCtrl["Settlement API<br/><i>(SettlementController)</i>"]
-            discCtrl["Discrepancy API<br/><i>(DiscrepancyController)</i>"]
-            analyticsCtrl["Analytics API<br/><i>(DashboardController)</i>"]
+            discCtrl["Discrepancy API<br/><i>(DiscrepanciesController)</i>"]
+            analyticsCtrl["Analytics API<br/><i>(AnalyticsController)</i>"]
+            cmdMapping["API Contracts & Mapping<br/><i>(Typed Commands & DTOs)</i>"]
         end
 
         %% Cross-Cutting Infrastructure
         subgraph CrossCutting [" 🛡️ Cross-Cutting Pipeline "]
             direction LR
             authFilter["Authorization / RBAC<br/><i>(Role Policies)</i>"]
-            valMiddleware["Validation & Error Pipeline<br/><i>(RFC 7807 Problem Details)</i>"]
-            cmdMapping["API Contracts & Mapping<br/><i>(Typed Commands & DTOs)</i>"]
+            valMiddleware["Global Error Handling<br/><i>(RFC 7807 Problem Details)</i>"]
         end
 
         %% Tier 2: Application Services Layer
@@ -115,19 +118,20 @@ flowchart TB
             orderPort["IOrderRepository"]
             reconPort["IReconciliationRepository"]
             discPort["IDiscrepancyRepository"]
+            feeSchedulePort["IFeeScheduleRepository"]
             analyticsPort["IAnalyticsRepository<br/><i>[Target Query Port]</i>"]
         end
 
         %% Tier 5: Persistence Implementations (Adapters)
         subgraph AdaptersLayer [" 🗄️ Persistence Adapters (Data Layer) "]
-            repos["Persistence Repositories<br/><i>(OrderRepo, ReconRepo, DiscRepo, AnalyticsRepo)</i>"]
+            repos["Persistence Repositories<br/><i>(OrderRepo, ReconRepo, DiscRepo, FeeScheduleRepo, AnalyticsRepo)</i>"]
             dbContext["EF Core DbContext<br/><i>(AppDbContext / Npgsql)</i>"]
         end
     end
 
     %% External Call Flow
     spa -->|"HTTPS / REST / JSON"| PresentationLayer
-    CrossCutting -.->|"Enforces Security & Validation"| PresentationLayer
+    CrossCutting -.->|"Enforces Security & Global Error Handling"| PresentationLayer
 
     %% Presentation to Application Layer
     ordersCtrl -->|"Dispatches Order Commands"| orderSvc
@@ -140,6 +144,7 @@ flowchart TB
     orderSvc -->|"Freezes Fee on Delivery"| feeEngine
     orderSvc -->|"Persists Order Lifecycle"| orderPort
     feeEngine -->|"Resolves Channel Formula"| feeStrategy
+    feeEngine -->|"Reads Configurable Rates"| feeSchedulePort
     settleSvc -->|"Persists Reconciled Ledger"| reconPort
     discSvc -->|"Persists Variance Audits"| discPort
     analyticsSvc -->|"Executes Aggregated Queries"| analyticsPort
@@ -148,6 +153,7 @@ flowchart TB
     repos -.->|"Implements"| orderPort
     repos -.->|"Implements"| reconPort
     repos -.->|"Implements"| discPort
+    repos -.->|"Implements"| feeSchedulePort
     repos -.->|"Implements"| analyticsPort
     repos -->|"Executes LINQ Queries"| dbContext
     dbContext -->|"SQL Commands via TCP"| db
@@ -163,13 +169,13 @@ flowchart TB
     classDef crossStyle fill:#64748b,stroke:#475569,color:#ffffff,stroke-width:2px;
 
     class spa clientStyle;
-    class ordersCtrl,settleCtrl,discCtrl,analyticsCtrl apiStyle;
+    class ordersCtrl,settleCtrl,discCtrl,analyticsCtrl,cmdMapping apiStyle;
     class orderSvc,feeEngine,settleSvc,discSvc,analyticsSvc serviceStyle;
     class feeStrategy,domainModels domainStyle;
-    class orderPort,reconPort,discPort,analyticsPort portStyle;
+    class orderPort,reconPort,discPort,feeSchedulePort,analyticsPort portStyle;
     class repos,dbContext adapterStyle;
     class db dbStyle;
-    class authFilter,valMiddleware,cmdMapping crossStyle;
+    class authFilter,valMiddleware crossStyle;
 
     style BackendContainer fill:#f8fafc,stroke:#0b4884,stroke-width:2px;
     style ClientTier fill:#ffffff,stroke:#cbd5e1,stroke-width:1px;
@@ -180,18 +186,19 @@ flowchart TB
 
 ## 4. Component Responsibilities & Boundaries
 
-### 4.1. Presentation Components (Controllers)
-- **Scope of Ownership:** Serialization/deserialization of HTTP JSON payloads; model binding and boundary validation; mapping domain exceptions to HTTP status codes (`200 OK`, `201 Created`, `204 NoContent`, `400 BadRequest`, `404 NotFound`, `422 UnprocessableEntity`).
+### 4.1. Presentation Components (Controllers & Boundary)
+- **Scope of Ownership:** Serialization/deserialization of HTTP JSON payloads; model binding and boundary validation; delegating commands to application services; returning HTTP status responses (`200 OK`, `201 Created`, `204 NoContent`).
+- **Centralized Error Handling:** Controllers do not catch or map business exceptions manually. A centralized Global Error Handling middleware intercepts all unhandled domain exceptions and formats them into standardized `RFC 7807 ProblemDetails`.
 - **Strict Boundary Invariants:**
   - Controllers must **not** contain business logic, tax/fee math, or state transition validation.
   - Controllers must **never** inject repository interfaces or `AppDbContext`.
   - Controllers must **never** inject `FeeStrategyFactory` directly; fee previews are routed strictly through `IDynamicFeeEngine`.
 
 ### 4.2. Application Services Layer
-- **Scope of Ownership:** Coordinates business workflows, enforces use-case preconditions, initiates transactions, and orchestrates domain operations.
+- **Scope of Ownership:** Coordinates business workflows, enforces use-case preconditions, coordinates transactional use cases, and orchestrates domain operations.
   - `OrderService`: Enforces lifecycle transitions (`Pending` $\rightarrow$ `Shipped` $\rightarrow$ `Delivered` / `Cancelled`). Enforces cancellation guard clause (cancellation blocked if status is `Delivered`). On delivery, requests immutable `OrderFeeSnapshot` from `IDynamicFeeEngine`.
-  - `DynamicFeeEngine`: Central calculation facade. Accepts subtotal, voucher, and channel code; resolves the appropriate strategy; and returns canonical `FeeBreakdown`.
-  - `StatementMatchingService`: Compares delivered order revenues against statement disbursements; flags variances (`Variance = ProjectedNet - ActualDeposit`).
+  - `DynamicFeeEngine`: Central calculation facade. Accepts subtotal, voucher, and channel code; resolves the appropriate strategy; reads configurable schedules via `IFeeScheduleRepository`; and returns canonical `FeeBreakdown`.
+  - `StatementMatchingService`: Compares delivered order revenues against statement disbursements; flags variances (`variance_amount = projected_settlement - actual_settlement`).
   - `DiscrepancyService`: Records audit items, appends resolution notes, and updates review status.
   - `AnalyticsService`: Computes financial KPIs, trends, channel share distributions, and top SKUs via `IAnalyticsRepository`.
 - **Strict Boundary Invariants:**
@@ -248,16 +255,17 @@ The existing solution exhibits five verified architectural strengths:
 |---|---|---|:---:|
 | **Orders API** | Thin HTTP Controller | `OrdersController.cs` exists; currently injects `FeeStrategyFactory` directly for previews. | **Partial** |
 | **Settlement API** | Thin HTTP Controller | `SettlementController.cs` exists; delegates to `ISettlementService`. | **Partial** |
-| **Discrepancy API** | Thin HTTP Controller | `DiscrepancyController.cs` exists; delegates to `IDiscrepancyService`. | **Partial** |
-| **Analytics API** | Thin HTTP Controller | `DashboardController.cs` exists; delegates to `IAnalyticsService`. | **Partial** |
+| **Discrepancy API** | Thin HTTP Controller | `DiscrepanciesController.cs` exists; delegates to `IDiscrepancyService`. | **Partial** |
+| **Analytics API** | Thin HTTP Controller | `AnalyticsController.cs` exists *(legacy prototype named `DashboardController.cs`)*; delegates to `IAnalyticsService`. | **Partial** |
 | **Order Application Service** | State machine & order intake | `OrderService.cs` exists; `CreateOrderAsync` instantiates empty order; cancellation lacks `Delivered` check; injects factory directly. | **Partial** |
 | **Dynamic Fee Engine** | Calculation facade | `DynamicFeeEngine.cs` exists and registered in DI, but bypassed in controller preview and service delivery snapshot. | **Partial** |
 | **Settlement Service** | Two-way matching algorithm | `StatementMatchingService.cs` exists; `ImportStatementAsync` returns hardcoded report constants (`100/98/2`, `184.5M`). | **Prototype** |
 | **Discrepancy Service** | Variance audit management | `DiscrepancyService.cs` exists; `CreateAuditAsync` instantiates blank record without mapping request payload. | **Partial** |
 | **Analytics Service** | Dynamic KPI calculation | `AnalyticsService.cs` exists; returns hardcoded arrays and metrics; lacks persistence repository port. | **Prototype** |
-| **Fee Strategy Subsystem** | Channel fee math | Implemented in `Strategies/*.cs`. Formula constants for TikTok require reconciliation with requirements. | **Implemented** |
+| **Fee Strategy Subsystem** | Channel fee math | Implemented in `Strategies/*.cs`. Formula constants for TikTok require reconciliation with requirements. | **Structurally defined; business-rule alignment pending** |
 | **Domain Model** | Entities, enums, value objects | Fully defined in `FashionWeb.Business/Domain`. | **Implemented** |
 | **Repository Ports** | Business storage abstractions | `IOrderRepository`, `IReconciliationRepository`, `IDiscrepancyRepository` defined in Business interfaces. | **Implemented** |
+| **Fee Schedule Port** | Configurable fee rates | `IFeeScheduleRepository` target interface for dynamic fee rules. | **Target Only** |
 | **Analytics Query Port** | Reporting query abstraction | Not yet defined in `FashionWeb.Business`. | **Target Only** |
 | **Persistence Adapters** | EF Core repository classes | Concrete repositories exist in `FashionWeb.Data/Repositories`. | **Partial** |
 | **EF Core DbContext** | Database relational mapping | `AppDbContext.cs` configured with DbSets and Npgsql PostgreSQL provider. | **Implemented** |
