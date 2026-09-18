@@ -15,31 +15,34 @@ This document specifies the **C4 Level 3 Component Architecture** for the **Reac
 6. **Shared Frontend Foundation:** Domain-agnostic UI primitives, localization dictionaries, formatting utilities, design tokens, and the shared base HTTP client.
 
 ```
-+---------------------------------------------------------------------------------------------------+
-| React Web SPA Container (Vite / React 18 / TypeScript)                                            |
-|                                                                                                   |
-|  [App & Routing]                  ApplicationShell (Sidebar, Topbar)                              |
-|                                                  │                                                |
-|                                                  ▼                                                |
-|                                              AppRouter                                            |
-|                                                  │                                                |
-|  [Pages]                       OrdersPage | SettlementPage | RevenueDashboardPage                 |
-|                                                  │                                                |
-|  [Features]                    orders/    | settlements/   | discrepancies/  | analytics/         |
-|                                       │                               │                           |
-|                                       ▼                               ▼                           |
-|  [Feature Hooks]               useOrders, useSettlement...    [Shared Frontend Foundation]        |
-|                                       │                       (Shared UI Primitives, UICopy,      |
-|                                       ▼                        FormattingUtils, DesignTokens,     |
-|  [Feature API Services]        OrderService, Settlement...     ApiClient)                         |
-|                                       │                                                           |
-|                                       ▼                                                           |
-|  [Shared Infrastructure]          ApiClient                                                       |
-|                                       │                                                           |
-+---------------------------------------┼-----------------------------------------------------------+
-                                        │ HTTPS / REST / JSON
-                                        ▼
-                           [ASP.NET Core Backend API]
++----------------------------------------------------------------------------------------------------+
+| React Web SPA Container (Vite / React 18 / TypeScript)                                             |
+|                                                                                                    |
+|  [1. App & Routing]             ApplicationShell (Topbar, Sidebar)                                 |
+|                                                │                                                   |
+|                                                ▼                                                   |
+|  [App Router]                              AppRouter (/orders, /settlement, /analytics)            |
+|                                                │                                                   |
+|  [2. Pages Layer]             ┌────────────────┼────────────────┐                                  |
+|                               ▼                ▼                ▼                                  |
+|                          OrdersPage     SettlementPage    RevenueDashboardPage                     |
+|                               │                │                │                                  |
+|  [3. Features UI]             ▼                ▼                ▼            [6. Shared Foundation]|
+|                          orders/          settlements/     analytics/   ───> (Shared UI, UICopy,   |
+|                               │         (discrepancies/)        │            Formatters, Tokens)   |
+|  [4. Feature Hooks]           ▼                ▼                ▼                                  |
+|                          useOrders...     useSettlement... useAnalytics...                         |
+|                               │                │                │                                  |
+|  [5. Feature API Services]    ▼                ▼                ▼                                  |
+|                          OrderService...  Settlement...    AnalyticsService...                     |
+|                               │                │                │                                  |
+|                               └────────────────┼────────────────┘                                  |
+|                                                ▼                                                   |
+|  [Shared Infrastructure]                   ApiClient (src/shared/api/ApiClient.ts)                 |
++------------------------------------------------┼---------------------------------------------------+
+                                                 │ HTTPS / REST / JSON
+                                                 ▼
+                                    [ASP.NET Core Backend API]
 ```
 
 ### 1.2. Strict Architectural Boundaries & Invariants
@@ -219,108 +222,148 @@ The React Web SPA is decomposed into logical frontend component groups. Only arc
 The C4 Level 3 diagram below illustrates the internal component architecture of the `React Web SPA` and its clean unidirectional flow into the external `ASP.NET Core Backend API`:
 
 ```mermaid
-C4Component
-    title Component Diagram for React Web SPA (C4 Level 3 - Target Architecture)
+flowchart TB
+    %% React Web SPA Container Boundary
+    subgraph SpaContainer [" 💻 React Web SPA Container (Vite / React 18 / TypeScript) "]
+        direction TB
 
-    Container_Boundary(spa, "React Web SPA (Vite / React 18 / TypeScript)") {
-        
-        Boundary(app_boundary, "1. App & Routing") {
-            Component(shell, "Application Shell", "React Layout", "Master outer frame composing Topbar header, Sidebar rail, and router viewport.")
-            Component(topbar, "Topbar", "React Subcomponent", "Layout header with search, breadcrumbs, and demo Persona Switcher.")
-            Component(sidebar, "Sidebar", "React Subcomponent", "Collapsible navigation rail with role-filtered links.")
-            Component(router, "App Router", "React Router DOM", "Route resolution for /orders, /settlement, and /analytics.")
-            Component(rbac, "Role-Aware Navigation", "React / Context", "Filters navigation and action triggers by active persona context.")
-        }
+        %% 1. App & Routing Layer
+        subgraph AppRoutingLayer [" 🧭 1. App & Routing Layer "]
+            direction TB
+            shell["<b>Application Shell</b><br/><i>(AppShell.tsx)</i><br/>Master Layout, Sidebar Rail & Topbar Header"]
+            
+            subgraph ShellSubcomponents [" Shell Subcomponents & Persona Simulation "]
+                direction LR
+                topbar["<b>Topbar</b><br/><i>(Topbar.tsx)</i><br/>Breadcrumbs & Persona Switcher"]
+                sidebar["<b>Sidebar</b><br/><i>(Sidebar.tsx)</i><br/>Collapsible Navigation Rail"]
+                rbac["<b>Role-Aware Navigation</b><br/><i>(RoleAwareNavigation.tsx)</i><br/>Demo Persona Filter / Production RBAC"]
+            end
+            
+            router["<b>App Router</b><br/><i>(AppRouter.tsx via react-router-dom)</i><br/>Route Resolution: /orders, /settlement, /analytics"]
+        end
 
-        Boundary(pages_boundary, "2. Pages (Composition & Orchestration)") {
-            Component(orders_page, "OrdersPage", "React Page (src/pages/orders/)", "Composes SCR-01 order metrics, filters, table, and modals.")
-            Component(settle_page, "SettlementPage", "React Page (src/pages/settlement/)", "Composes SCR-02 fee ledger, reconciliation summary, and discrepancy drawer.")
-            Component(dash_page, "RevenueDashboardPage", "React Page (src/pages/analytics/)", "Composes SCR-03 executive KPIs, trend chart, channel donut, and drilldown.")
-        }
+        %% 2. Pages Layer
+        subgraph PagesLayer [" 📄 2. Pages Layer (View Composition & Orchestration) "]
+            direction LR
+            ordersPage["<b>OrdersPage</b><br/><i>(src/pages/orders/)</i><br/>SCR-01 Orchestrator"]
+            settlePage["<b>SettlementPage</b><br/><i>(src/pages/settlement/)</i><br/>SCR-02 & Discrepancy Drawer"]
+            dashPage["<b>RevenueDashboardPage</b><br/><i>(src/pages/analytics/)</i><br/>SCR-03 & Drilldown Modal"]
+        end
 
-        Boundary(features_boundary, "3. Features (Business Capability UI)") {
-            Component(orders_feat, "Orders Feature", "React Feature", "OrderMetrics, OrderFilters, OrderTable, OrderStatusActions, CreateOrderModal, CancelOrderModal.")
-            Component(settle_feat, "Settlement Feature", "React Feature", "SettlementSummary, SettlementFilters, SettlementLedger, RecordSettlementModal, FeeScheduleModal.")
-            Component(disc_feat, "Discrepancy Feature", "React Sub-Feature", "DiscrepancyPanel, DiscrepancyDetails, DiscrepancyReviewAction.")
-            Component(analytics_feat, "Analytics Feature", "React Feature", "KpiCards, RevenueTrendChart, ChannelShareChart, TopSkuTable, SourceOrderDrilldown.")
-        }
+        %% 3. Features Layer
+        subgraph FeaturesLayer [" 🧩 3. Features Layer: Business Capability UI "]
+            direction LR
+            
+            subgraph OrdersFeature [" Orders Domain UI "]
+                direction TB
+                ordersUI["<b>Orders Feature Components</b><br/><i>(src/features/orders/components/)</i><br/>OrderTable, OrderMetrics, OrderFilters<br/>OrderStatusActions, CreateOrderModal, CancelOrderModal"]
+            end
 
-        Boundary(hooks_boundary, "4. Feature Hooks") {
-            Component(orders_hooks, "Orders Hooks", "useOrders, useFeePreview", "Manages order remote data, mutations, and fee preview calculations.")
-            Component(settle_hooks, "Settlement Hooks", "useSettlement", "Manages settlement ledger queries and payout recording mutations.")
-            Component(disc_hooks, "Discrepancy Hooks", "useDiscrepancies", "Manages discrepancy audit queries and review note persistence.")
-            Component(analytics_hooks, "Analytics Hooks", "useAnalytics", "Manages executive KPI aggregations, charts, and CSV export.")
-        }
+            subgraph SettlementFeature [" Settlement & Discrepancy Domain UI "]
+                direction TB
+                settleUI["<b>Settlement Feature Components</b><br/><i>(src/features/settlements/components/)</i><br/>SettlementSummary, SettlementFilters<br/>SettlementLedger, RecordSettlementModal, FeeScheduleModal"]
+                discUI["<b>Discrepancy Sub-Feature Drawer</b><br/><i>(src/features/discrepancies/components/)</i><br/>DiscrepancyPanel, DiscrepancyDetails, DiscrepancyReviewAction"]
+            end
 
-        Boundary(services_boundary, "5. Feature API Services") {
-            Component(order_srv, "OrderService & FeeService", "Domain API Clients", "Executes HTTP requests for orders and fee calculation preview.")
-            Component(settle_srv, "SettlementService", "Domain API Client", "Executes HTTP requests for settlement records and statement imports.")
-            Component(disc_srv, "DiscrepancyService", "Domain API Client", "Executes HTTP requests for discrepancy audits and notes.")
-            Component(analytics_srv, "AnalyticsService", "Domain API Client", "Executes HTTP requests for KPIs, trend series, and CSV export.")
-        }
+            subgraph AnalyticsFeature [" Analytics Domain UI "]
+                direction TB
+                analyticsUI["<b>Analytics Feature Components</b><br/><i>(src/features/analytics/components/)</i><br/>KpiCards, RevenueTrendChart, ChannelShareChart<br/>TopSkuTable, SourceOrderDrilldown"]
+            end
+        end
 
-        Boundary(shared_boundary, "6. Shared Frontend Foundation") {
-            Component(api_client, "ApiClient", "Shared Axios Client", "Single base HTTP client: baseURL, interceptors, error normalization.")
-            Component(shared_ui, "Shared UI Primitives", "Domain-Agnostic UI", "Button, Input, Select, Modal, Table, Badge, Card, Toast, EmptyState.")
-            Component(ui_copy, "UI Copy Dictionary", "TypeScript Constants", "Centralized English-only string tokens (P03.5).")
-            Component(formatters, "Formatting Utilities", "TypeScript Utilities", "VND currency (184,500,000 ₫), English dates, Asia/Ho_Chi_Minh timezone.")
-            Component(tokens, "Design System Tokens", "CSS Variables", "Financial tokens: Dark Neutral #0f172a, Crimson Red #c5221f, Slate #64748b.")
-        }
-    }
+        %% 4. Feature Hooks Layer
+        subgraph HooksLayer [" 🪝 4. Feature Hooks Layer: Server-State Lifecycle "]
+            direction LR
+            ordersHooks["<b>Orders Hooks</b><br/><i>(useOrders, useFeePreview)</i><br/>Remote state, mutations & fee preview"]
+            settleHooks["<b>Settlement & Discrepancy Hooks</b><br/><i>(useSettlement, useDiscrepancies)</i><br/>Ledger queries, payout recording & audit notes"]
+            analyticsHooks["<b>Analytics Hooks</b><br/><i>(useAnalytics)</i><br/>Executive KPIs, trend data & CSV export"]
+        end
 
-    Container_Ext(backend_api, "ASP.NET Core Backend API", "External C4 Container", "Authoritative backend computing fee math, lifecycle validation, and persistence.")
+        %% 5. Feature API Services Layer
+        subgraph ServicesLayer [" 🌐 5. Feature API Services Layer "]
+            direction LR
+            ordersServices["<b>Orders Services</b><br/><i>(OrderService, FeeService)</i><br/>Order lifecycle & backend fee preview"]
+            settleServices["<b>Settlement & Discrepancy Services</b><br/><i>(SettlementService, DiscrepancyService)</i><br/>Ledger records, statements & audit logs"]
+            analyticsServices["<b>Analytics Service</b><br/><i>(AnalyticsService)</i><br/>Dynamic dashboard metrics & CSV download"]
+        end
 
-    %% Shell composition
-    Rel(shell, topbar, "Composes")
-    Rel(shell, sidebar, "Composes")
-    Rel(topbar, rbac, "Evaluates persona visibility")
-    Rel(sidebar, rbac, "Filters navigation links")
+        %% 6. Shared Frontend Foundation Layer
+        subgraph SharedLayer [" 🏛️ 6. Shared Frontend Foundation (Cross-Cutting & Infrastructure) "]
+            direction LR
+            apiClient["🔌 <b>ApiClient (Shared Axios)</b><br/><i>(src/shared/api/ApiClient.ts)</i><br/>Single base HTTP client, auth & error handling"]
+            sharedUI["🎨 <b>Shared UI Primitives</b><br/><i>(src/shared/ui/)</i><br/>Button, Input, Modal, Table, Badge, Card, Toast, EmptyState"]
+            formatters["📐 <b>Formatting Utilities</b><br/><i>(src/shared/lib/formatters.ts)</i><br/>VND currency (184,500,000 ₫), English dates, Asia/Ho_Chi_Minh"]
+            uiCopy["📖 <b>UI Copy Dictionary</b><br/><i>(src/shared/constants/uiCopy.ts)</i><br/>Centralized English copy (P03.5)"]
+            tokens["🎛️ <b>Design System Tokens</b><br/><i>(src/styles/tokens.css)</i><br/>#0f172a values, #c5221f loss, #64748b zero, tabular numbers"]
+        end
+    end
 
-    %% Shell -> Router -> Pages -> Features
-    Rel(shell, router, "Mounts and hosts")
-    Rel(router, orders_page, "Renders on /orders")
-    Rel(router, settle_page, "Renders on /settlement")
-    Rel(router, dash_page, "Renders on /analytics")
+    %% External Backend Container
+    subgraph BackendTier [" ⚙️ External Backend Container "]
+        backendApi["⚙️ <b>ASP.NET Core Backend API</b><br/><i>[Authoritative Backend Container]</i><br/>Strategy Pattern Fee Engine, Lifecycle Validation, PostgreSQL Persistence"]
+    end
 
-    Rel(orders_page, orders_feat, "Composes")
-    Rel(settle_page, settle_feat, "Composes")
-    Rel(settle_page, disc_feat, "Embeds as drawer")
-    Rel(dash_page, analytics_feat, "Composes")
+    %% Wiring Flows: Top to Bottom
+    shell -->|"Hosts Shell Layout"| ShellSubcomponents
+    topbar -.->|"Evaluates Visibility"| rbac
+    sidebar -.->|"Filters Nav Links"| rbac
+    shell -->|"Mounts Viewport"| router
 
-    %% Features -> Feature Hooks
-    Rel(orders_feat, orders_hooks, "Invokes")
-    Rel(settle_feat, settle_hooks, "Invokes")
-    Rel(disc_feat, disc_hooks, "Invokes")
-    Rel(analytics_feat, analytics_hooks, "Invokes")
+    router -->|"/orders"| ordersPage
+    router -->|"/settlement"| settlePage
+    router -->|"/analytics"| dashPage
 
-    %% Feature Hooks -> Feature API Services
-    Rel(orders_hooks, order_srv, "Calls domain methods")
-    Rel(settle_hooks, settle_srv, "Calls domain methods")
-    Rel(disc_hooks, disc_srv, "Calls domain methods")
-    Rel(analytics_hooks, analytics_srv, "Calls domain methods")
+    ordersPage -->|"Composes"| ordersUI
+    settlePage -->|"Composes"| settleUI
+    settlePage -->|"Embeds Drawer"| discUI
+    dashPage -->|"Composes"| analyticsUI
 
-    %% Feature API Services -> ApiClient
-    Rel(order_srv, api_client, "Dispatches HTTP requests")
-    Rel(settle_srv, api_client, "Dispatches HTTP requests")
-    Rel(disc_srv, api_client, "Dispatches HTTP requests")
-    Rel(analytics_srv, api_client, "Dispatches HTTP requests")
+    ordersUI -->|"Invokes"| ordersHooks
+    settleUI -->|"Invokes"| settleHooks
+    discUI -->|"Invokes"| settleHooks
+    analyticsUI -->|"Invokes"| analyticsHooks
 
-    %% ApiClient -> External Backend API
-    Rel(api_client, backend_api, "HTTPS / REST / JSON", "HTTPS/JSON")
+    ordersHooks -->|"Calls Domain APIs"| ordersServices
+    settleHooks -->|"Calls Domain APIs"| settleServices
+    analyticsHooks -->|"Calls Domain APIs"| analyticsServices
 
-    %% Features -> Shared Frontend Foundation (Parallel Layer)
-    Rel(orders_feat, shared_ui, "Renders primitives")
-    Rel(settle_feat, shared_ui, "Renders primitives")
-    Rel(disc_feat, shared_ui, "Renders primitives")
-    Rel(analytics_feat, shared_ui, "Renders primitives")
+    ordersServices -->|"Dispatches HTTP"| apiClient
+    settleServices -->|"Dispatches HTTP"| apiClient
+    analyticsServices -->|"Dispatches HTTP"| apiClient
 
-    Rel(orders_feat, formatters, "Formats currency & dates")
-    Rel(settle_feat, formatters, "Formats currency & dates")
-    Rel(analytics_feat, formatters, "Formats currency & dates")
+    SharedLayer -.->|"Provides Primitives, Formatters & Tokens"| FeaturesLayer
 
-    Rel(orders_feat, ui_copy, "Imports canonical copy")
-    Rel(settle_feat, ui_copy, "Imports canonical copy")
-    Rel(analytics_feat, ui_copy, "Imports canonical copy")
+    apiClient -->|"HTTPS / REST / JSON"| backendApi
+
+    %% Class Styling (Matching Backend Diagram Palette & Visual Excellence)
+    classDef shellStyle fill:#0f172a,stroke:#020617,color:#ffffff,stroke-width:2px;
+    classDef routerStyle fill:#1e293b,stroke:#0f172a,color:#ffffff,stroke-width:2px;
+    classDef pageStyle fill:#1e3a8a,stroke:#172554,color:#ffffff,stroke-width:2px;
+    classDef featStyle fill:#0284c7,stroke:#0369a1,color:#ffffff,stroke-width:2px;
+    classDef hookStyle fill:#0d9488,stroke:#0f766e,color:#ffffff,stroke-width:2px;
+    classDef svcStyle fill:#4338ca,stroke:#3730a3,color:#ffffff,stroke-width:2px;
+    classDef clientStyle fill:#1168bd,stroke:#0b4884,color:#ffffff,stroke-width:2px;
+    classDef sharedStyle fill:#64748b,stroke:#475569,color:#ffffff,stroke-width:2px;
+    classDef backendStyle fill:#08427b,stroke:#052e56,color:#ffffff,stroke-width:2px;
+
+    class shell,topbar,sidebar,rbac shellStyle;
+    class router routerStyle;
+    class ordersPage,settlePage,dashPage pageStyle;
+    class ordersUI,settleUI,discUI,analyticsUI featStyle;
+    class ordersHooks,settleHooks,analyticsHooks hookStyle;
+    class ordersServices,settleServices,analyticsServices svcStyle;
+    class apiClient clientStyle;
+    class sharedUI,formatters,uiCopy,tokens sharedStyle;
+    class backendApi backendStyle;
+
+    style SpaContainer fill:#f8fafc,stroke:#0b4884,stroke-width:2px;
+    style AppRoutingLayer fill:#ffffff,stroke:#cbd5e1,stroke-width:1px;
+    style PagesLayer fill:#ffffff,stroke:#cbd5e1,stroke-width:1px;
+    style FeaturesLayer fill:#ffffff,stroke:#cbd5e1,stroke-width:1px;
+    style HooksLayer fill:#ffffff,stroke:#cbd5e1,stroke-width:1px;
+    style ServicesLayer fill:#ffffff,stroke:#cbd5e1,stroke-width:1px;
+    style SharedLayer fill:#ffffff,stroke:#cbd5e1,stroke-width:1px;
+    style BackendTier fill:#ffffff,stroke:#cbd5e1,stroke-width:1px;
 ```
 
 ---
