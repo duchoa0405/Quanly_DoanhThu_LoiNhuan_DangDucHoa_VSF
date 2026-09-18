@@ -21,7 +21,7 @@ graph LR
         UC01[UC01: Record Multi-Channel Orders]
         UC02[UC02: Estimate Platform Fees]
         UC03[UC03: Transition Order Status Shipped to Delivered]
-        UC04[UC04: Cancel Order & Reverse Revenue/Profit]
+        UC04[UC04: Cancel Order & Exclude from Revenue/Profit]
     end
 
     subgraph Screen2 [Screen 2: Fees & Settlement]
@@ -58,7 +58,10 @@ graph LR
     FM --> UC12
     FM --> UC13
 
-    %% Shop Owner Interactions
+    %% Shop Owner Interactions (Full Access across Workspaces)
+    OW --> UC01
+    OW --> UC03
+    OW --> UC04
     OW --> UC05
     OW --> UC06
     OW --> UC07
@@ -97,8 +100,8 @@ graph LR
 |---|---|:---:|---|
 | **Screen 1: Orders Management** *(Orders Tab)* | **UC01: Record Multi-Channel Orders** | `Sales & Ops Staff`<br>`Shop Owner` | Records commercial orders from TikTok Shop, Shopee, and POS. Snapshots SKU selling prices and unit baseline costs. |
 | | **UC02: Estimate Platform Fees** | *(System Automated / Backend)* | Computes channel fee deductions (commission, payment, service fees, and fixed charges). The backend may implement this via the Strategy Pattern. |
-| | **UC03: Transition Order Status (Shipped $\rightarrow$ Delivered)** | `Sales & Ops Staff` | Advances order lifecycle. Upon `DELIVERED`, the system **officially recognizes Gross Revenue, COGS, and Contribution Profit**. |
-| | **UC04: Cancel Order & Reverse Revenue/Profit** | `Sales & Ops Staff` | Records customer cancellations before fulfillment, strictly excluding them from revenue, COGS, and profit metrics. |
+| | **UC03: Transition Order Status (Shipped $\rightarrow$ Delivered)** | `Sales & Ops Staff`<br>`Shop Owner` | Advances order lifecycle. Upon `DELIVERED`, the system **officially recognizes Gross Revenue, COGS, and Contribution Profit**. |
+| | **UC04: Cancel Order & Exclude from Revenue/Profit** | `Sales & Ops Staff`<br>`Shop Owner` | Records customer cancellations before fulfillment, strictly excluding unfulfilled orders from revenue, COGS, and profit metrics. |
 | **Screen 2: Fees & Settlement** *(Settlement Tab)* | **UC05: View Fee Breakdown & Projected Settlement** | `Finance Manager`<br>`Shop Owner` | Inspects fee deductions: Gross Revenue $\rightarrow$ Commission $\rightarrow$ Payment $\rightarrow$ Service $\rightarrow$ Projected Settlement. |
 | | **UC06: Record & Reconcile Actual Settlement** | `Finance Manager`<br>`Shop Owner` | Manually records verified cash payout figures (`Actual Settlement`) from wallet/bank statements and reconciles against projected payout. |
 | | **UC07: Track Settlement Discrepancy Audits** | `Finance Manager`<br>`Shop Owner` | Investigates variances between projected settlement and actual wallet deposit, enforcing mandatory root-cause explanation notes. |
@@ -125,20 +128,21 @@ graph LR
 ## 4. Core Use Case Scenarios & RBAC Matrix
 
 ### 4.1. Scenario 1: Multi-Channel Order Recording & Cost Freezing (UC01)
-* **Primary Actor:** `Sales & Ops Staff`
+* **Primary Actors:** `Sales & Ops Staff`, `Shop Owner`
 * **Workspace:** Screen 1: Orders Management
 * **Main Flow:**
   1. Operator selects Channel (*TikTok Shop, Shopee, or POS*) and records external Order ID.
   2. Uses `ProductSelector` to add order line items (SKU code, quantity, agreed unit selling price) and inputs shop voucher. (Baseline unit cost is hidden from operator).
   3. System automatically retrieves current baseline cost and freezes immutable `unit_cost_snapshot`:
      $$\text{Line COGS} = \text{Quantity} \times \text{Unit Cost Snapshot}$$
-  4. System triggers backend fee preview calculation (`UC02`):
+  4. System triggers backend fee preview calculation (`UC02`) to display estimated fees and projected settlement:
      $$\text{Estimated Fees} = \text{Commission} + \text{Payment Fee} + \text{Service Fee} + \text{Fixed Fee}$$
      $$\text{Projected Settlement} = \text{Gross Revenue} - \text{Estimated Fees}$$
+     *(Note: Fee Preview at order creation is an interactive estimation; official platform fee snapshots are authoritatively frozen upon reaching `DELIVERED` status).*
   5. Order is saved with `PENDING` status.
 
 ### 4.2. Scenario 2: Order Lifecycle & Revenue/Profit Recognition (UC03)
-* **Primary Actor:** `Sales & Ops Staff`
+* **Primary Actors:** `Sales & Ops Staff`, `Shop Owner`
 * **Workspace:** Screen 1: Orders Management
 * **Rules:**
   1. **Dispatch (`SHIPPED`):** Order is marked in-transit; revenue, COGS, and profit remain provisional.
@@ -146,16 +150,17 @@ graph LR
   3. **Cancellation (`CANCELLED`):** System enforces mandatory cancellation reason; cancelled order contributes 0 VND to Gross Revenue, COGS, and Contribution Profit.
 
 ### 4.3. Scenario 3: Manual Settlement Reconciliation & CSV Export (UC06, UC07, UC11)
-* **Primary Actor:** `Finance Manager` / `Shop Owner`
+* **Primary Actors:** `Finance Manager`, `Shop Owner`
 * **Workspace:** Screen 2 (Fees & Settlement) & Screen 3 (Revenue & Profit Dashboard)
 * **Main Flow:**
-  1. Accountant reviews delivered orders on Screen 2 and opens the Wallet Settlement Drawer (`RecordSettlementModal`).
-  2. Enters verified payout amount (`Actual Settlement`) from the platform wallet / bank statement.
+  1. Accountant reviews delivered orders on Screen 2 and opens the Wallet Settlement Drawer (`RecordSettlementModal`). *(The order lifecycle status remains strictly `DELIVERED` throughout this process).*
+  2. Enters verified cash disbursement amount (`Actual Settlement`) from the platform wallet / bank statement.
   3. System calculates variance:
      $$\text{Variance} = \text{Projected Settlement} - \text{Actual Settlement}$$
-  4. **Status Determination:**
-     - If $\text{Variance} = 0 \text{ ₫}$, order status transitions to `RECONCILED`.
-     - If $\text{Variance} \neq 0 \text{ ₫}$, order status transitions to `DISCREPANCY`, and the system mandates logging a root-cause explanation note (`UC07`).
+  4. **Reconciliation Status Determination:**
+     - If $\text{Variance} = 0 \text{ ₫}$, reconciliation status becomes `RECONCILED`.
+     - If $\text{Variance} \neq 0 \text{ ₫}$, reconciliation status becomes `DISCREPANCY`, and the system mandates logging a root-cause explanation note (`UC07`).
+     *(Note: `RECONCILED` and `DISCREPANCY` govern the financial reconciliation audit state; the order lifecycle status remains authoritatively `DELIVERED`).*
   5. User navigates to Screen 3 (`Revenue & Profit Dashboard`), applies reporting filters, and clicks **Export CSV** (`UC11`) for accounting audit trails.
 
 ---
