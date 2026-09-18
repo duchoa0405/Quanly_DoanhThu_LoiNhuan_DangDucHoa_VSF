@@ -5,18 +5,20 @@
 ## 1. Architectural Overview & Engineering Standards
 
 ### 1.1 Purpose & Scope
-This document specifies the **Target MVP Database Architecture** for the Fashion Multi-Channel Revenue and Profit Management System. 
+This document specifies the **Target MVP Database Architecture** for the Fashion Multi-Channel Revenue Management System. 
 
 > [!IMPORTANT]
-> **Independent Target Specification:** The schema defined in `schema.dbml` and detailed herein represents an independent, clean-room target relational design optimized for ACID transaction integrity, strict financial auditing, and multi-channel reconciliation. 
+> **Independent Target Specification:** The schema defined in `schema.dbml` and detailed herein represents an independent, clean-room target relational design optimized for ACID transaction integrity, strict platform fee auditing, and multi-channel reconciliation. It strictly adheres to current MVP requirements without incorporating out-of-scope accounting abstractions.
+
 ### 1.2 Core Standards & Architectural Invariants
 - **Target RDBMS:** **PostgreSQL 16+** with native transactional ACID guarantees.
 - **Naming Conventions:** Strict `snake_case` across all tables, columns, indexes, and constraints.
 - **Primary Key Standard:** Universal `uuid` (UUID v4 via `gen_random_uuid()`) for all business entity tables to prevent enumeration attacks and support distributed ingestion.
-- **Monetary Precision:** All monetary amounts are typed as `numeric(15, 2)`. Floating-point types (`float`, `double`, `real`) are strictly prohibited to prevent IEEE 754 precision issues.
+- **Monetary Precision:** All monetary amounts are typed as `numeric(15, 2)`. Floating-point types (`float`, `double`, `real`) are strictly prohibited to eliminate IEEE 754 rounding inaccuracies.
 - **Timestamp Standard:** All temporal fields are stored as `timestamptz` in **UTC**. Conversion to local business timezone (`Asia/Ho_Chi_Minh`, UTC+7) is handled exclusively at presentation/query boundaries.
-- **Fee Rate Conventions:** Percentage rates are stored as fractional decimals (`numeric(6, 4)`), where `0.0400` represents 4.00% and `0.0100` represents 1.00%.
+- **Fee Rate Conventions:** Percentage rates are stored as fractional decimals (`numeric(6, 4)`), where `0.0400` represents 4.00%, `0.0200` represents 2.00%, `0.0100` represents 1.00%, and `0.0000` represents 0.00%.
 - **Core Scope:** Exactly **9 core transactional tables** organized into 4 cohesive functional domains.
+- **No Cost of Goods Sold (COGS) / Net Profit:** In strict compliance with current MVP requirements, cost accounting, COGS tracking, and net profit calculations are excluded from this core schema. The financial analysis baseline focuses strictly on **Gross Revenue**, **Platform Fees**, and **Projected Settlement (Net Realized Revenue)**.
 
 ---
 
@@ -44,7 +46,6 @@ erDiagram
 
     products {
         uuid id PK
-        varchar_100 code UK
         varchar_255 name
         varchar_100 category
         boolean is_active
@@ -55,11 +56,10 @@ erDiagram
     product_variants {
         uuid id PK
         uuid product_id FK
-        varchar_100 sku UK
+        varchar_100 sku_code UK
         varchar_50 color
         varchar_20 size
-        numeric_15_2 cost_price
-        numeric_15_2 original_price
+        numeric_15_2 retail_price
         boolean is_active
         timestamptz created_at
         timestamptz updated_at
@@ -74,12 +74,12 @@ erDiagram
         numeric_15_2 subtotal
         numeric_15_2 shop_voucher
         numeric_15_2 gross_revenue
-        numeric_15_2 total_cost_price
         varchar_255 customer_name
         varchar_20 customer_phone
-        timestamptz ordered_at
+        timestamptz order_date
         timestamptz delivered_at
         timestamptz cancelled_at
+        text cancellation_reason
         timestamptz created_at
         timestamptz updated_at
     }
@@ -92,9 +92,7 @@ erDiagram
         varchar_255 product_name_snapshot
         integer quantity
         numeric_15_2 unit_price
-        numeric_15_2 total_price
-        numeric_15_2 unit_cost_snapshot
-        numeric_15_2 total_cost
+        numeric_15_2 line_total
         timestamptz created_at
     }
 
@@ -112,10 +110,11 @@ erDiagram
         uuid id PK
         channel_type channel
         payment_method payment_method
-        numeric_6_4 platform_fee_rate
-        numeric_6_4 commission_fee_rate
+        numeric_6_4 commission_rate
         numeric_6_4 payment_fee_rate
-        numeric_15_2 fixed_fee
+        numeric_6_4 service_fee_rate
+        numeric_15_2 service_fee_cap
+        numeric_15_2 fixed_fee_per_order
         date effective_from
         date effective_to
         boolean is_active
@@ -127,31 +126,29 @@ erDiagram
         uuid id PK
         uuid order_id FK,UK
         uuid fee_schedule_id FK
-        numeric_6_4 platform_fee_rate
-        numeric_15_2 platform_fee_amount
-        numeric_6_4 commission_fee_rate
+        numeric_6_4 commission_rate
         numeric_15_2 commission_fee_amount
         numeric_6_4 payment_fee_rate
         numeric_15_2 payment_fee_amount
+        numeric_6_4 service_fee_rate
+        numeric_15_2 service_fee_amount
+        numeric_15_2 service_fee_cap_snapshot
         numeric_15_2 fixed_fee_amount
-        numeric_15_2 total_fee_amount
-        numeric_15_2 net_revenue
-        numeric_15_2 net_profit
+        numeric_15_2 total_platform_fees
+        numeric_15_2 projected_settlement
         timestamptz snapshot_at
     }
 
     reconciliation_records {
         uuid id PK
         uuid order_id FK,UK
-        varchar_100 statement_reference
         numeric_15_2 projected_settlement
         numeric_15_2 actual_settlement
         numeric_15_2 variance_amount
         reconciliation_status status
-        date settlement_date
+        text reconciliation_notes
         timestamptz reconciled_at
         varchar_100 reconciled_by
-        text notes
         timestamptz created_at
         timestamptz updated_at
     }
@@ -160,11 +157,8 @@ erDiagram
         uuid id PK
         uuid reconciliation_record_id FK
         varchar_50 discrepancy_type
-        numeric_15_2 expected_amount
-        numeric_15_2 actual_amount
-        numeric_15_2 discrepancy_amount
+        text explanation_note
         text resolution_notes
-        varchar_50 resolution_action
         varchar_100 resolved_by
         timestamptz resolved_at
         timestamptz created_at
@@ -178,9 +172,12 @@ erDiagram
 | Enum Name | Allowed Values | Description |
 | :--- | :--- | :--- |
 | `channel_type` | `TIKTOK`, `SHOPEE`, `POS` | Multi-channel sales origination source. |
-| `payment_method` | `CASH`, `POS_CARD_QR`, `MARKETPLACE_WALLET` | Settlement instrument used by the customer. |
-| `order_status` | `PENDING`, `SHIPPED`, `DELIVERED`, `CANCELLED`, `RETURNED` | Unified order operational lifecycle status. |
-| `reconciliation_status`| `PENDING`, `MATCHED`, `DISCREPANCY`, `RESOLVED` | Audit status between internal books and channel payout statements. |
+| `payment_method` | `CASH`, `POS_CARD_QR`, `MARKETPLACE_WALLET` | Settlement instrument used by the customer. Differentiates 0% cash fee vs 1% card/QR fee at POS. |
+| `order_status` | `PENDING`, `SHIPPED`, `DELIVERED`, `CANCELLED` | Core operational lifecycle status. Revenue is recognized strictly at `DELIVERED`. |
+| `reconciliation_status`| `PENDING_SETTLEMENT`, `RECONCILED`, `DISCREPANCY` | Canonical accounting audit status between projected settlement and actual disbursement. |
+
+> [!NOTE]
+> **No RETURNED Status in Core MVP:** The operational status `RETURNED` / `REFUNDED` is excluded from the core state machine to prevent un-scoped return workflow complexity in MVP. It is deferred to Future Extensions.
 
 ---
 
@@ -191,21 +188,18 @@ erDiagram
 #### Table: `products`
 Root product entity representing the master fashion style/model.
 - **Primary Key:** `id` (`uuid`, default: `gen_random_uuid()`).
-- **Natural Key:** `code` (`varchar(100)` unique, not null).
-- **Core Columns:** `name` (`varchar(255)`), `category` (`varchar(100)`), `is_active` (`boolean`, default: `true`).
+- **Core Columns:** `name` (`varchar(255)`, not null), `category` (`varchar(100)`), `is_active` (`boolean`, default: `true`).
 - **Audit Columns:** `created_at`, `updated_at` (`timestamptz`).
-- **Key Constraints:** `UNIQUE (code)`, `CHECK (length(code) >= 2)`.
 
 #### Table: `product_variants`
 Specific sellable stock-keeping units (SKUs) defined by color and size combinations.
-- **Primary Key:** `id` (`uuid`).
+- **Primary Key:** `id` (`uuid`, default: `gen_random_uuid()`).
 - **Foreign Key:** `product_id` -> `products(id)` ON DELETE RESTRICT.
-- **Natural Key:** `sku` (`varchar(100)` unique, not null).
-- **Financial Baseline:**
-  - `cost_price` (`numeric(15,2)`): Cost of goods sold (COGS) base. Must be `>= 0`.
-  - `original_price` (`numeric(15,2)`): Listed retail price. Must be `>= cost_price`.
-- **Attributes:** `color` (`varchar(50)`), `size` (`varchar(20)`), `is_active` (`boolean`).
-- **Indexes:** `idx_product_variants_product_id`, `idx_product_variants_sku`.
+- **Natural Key:** `sku_code` (`varchar(100)` unique, not null).
+- **Pricing:** `retail_price` (`numeric(15, 2)`, check `>= 0`).
+- **Attributes:** `color` (`varchar(50)`), `size` (`varchar(20)`), `is_active` (`boolean`, default: `true`).
+- **Audit Columns:** `created_at`, `updated_at` (`timestamptz`).
+- **Uniqueness & Indexes:** Unique index on `sku_code`; index on `product_id`.
 
 ---
 
@@ -213,51 +207,48 @@ Specific sellable stock-keeping units (SKUs) defined by color and size combinati
 
 #### Table: `orders`
 Master sales order entity recording multi-channel commercial transactions.
-- **Primary Key:** `id` (`uuid`).
+- **Primary Key:** `id` (`uuid`, default: `gen_random_uuid()`).
 - **Channel Identity:**
   - `channel` (`channel_type`, not null).
-  - `external_order_id` (`varchar(100)`): External order identifier from marketplace or POS.
-  - **Constraint:** `UNIQUE (channel, external_order_id)` ensures idempotent order ingestion.
-- **Financial Columns:**
-  - `subtotal` (`numeric(15,2)`): Gross item sum before discounts.
-  - `shop_voucher` (`numeric(15,2)`): Merchant-funded discount.
-  - `gross_revenue` (`numeric(15,2)`): Realized sales revenue (`subtotal - shop_voucher`).
-  - `total_cost_price` (`numeric(15,2)`): Aggregated COGS for all line items.
+  - `external_order_id` (`varchar(100)`): External order identifier from marketplace or POS receipt.
+  - `UNIQUE (channel, external_order_id)` ensures idempotent order ingestion.
+- **Financial Baseline:**
+  - `subtotal` (`numeric(15, 2)`, not null): Sum of item quantities × unit selling prices.
+  - `shop_voucher` (`numeric(15, 2)`, default: `0.00`): Merchant-funded discount.
+  - `gross_revenue` (`numeric(15, 2)`, not null): Customer payable amount (`subtotal - shop_voucher`).
 - **Lifecycle & Temporal Columns:**
   - `status` (`order_status`, default: `PENDING`).
-  - `ordered_at` (`timestamptz`, not null).
-  - `delivered_at` (`timestamptz`, nullable, populated upon successful customer delivery).
-  - `cancelled_at` (`timestamptz`, nullable, populated if cancelled/returned).
-- **Check Constraints:**
-  - `CHECK (gross_revenue = subtotal - shop_voucher)`
-  - `CHECK (delivered_at IS NULL OR delivered_at >= ordered_at)`
-- **Key Indexes:**
-  - `idx_orders_channel_external (channel, external_order_id)`
-  - `idx_orders_status_delivered (status, delivered_at)` (for anti-phantom revenue queries)
-  - `idx_orders_ordered_at (ordered_at)`
+  - `order_date` (`timestamptz`, not null).
+  - `delivered_at` (`timestamptz`, nullable): Populated strictly upon customer delivery.
+  - `cancelled_at` (`timestamptz`, nullable): Populated if order transitions to `CANCELLED`.
+  - `cancellation_reason` (`text`, nullable): Mandatory explanation note upon cancellation.
+- **Customer Information:** `customer_name` (`varchar(255)`), `customer_phone` (`varchar(20)`).
+- **Audit Columns:** `created_at`, `updated_at` (`timestamptz`).
 
 #### Table: `order_items`
 Detailed line items for each order, maintaining an immutable historical audit snapshot.
-- **Primary Key:** `id` (`uuid`).
+- **Primary Key:** `id` (`uuid`, default: `gen_random_uuid()`).
 - **Foreign Keys:**
   - `order_id` -> `orders(id)` ON DELETE CASCADE.
   - `product_variant_id` -> `product_variants(id)` ON DELETE RESTRICT.
-- **Immutable Snapshots:**
-  - `sku_code_snapshot` (`varchar(100)`): SKU text at purchase time.
-  - `product_name_snapshot` (`varchar(255)`): Product name at purchase time.
-  - `unit_cost_snapshot` (`numeric(15,2)`): Unit COGS frozen at order placement.
+- **Immutable Purchase Snapshots:**
+  - `sku_code_snapshot` (`varchar(100)`, not null): SKU text at purchase time.
+  - `product_name_snapshot` (`varchar(255)`, not null): Product title at purchase time.
 - **Line Calculations:**
   - `quantity` (`integer`, check `> 0`).
-  - `unit_price` (`numeric(15,2)`, check `>= 0`).
-  - `total_price` (`numeric(15,2)`, check `= quantity * unit_price`).
-  - `total_cost` (`numeric(15,2)`, check `= quantity * unit_cost_snapshot`).
+  - `unit_price` (`numeric(15, 2)`, check `>= 0`).
+  - `line_total` (`numeric(15, 2)`, check `= quantity * unit_price`): Stored/derived line item total.
+- **Audit Columns:** `created_at` (`timestamptz`).
+
+> [!IMPORTANT]
+> **Cardinality Invariant (Order 1 -> 1..* OrderItems):** A commercial order must contain at least one line item. Because standard relational foreign keys cannot enforce non-empty child sets, this invariant is validated in the application command handler prior to transaction commit.
 
 #### Table: `order_status_history`
 Append-only chronological state machine audit log.
-- **Primary Key:** `id` (`uuid`).
+- **Primary Key:** `id` (`uuid`, default: `gen_random_uuid()`).
 - **Foreign Key:** `order_id` -> `orders(id)` ON DELETE CASCADE.
 - **Columns:** `from_status` (`order_status`), `to_status` (`order_status`), `reason` (`text`), `changed_by` (`varchar(100)`), `changed_at` (`timestamptz`).
-- **Immutability:** Strictly append-only. Updates and deletes are prohibited by policy/triggers.
+- **Purpose:** Full audit traceability. `orders.status` tracks current state; `order_status_history` records historical transitions.
 
 ---
 
@@ -265,76 +256,72 @@ Append-only chronological state machine audit log.
 
 #### Table: `fee_schedules`
 Configurable fee policy matrix keyed by channel and payment method.
-- **Primary Key:** `id` (`uuid`).
+- **Primary Key:** `id` (`uuid`, default: `gen_random_uuid()`).
 - **Lookup Dimensions:**
-  - `channel` (`channel_type`).
-  - `payment_method` (`payment_method`).
-- **Fee Rate Columns (`numeric(6,4)` fractional decimal):**
-  - `platform_fee_rate` (e.g., `0.0400` for 4.00%).
-  - `commission_fee_rate` (e.g., `0.0250` for 2.50%).
-  - `payment_fee_rate` (e.g., `0.0100` for 1.00% card/QR; `0.0000` for cash).
-  - `fixed_fee` (`numeric(15,2)`, flat fee per order).
+  - `channel` (`channel_type`, not null).
+  - `payment_method` (`payment_method`, not null).
+- **Fee Configuration:**
+  - `commission_rate` (`numeric(6, 4)`, default: `0.0000`): Marketplace commission rate (e.g., `0.0400` = 4.00%).
+  - `payment_fee_rate` (`numeric(6, 4)`, default: `0.0000`): Payment gateway rate (e.g., `0.0100` = 1.00%).
+  - `service_fee_rate` (`numeric(6, 4)`, default: `0.0000`): Percentage service fee (e.g., `0.0200` = 2.00% on Shopee).
+  - `service_fee_cap` (`numeric(15, 2)`, nullable): Maximum monetary cap for service fees.
+  - `fixed_fee_per_order` (`numeric(15, 2)`, default: `0.00`): Fixed processing charge per order (e.g., 3,000 VND on TikTok Shop).
 - **Temporal Validity:**
   - `effective_from` (`date`, not null).
-  - `effective_to` (`date`, nullable; null denotes open-ended validity).
-- **Constraints:**
-  - `CHECK (effective_to IS NULL OR effective_to >= effective_from)`
-  - Partial unique index ensures no overlapping active policies per channel/payment combination.
+  - `effective_to` (`date`, nullable; null denotes ongoing validity).
+  - `is_active` (`boolean`, default: `true`).
+- **Channel Policy Representation:**
+  - **TikTok Shop:** `commission_rate` (commission), `payment_fee_rate` (payment), `fixed_fee_per_order` (fixed service), `service_fee_rate = 0`, `service_fee_cap = null`.
+  - **Shopee:** `commission_rate` (commission), `payment_fee_rate` (payment), `service_fee_rate` (2%), `service_fee_cap` (capped maximum), `fixed_fee_per_order = 0`.
+  - **POS:** Differentiates `CASH` (0% fees across all categories) vs `POS_CARD_QR` (`payment_fee_rate = 0.0100`, others 0).
 
 #### Table: `order_fee_snapshots`
 Frozen financial and fee snapshot created when an order transitions to `DELIVERED`.
-- **Primary Key:** `id` (`uuid`).
+- **Primary Key:** `id` (`uuid`, default: `gen_random_uuid()`).
 - **Cardinality:** Exactly `1:0..1` with `orders`.
   - `order_id` (`uuid`, UNIQUE, FK -> `orders(id)` ON DELETE RESTRICT).
   - `fee_schedule_id` (`uuid`, FK -> `fee_schedules(id)` ON DELETE RESTRICT).
-- **Fee Calculations:**
-  - `platform_fee_amount = gross_revenue * platform_fee_rate`
-  - `commission_fee_amount = gross_revenue * commission_fee_rate`
-  - `payment_fee_amount = gross_revenue * payment_fee_rate`
-  - `total_fee_amount = platform_fee_amount + commission_fee_amount + payment_fee_amount + fixed_fee_amount`
-- **Net Performance Metrics:**
-  - `net_revenue = gross_revenue - total_fee_amount`
-  - `net_profit = net_revenue - total_cost_price`
-- **Audit:** `snapshot_at` (`timestamptz`).
+- **Applied Rates & Calculated Amounts:**
+  - `commission_rate` (`numeric(6, 4)`), `commission_fee_amount` (`numeric(15, 2)`).
+  - `payment_fee_rate` (`numeric(6, 4)`), `payment_fee_amount` (`numeric(15, 2)`).
+  - `service_fee_rate` (`numeric(6, 4)`), `service_fee_amount` (`numeric(15, 2)`).
+  - `service_fee_cap_snapshot` (`numeric(15, 2)`, nullable).
+  - `fixed_fee_amount` (`numeric(15, 2)`).
+- **Aggregated Deductions & Net Settlement:**
+  - `total_platform_fees` (`numeric(15, 2)`): Sum of all platform deductions.
+  - `projected_settlement` (`numeric(15, 2)`): Net amount expected to be disbursed (`gross_revenue - total_platform_fees`). Represents Net Realized Revenue.
+- **Audit Timestamp:** `snapshot_at` (`timestamptz`).
 
 ---
 
 ### 4.4 Group: Settlement & Reconciliation
 
 #### Table: `reconciliation_records`
-Financial settlement comparison between expected payouts and actual marketplace/bank disbursements.
-- **Primary Key:** `id` (`uuid`).
+Financial settlement record comparing expected net payouts against actual channel/bank cash disbursements.
+- **Primary Key:** `id` (`uuid`, default: `gen_random_uuid()`).
 - **Cardinality:** Exactly `1:0..1` with `orders`.
   - `order_id` (`uuid`, UNIQUE, FK -> `orders(id)` ON DELETE RESTRICT).
 - **Settlement Amounts:**
-  - `projected_settlement` (`numeric(15,2)`): Expected payout (`net_revenue` from snapshot).
-  - `actual_settlement` (`numeric(15,2)`): Actual cash/wallet disbursement reported by the channel.
-  - `variance_amount` (`numeric(15,2)`): Mathematical discrepancy.
-- **Canonical Variance Formula:**
-  ```text
-  variance_amount = projected_settlement - actual_settlement
-  ```
-  - `variance_amount > 0`: Underpayment / channel under-disbursement (shortfall).
-  - `variance_amount = 0`: Clean match (`reconciliation_status = 'MATCHED'`).
-  - `variance_amount < 0`: Overpayment / unexpected reimbursement.
-- **Status & Reference:**
-  - `statement_reference` (`varchar(100)`): Batch or payout statement code.
-  - `status` (`reconciliation_status`, default: `PENDING`).
-  - `settlement_date` (`date`).
+  - `projected_settlement` (`numeric(15, 2)`): Copied from `order_fee_snapshots.projected_settlement`.
+  - `actual_settlement` (`numeric(15, 2)`, nullable): Net cash disbursed into merchant wallet by platform/bank.
+  - `variance_amount` (`numeric(15, 2)`, nullable): Mathematical discrepancy (`projected_settlement - actual_settlement`).
+- **Status & Explanations:**
+  - `status` (`reconciliation_status`, default: `PENDING_SETTLEMENT`).
+  - `reconciliation_notes` (`text`, nullable): Explanation notes. **Mandatory whenever `variance_amount != 0`**.
+- **Audit Columns:**
   - `reconciled_at` (`timestamptz`), `reconciled_by` (`varchar(100)`).
+  - `created_at`, `updated_at` (`timestamptz`).
 
 #### Table: `discrepancy_audits`
-Detailed investigation log for reconciliation records flagged with `status = 'DISCREPANCY'`.
-- **Primary Key:** `id` (`uuid`).
+Detailed investigation log tracking root cause analysis and resolution notes for reconciliation variances.
+- **Primary Key:** `id` (`uuid`, default: `gen_random_uuid()`).
 - **Foreign Key:** `reconciliation_record_id` -> `reconciliation_records(id)` ON DELETE CASCADE.
 - **Investigation Fields:**
-  - `discrepancy_type` (`varchar(50)`): e.g., `COMMISSION_RATE_MISMATCH`, `EXTRA_SHIPPING_CHARGE`, `RETURN_FEE_DISPUTE`.
-  - `expected_amount` (`numeric(15,2)`).
-  - `actual_amount` (`numeric(15,2)`).
-  - `discrepancy_amount` (`numeric(15,2)`).
-  - `resolution_action` (`varchar(50)`): e.g., `CLAIM_CHANNEL`, `ADJUST_BOOK`, `WAIVE`.
-  - `resolution_notes` (`text`).
-  - `resolved_by` (`varchar(100)`), `resolved_at` (`timestamptz`).
+  - `discrepancy_type` (`varchar(50)`, not null): Classification (e.g., `COMMISSION_RATE_MISMATCH`, `EXTRA_SHIPPING_CHARGE`, `RETURN_FEE_DISPUTE`, `OTHER`).
+  - `explanation_note` (`text`, not null): Detailed documentation of the root cause.
+  - `resolution_notes` (`text`, nullable): Settlement/dispute resolution outcome.
+  - `resolved_by` (`varchar(100)`, nullable), `resolved_at` (`timestamptz`, nullable).
+- **Audit Timestamp:** `created_at` (`timestamptz`).
 
 ---
 
@@ -347,98 +334,184 @@ Detailed investigation log for reconciliation records flagged with `status = 'DI
 | `orders` | `order_items` | `1:1..N` | `order_id` | `CASCADE` | Items are intrinsic components of their parent order. |
 | `orders` | `order_status_history` | `1:N` | `order_id` | `CASCADE` | Status history belongs exclusively to the order lifecycle. |
 | `orders` | `order_fee_snapshots` | `1:0..1` | `order_id` (UK) | `RESTRICT` | Financial snapshot preserves immutable audit integrity. |
-| `fee_schedules` | `order_fee_snapshots` | `1:N` | `fee_schedule_id` | `RESTRICT` | Master fee rules referenced by historical orders are locked. |
-| `orders` | `reconciliation_records`| `1:0..1` | `order_id` (UK) | `RESTRICT` | Financial reconciliation records must be preserved. |
-| `reconciliation_records`| `discrepancy_audits` | `1:N` | `reconciliation_record_id` | `CASCADE` | Audit investigations cascade with the parent reconciliation record. |
+| `fee_schedules` | `order_fee_snapshots` | `1:N` | `fee_schedule_id` | `RESTRICT` | Fee schedule referenced by historical orders cannot be deleted. |
+| `orders` | `reconciliation_records`| `1:0..1` | `order_id` (UK) | `RESTRICT` | Reconciliation ledger records must be preserved. |
+| `reconciliation_records`| `discrepancy_audits` | `1:N` | `reconciliation_record_id` | `CASCADE` | Audit investigations cascade with parent reconciliation record. |
 
 ---
 
 ## 6. Financial Integrity Rules & Business Invariants
 
-### 6.1 Canonical Gross Revenue (BR-01)
-Gross Revenue is standardized across all multi-channel orders as:
+### 6.1 Canonical Gross Revenue
+Gross Revenue is standardized across all sales channels as:
 ```text
 gross_revenue = subtotal - shop_voucher
 ```
-- Platform-subsidized vouchers and buyer shipping fees do not alter the merchant's gross revenue baseline.
-- Preserved via `CHECK (gross_revenue = subtotal - shop_voucher)` in `orders`.
+- `subtotal`: Sum of quantity × unit selling price before merchant voucher.
+- `shop_voucher`: Merchant-funded discount.
+- `gross_revenue`: Net customer payable amount. It serves as the baseline for payment fees.
 
-### 6.2 Anti-Phantom Revenue Invariant (BR-04, NFR-02)
+### 6.2 Anti-Phantom Revenue Invariant
 Revenue is recognized strictly upon successful delivery:
 ```sql
-Recognized Revenue = SUM(gross_revenue) WHERE status = 'DELIVERED' AND delivered_at IS NOT NULL
+Recognized Gross Revenue = SUM(gross_revenue) 
+WHERE status = 'DELIVERED' AND delivered_at IS NOT NULL;
 ```
-- No separate mutable `recognized_revenue` column exists in the schema.
-- Orders in `PENDING`, `SHIPPED`, `CANCELLED`, or `RETURNED` states are strictly excluded from revenue metrics.
+- No separate mutable `recognized_revenue` column exists.
+- Orders in `PENDING`, `SHIPPED`, or `CANCELLED` contribute 0 to recognized revenue.
 
-### 6.3 Financial Snapshot Immutability (BR-02, BR-03)
-- When an order transitions to `DELIVERED`, the system identifies the matching active `fee_schedules` record where `ordered_at >= effective_from AND (effective_to IS NULL OR ordered_at <= effective_to)`.
-- Fee amounts, net revenue, and net profit are calculated and frozen into `order_fee_snapshots`.
-- Any subsequent modifications to `fee_schedules` or `product_variants.cost_price` will never alter previously created snapshots.
+### 6.3 Fee Calculation Formulas
+When an order transitions to `DELIVERED`, fee calculation proceeds as follows:
+1. **Commission Fee:**
+   ```text
+   commission_fee_amount = subtotal * commission_rate
+   ```
+2. **Payment Fee:**
+   ```text
+   payment_fee_amount = gross_revenue * payment_fee_rate
+   ```
+3. **Service Fee:**
+   - For percentage-based service fee (e.g., Shopee):
+     ```text
+     raw_service_fee = subtotal * service_fee_rate
+     service_fee_amount = min(raw_service_fee, service_fee_cap) -- if capped
+     service_fee_amount = raw_service_fee                       -- if uncapped
+     ```
+   - For fixed service fee (e.g., TikTok Shop):
+     ```text
+     fixed_fee_amount = fixed_fee_per_order
+     ```
+4. **Total Platform Fees:**
+   ```text
+   total_platform_fees = commission_fee_amount + payment_fee_amount + service_fee_amount + fixed_fee_amount
+   ```
+5. **Projected Settlement (Net Realized Revenue):**
+   ```text
+   projected_settlement = gross_revenue - total_platform_fees
+   ```
 
-### 6.4 Canonical Reconciliation Variance (BR-05, BR-06)
-Discrepancy detection uses the canonical accounting formula:
+> [!CAUTION]
+> **No Double Deduction of Voucher:**
+> Because `gross_revenue` already deducts `shop_voucher`, subtracting `total_platform_fees` from `gross_revenue` correctly yields the net payout without double-deducting the merchant voucher.
+
+### 6.4 Canonical Reconciliation Variance
+Discrepancy detection between expected settlement and bank/wallet disbursement uses:
 ```text
 variance_amount = projected_settlement - actual_settlement
 ```
-- If `variance_amount == 0.00`, the record is marked `MATCHED`.
-- If `variance_amount != 0.00`, the record is flagged `DISCREPANCY` and linked to `discrepancy_audits`.
+- `variance_amount > 0`: **Shortfall / Underpayment** (platform disbursed less than expected; merchant loss). Flagged as `DISCREPANCY`.
+- `variance_amount = 0`: **Clean Match** (`RECONCILED`).
+- `variance_amount < 0`: **Overpayment / Reimbursement** (platform disbursed more than expected).
+
+### 6.5 Clarification: Net Realized Revenue vs Net Profit
+- **`Net Realized Revenue = Projected Settlement`**: The net commercial cash realized after deducting platform commissions, payment processing charges, and service fees from gross revenue.
+- **`Net Realized Revenue != Net Profit`**: Net Profit requires deducting Cost of Goods Sold (COGS) and operational overhead. Because COGS is explicitly excluded from MVP scope, **Net Profit is not computed or stored in P05**.
 
 ---
 
-## 7. Data Lifecycle, Soft Deletes & Auditing Policies
+## 7. Persisted vs Derived Fields Summary
 
-1. **Transactional Immutability:**
-   - Financial tables (`order_fee_snapshots`, `reconciliation_records`, `order_status_history`) do not permit un-audited in-place `UPDATE` or `DELETE` operations.
-2. **Master Catalog Deletion:**
-   - `products` and `product_variants` use active flags (`is_active = false`) for operational deactivation. Physical hard deletion is blocked by `ON DELETE RESTRICT` whenever historical order items reference the entity.
-3. **Audit Trails:**
-   - All master and transaction tables contain `created_at` and `updated_at` timestamps managed automatically via database triggers (`moddatetime`).
+| Field | Source / Formula | Storage Strategy | Architectural Rationale |
+| :--- | :--- | :---: | :--- |
+| `orders.subtotal` | Sum of `order_items` line amounts | **Persisted** | Captures agreed merchandise subtotal upon order placement. |
+| `orders.gross_revenue` | `subtotal - shop_voucher` | **Persisted** | Fundamental financial baseline for customer payment. |
+| `order_items.line_total` | `quantity * unit_price` | **Persisted / Derived** | Stored to ensure line-item integrity. |
+| `order_fee_snapshots.*_amount` | Applied rate × monetary base | **Persisted** | Immutable snapshot; protects against historical fee rule modifications. |
+| `order_fee_snapshots.total_platform_fees` | Sum of platform fee components | **Persisted** | Aggregate fee deduction per order. |
+| `order_fee_snapshots.projected_settlement` | `gross_revenue - total_platform_fees` | **Persisted** | Freezes expected payout for manual reconciliation. |
+| `reconciliation_records.actual_settlement` | Manual entry from bank/wallet statement | **Persisted** | Actual cash disbursed. |
+| `reconciliation_records.variance_amount` | `projected_settlement - actual_settlement`| **Persisted / Derived** | Financial discrepancy; triggers mandatory explanation notes when non-zero. |
 
 ---
 
-## 8. Analytics & Aggregation Strategy
+## 8. Data Retention, Soft Deletes & Auditing Policies
 
-To maintain transactional performance while delivering instant multi-channel reporting:
-- **OLTP / Transactional Design:** The core 9 tables are normalized (3NF) to eliminate update anomalies and maximize transactional write throughput.
-- **Reporting Queries:** Analytical dashboards (Daily Sales, Channel Profitability, COGS Summaries) query transactional data dynamically using indexed filtering:
+1. **Financial Transaction Immutability:**
+   - Delivered orders and finalized `order_fee_snapshots` are read-only.
+   - Physical hard deletion of delivered commercial records is strictly prohibited.
+2. **Master Catalog Soft Deletes:**
+   - `products` and `product_variants` use active flags (`is_active = false`) for operational deactivation, preserving foreign key integrity for historical orders.
+3. **Restrict vs Cascade Deletions:**
+   - Deletion of master records with historical references is blocked (`ON DELETE RESTRICT`).
+   - Cascade deletion is restricted to strictly owned child components (`order_items`, `order_status_history`, `discrepancy_audits`).
+
+---
+
+## 9. Analytics & Reporting Strategy (No Duplicate Report Tables)
+
+To avoid redundant data synchronization and stale aggregation tables, all analytical views query the transactional tables dynamically:
+- **No Static Report Tables:** Tables such as `dashboard_kpi`, `daily_revenue`, or `channel_summary` are intentionally omitted. PostgreSQL 16+ indexes support sub-50ms analytical queries for MVP volume ($< 500{,}000$ orders).
+- **Approved Analytics Terminology:**
+  - *Gross Revenue by Channel*
+  - *Fee Burden by Channel*
+  - *Settlement Variance Analysis*
+  - *Top SKU by Gross Revenue*
+  - *Net Realized Revenue Trend*
+- **Example Dynamic Query (Executive Summary):**
   ```sql
-  -- Example: Recognizing multi-channel net revenue and net profit
   SELECT
-      o.channel,
-      date_trunc('day', o.delivered_at) AS delivery_date,
-      SUM(o.gross_revenue) AS total_gross_revenue,
-      SUM(s.total_fee_amount) AS total_fees,
-      SUM(s.net_revenue) AS total_net_revenue,
-      SUM(s.net_profit) AS total_net_profit
+      COALESCE(SUM(o.gross_revenue), 0) AS total_gross_revenue,
+      COALESCE(SUM(s.total_platform_fees), 0) AS total_platform_fees,
+      COALESCE(SUM(s.projected_settlement), 0) AS total_net_realized_revenue,
+      COUNT(o.id) AS delivered_orders_count
   FROM orders o
   JOIN order_fee_snapshots s ON s.order_id = o.id
   WHERE o.status = 'DELIVERED'
-    AND o.delivered_at >= '2026-09-01 00:00:00+00'
-  GROUP BY o.channel, date_trunc('day', o.delivered_at);
+    AND o.delivered_at IS NOT NULL;
   ```
-- **Read Scalability:** For large volumes, PostgreSQL Materialized Views refreshed concurrently (`REFRESH MATERIALIZED VIEW CONCURRENTLY`) provide cached aggregations without locking transactional tables.
-
----
-
-## 9. Future Schema Extensions (Post-MVP Scope)
-
-The following tables are documented for future scalability and are kept outside the MVP transactional core:
-1. **`statement_imports`:** Batch tracking table for bulk channel settlement uploads (Excel/CSV parse status, raw disbursement summaries).
-2. **`users` & `user_roles`:** Fine-grained internal authentication and role-based access control (RBAC) persistence (Admin, Accountant, Store Manager).
 
 ---
 
 ## 10. Traceability Matrix
 
-| Requirement ID | Requirement Summary | Architectural Implementation |
-| :--- | :--- | :--- |
-| **BR-01** | Multi-channel gross revenue tracking | `orders.gross_revenue`, `orders.channel`, `orders.shop_voucher` |
-| **BR-02** | Automatic fee calculation by channel/payment | `fee_schedules`, `order_fee_snapshots` |
-| **BR-03** | Net profit calculation after COGS & fees | `order_items.total_cost`, `order_fee_snapshots.net_profit` |
-| **BR-04** | Anti-phantom revenue recognition rule | `orders.status = 'DELIVERED'`, `orders.delivered_at IS NOT NULL` |
-| **BR-05** | Payout reconciliation against channel statements | `reconciliation_records.projected_settlement`, `actual_settlement` |
-| **BR-06** | Discrepancy investigation and dispute audit | `reconciliation_records.variance_amount`, `discrepancy_audits` |
-| **FR-01** | POS & Marketplace multi-channel order ingestion | `orders.external_order_id`, `UNIQUE (channel, external_order_id)` |
-| **NFR-01** | Sub-second transactional query latency | B-Tree indexing on `(channel, external_order_id)`, `ordered_at`, `status` |
-| **NFR-02** | Zero rounding error in financial reporting | Mandatory `numeric(15,2)` and `numeric(6,4)` precision standards |
+The schema directly traces to approved business user stories:
+
+| Requirement ID | Requirement Summary | Relational Schema Implementation | Invariants & Constraints |
+| :--- | :--- | :--- | :--- |
+| **US-ORD-01** | Create Multi-Item Commercial Orders | `products`, `product_variants`, `orders`, `order_items` | `subtotal`, `shop_voucher`, `gross_revenue`; item snapshots. Minimum 1 item rule enforced in application layer. |
+| **US-ORD-02** | Transition Order Lifecycle States | `orders`, `order_status_history` | `status` (`PENDING`, `SHIPPED`, `DELIVERED`, `CANCELLED`); append-only audit trail. |
+| **US-ORD-03** | Order Cancellation with Reason | `orders`, `order_status_history` | `cancelled_at`, mandatory `cancellation_reason`. Blocked if order is already `DELIVERED`. |
+| **US-FEE-01** | Channel & Payment Fee Schedules | `fee_schedules`, `order_fee_snapshots` | Keyed by `(channel, payment_method)`. Distinguishes POS Cash (0%) vs POS Card/QR (1%). |
+| **US-SET-01** | Projected Settlement Freezing | `order_fee_snapshots` | Snapshot created upon delivery; frozen `total_platform_fees` and `projected_settlement`. |
+| **US-SET-02** | Manual Payout Reconciliation & Variance | `reconciliation_records`, `discrepancy_audits` | `variance_amount = projected_settlement - actual_settlement`. Mandatory explanation when variance != 0. |
+| **US-DASH-01** | Executive Revenue KPIs | `orders`, `order_fee_snapshots` | Dynamic aggregation of `gross_revenue`, `total_platform_fees`, `projected_settlement`. |
+| **US-DASH-02** | 7-Day Realized Revenue Trend | `orders`, `order_fee_snapshots`, `reconciliation_records` | Aggregation grouped by `DATE(delivered_at)`. |
+| **US-DASH-03** | Top 5 SKUs by Gross Revenue | `order_items`, `product_variants`, `products` | Dynamic aggregation of item line totals for delivered orders. |
+| **US-DASH-04** | Order Detail Export Capability | `orders`, `order_items`, `order_fee_snapshots` | Transactional data joins filtered by date range. |
+
+---
+
+## 11. Cross-Plan Action Items & Future Extensions
+
+### 11.1 Cross-Plan Synchronizations
+1. **Catalog Subsystem Alignment (P03/P04):**
+   - Because P05 formalizes `products` and `product_variants`, P03 Backend Component Architecture will incorporate `ProductRepository` and `CatalogService`.
+   - P04 Frontend Component Architecture will incorporate `ProductSelector` and `useCatalog`.
+2. **Manual Settlement Alignment (P04):**
+   - Reconciliations in MVP are performed manually by Finance entering actual disbursed amounts.
+   - P04 screens and services will reflect direct manual entry rather than automated file parser imports.
+
+### 11.2 Future Scope (Post-MVP)
+The following capabilities are excluded from the MVP core schema:
+- **`statement_imports`:** Batch CSV/Excel file parser tables for bulk automated settlement reconciliation.
+- **Refund & Return Workflows:** Dedicated `RETURNED` / `REFUNDED` statuses, reverse fee adjustments, and return shipping deductions.
+- **Cost of Goods Sold (COGS) & Net Profit:** Inventory valuation tables, weighted-average cost tracking, and operating profit accounting.
+- **`users` & RBAC:** Persistent identity and role management.
+
+### 11.3 Deferred to P06 (Database Implementation)
+- Detailed partial indexes, B-tree configuration, and storage tuning.
+- Trigger implementations (`moddatetime` automated timestamp updates).
+- Materialized views and concurrent refresh strategies for high-volume read scale.
+
+---
+
+## 12. Financial Glossary
+
+- **Gross Revenue:** The total customer payable amount for an order (`subtotal - shop_voucher`).
+- **Platform Commission:** The percentage fee charged by the marketplace based on the order merchandise subtotal.
+- **Payment Fee:** The payment processing charge assessed against the gross revenue collected.
+- **Service Fee:** Additional platform fees, either percentage-based (with optional monetary cap) or flat per order.
+- **Projected Settlement:** The net amount expected to be disbursed into the merchant wallet (`gross_revenue - total_platform_fees`). Represents Net Realized Revenue.
+- **Actual Settlement:** The net cash amount disbursed by the platform or bank statement.
+- **Settlement Variance:** The mathematical discrepancy between expected and actual payouts (`projected_settlement - actual_settlement`).
+- **Net Realized Revenue:** Equivalent to Projected Settlement; represents commercial net revenue realized after platform fee deductions.
