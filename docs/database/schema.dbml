@@ -79,7 +79,6 @@ Table product_variants {
 
   indexes {
     product_id [name: 'idx_product_variants_product_id']
-    sku_code [name: 'idx_product_variants_sku_code']
   }
 
   Note: 'Specific sellable SKU variant with physical attributes and retail selling price.'
@@ -91,7 +90,7 @@ Table product_variants {
 
 Table orders {
   id uuid [pk, default: `gen_random_uuid()`, note: 'Internal unique system identifier for sales order']
-  external_order_id varchar(100) [note: 'External marketplace order identifier (TikTok Order ID, Shopee SN, or POS receipt)']
+  external_order_id varchar(100) [not null, note: 'External marketplace order identifier (TikTok Order ID, Shopee SN, or POS receipt)']
   channel channel_type [not null, note: 'Sales channel source: TIKTOK, SHOPEE, POS']
   status order_status [not null, default: 'PENDING', note: 'Lifecycle state: PENDING, SHIPPED, DELIVERED, CANCELLED']
   payment_method payment_method [not null, note: 'Customer payment instrument: CASH, POS_CARD_QR, MARKETPLACE_WALLET']
@@ -108,9 +107,9 @@ Table orders {
   updated_at timestamptz [not null, default: `now()`, note: 'Record update timestamp in UTC']
 
   indexes {
-    (channel, external_order_id) [name: 'idx_orders_channel_external']
-    (status, delivered_at) [name: 'idx_orders_status_delivered']
-    order_date [name: 'idx_orders_order_date']
+    (channel, external_order_id) [name: 'uq_orders_channel_external', unique, note: 'Unique external order ID per channel']
+    (status, order_date) [name: 'idx_orders_status_order_date', note: 'Master orders table filtering and sorting']
+    (delivered_at, channel) [name: 'idx_orders_delivered_channel', note: 'Partial index for revenue recognition queries: WHERE status = DELIVERED']
   }
 
   Note: 'Master commercial sales orders. Anti-phantom revenue: recognized strictly when status = DELIVERED and delivered_at is set.'
@@ -147,8 +146,7 @@ Table order_status_history {
   changed_at timestamptz [not null, default: `now()`, note: 'Timestamp when status change occurred in UTC']
 
   indexes {
-    order_id [name: 'idx_order_status_history_order_id']
-    changed_at [name: 'idx_order_status_history_changed_at']
+    (order_id, changed_at) [name: 'idx_status_hist_order_date', note: 'Order lifecycle timeline audit queries']
   }
 
   Note: 'Append-only chronological audit log capturing every lifecycle transition, cancellation reason, and actor identity.'
@@ -174,7 +172,8 @@ Table fee_schedules {
   updated_at timestamptz [not null, default: `now()`, note: 'Record update timestamp in UTC']
 
   indexes {
-    (channel, payment_method, is_active) [name: 'idx_fee_schedules_lookup']
+    (channel, payment_method) [name: 'uq_fee_schedules_active', unique, note: 'Single active fee schedule rule WHERE is_active = true']
+    (channel, payment_method, effective_from) [name: 'idx_fee_schedules_history', note: 'Historical rate version audit queries']
   }
 
   Note: 'Configurable fee policy matrix keyed by channel and payment method. Rates stored as decimal fractions.'
@@ -197,7 +196,8 @@ Table order_fee_snapshots {
   snapshot_at timestamptz [not null, default: `now()`, note: 'Timestamp when platform fees were frozen upon delivery in UTC']
 
   indexes {
-    order_id [name: 'idx_order_fee_snapshots_order_id', unique]
+    order_id [name: 'uq_fee_snapshots_order_id', unique, note: 'Enforces 1:0..1 cardinality per order']
+    fee_schedule_id [name: 'idx_fee_snapshots_schedule', note: 'Foreign key index for policy revision impact queries']
   }
 
   Note: 'Immutable financial snapshot frozen upon order delivery. Stores applied rates, fee deductions, and projected settlement.'
@@ -221,8 +221,10 @@ Table reconciliation_records {
   updated_at timestamptz [not null, default: `now()`, note: 'Record update timestamp in UTC']
 
   indexes {
-    order_id [name: 'idx_reconciliation_records_order_id', unique]
+    order_id [name: 'uq_recon_records_order_id', unique, note: 'Enforces 1:0..1 cardinality per order']
     status [name: 'idx_reconciliation_records_status']
+    created_at [name: 'idx_recon_records_pending', note: 'Partial index for pending queue WHERE status = PENDING_SETTLEMENT']
+    updated_at [name: 'idx_recon_records_variance', note: 'Partial index for discrepancy queue WHERE status = DISCREPANCY']
   }
 
   Note: 'Manual reconciliation record comparing projected settlement against actual wallet payout. Variance formula: variance_amount = projected_settlement - actual_settlement.'
@@ -239,7 +241,8 @@ Table discrepancy_audits {
   created_at timestamptz [not null, default: `now()`, note: 'Timestamp when discrepancy was logged in UTC']
 
   indexes {
-    reconciliation_record_id [name: 'idx_discrepancy_audits_recon_id']
+    reconciliation_record_id [name: 'idx_disc_audits_recon_id']
+    (reconciliation_record_id, created_at) [name: 'idx_disc_audits_unresolved', note: 'Partial index for open disputes WHERE resolved_at IS NULL']
     discrepancy_type [name: 'idx_discrepancy_audits_type']
   }
 
