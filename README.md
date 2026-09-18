@@ -37,7 +37,7 @@ Where:
 ### 2.2 Core Financial Control Rules
 1. **Anti-Phantom Revenue Invariant:** Orders in `PENDING`, `SHIPPED`, or `CANCELLED` status contribute **0 ₫** to realized revenue. Revenue is officially recognized into accounting periods if and only if the order reaches `DELIVERED`.
 2. **Immutable Financial Snapshots:** Once an order is delivered, applied fee rates, deductions, and net margins are permanently frozen to preserve historical audit integrity.
-3. **Canonical Variance Formula:** Discrepancy detection between expected and received payouts strictly follows $\text{variance\_amount} = \text{projected\_settlement} - \text{actual\_settlement}$.
+3. **Canonical Variance Formula:** Discrepancy detection between expected and received payouts strictly follows `variance_amount = projected_settlement - actual_settlement`.
 4. **Mandatory Discrepancy Justification:** Any non-zero settlement variance requires finance review notes before resolution.
 
 ---

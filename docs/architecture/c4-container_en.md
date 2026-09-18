@@ -1,7 +1,5 @@
 # C4 Container Specification: Fashion Revenue & Profit Management System
 
-> **Status:** LOCKED (Target MVP Baseline)
-
 ## 1. Target Container Scope (MVP Target)
 
 ### 1.1. Core MVP Containers

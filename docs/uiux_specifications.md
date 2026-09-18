@@ -52,7 +52,6 @@
   - [8.1. Order Creation & Backend Fee Preview Flow](#81-order-creation--backend-fee-preview-flow)
   - [8.2. Settlement Reconciliation & Discrepancy Flow](#82-settlement-reconciliation--discrepancy-flow)
 - [9. Accessibility (a11y) & Usability Standards](#9-accessibility-a11y--usability-standards)
-- [10. UI Copy Governance & Localization Extensibility](#10-ui-copy-governance--localization-extensibility)
 
 ---
 
@@ -520,11 +519,3 @@ sequenceDiagram
   * `Esc`: Dismiss open modal dialogs or drawers.
   * `Tab` / `Shift + Tab`: Logical tab order traversal.
 * **Financial Alignment:** All numerical amounts format with comma separators (`184,500,000 ₫`) and right-align in table cells to enable instant visual column scanning.
-
----
-
-## 10. UI Copy Governance & Localization Extensibility
-
-1. **Centralized UI Copy Tokenization:** All interface labels, button text, and system messages must be declared in a centralized dictionary module (e.g., `shared/constants/uiCopy.ts`). Components must import approved strings rather than hardcoding ad-hoc text literals.
-2. **Forbidden Ad-Hoc Terminology:** Feature components are prohibited from introducing unauthorized synonyms for core financial metrics (e.g., calling Gross Revenue "Total Cash" or calling Net Realized Revenue "Profit").
-3. **Future Localization Architecture:** By centralizing English interface tokens into a structured dictionary, the frontend architecture enables future multilingual localization (e.g., adding Vietnamese or Japanese language packs) without modifying component layouts or business logic.
