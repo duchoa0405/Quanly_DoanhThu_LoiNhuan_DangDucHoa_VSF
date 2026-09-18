@@ -1,0 +1,304 @@
+// ============================================================================
+// Fashion Revenue & Profit Management System
+// Target MVP Database Schema Specification (DBML)
+//
+// Target DBMS: PostgreSQL 16+
+// Naming Convention: snake_case
+// Primary Key Strategy: UUID (v4 / gen_random_uuid())
+// Monetary Precision: numeric(15, 2)
+// Percentage Rates: numeric(6, 4) (e.g. 0.0400 = 4.00%)
+// Timestamps: timestamptz (UTC)
+//
+// Source of Truth: docs/database/schema.dbml
+// ============================================================================
+
+Project FashionRevenueProfitManagement {
+  database_type: 'PostgreSQL'
+  Note: '''
+    # Fashion Revenue & Profit Management System - Target MVP Database Schema
+    Authoritative single source of truth for multi-channel commercial orders,
+    catalog pricing, automated fee snapshots, reconciliation ledgers, and audit logs.
+  '''
+}
+
+// ----------------------------------------------------------------------------
+// ENUMS
+// ----------------------------------------------------------------------------
+
+Enum channel_type {
+  TIKTOK              [note: 'TikTok Shop social commerce channel']
+  SHOPEE              [note: 'Shopee marketplace e-commerce channel']
+  POS                 [note: 'In-store counter retail boutique POS']
+}
+
+Enum payment_method {
+  CASH                [note: 'Cash payment (POS only, 0% payment processing fee)']
+  POS_CARD_QR         [note: 'Card swipe / VietQR transfer at POS (1% payment fee)']
+  MARKETPLACE_WALLET  [note: 'Marketplace centralized escrow payout wallet']
+}
+
+Enum order_status {
+  PENDING             [note: 'Order created, awaiting packing and fulfillment']
+  SHIPPED             [note: 'Order dispatched and in-transit with carrier']
+  DELIVERED           [note: 'Order successfully delivered to customer (Triggers Revenue Recognition & Fee Snapshot)']
+  CANCELLED           [note: 'Order cancelled prior to delivery completion (Terminal state)']
+  RETURNED            [note: 'Order returned post-delivery with reverse fee adjustments']
+}
+
+Enum reconciliation_status {
+  PENDING             [note: 'Delivered order awaiting payout statement reconciliation']
+  MATCHED             [note: 'Verified clean match between projected settlement and actual disbursement (variance = 0)']
+  DISCREPANCY         [note: 'Financial variance detected between projected and actual disbursement (Requires explanation note)']
+  RESOLVED            [note: 'Discrepancy investigated, approved, and settled by Finance/Owner']
+}
+
+// ----------------------------------------------------------------------------
+// GROUP 1: CATALOG & BASELINE PRICING
+// ----------------------------------------------------------------------------
+
+Table products {
+  id uuid [pk, default: `gen_random_uuid()`, note: 'Unique identifier for master product model']
+  code varchar(100) [not null, unique, note: 'Unique business product code (e.g. PROD-LINEN-01)']
+  name varchar(255) [not null, note: 'Master commercial apparel title (e.g., Slim-fit Linen Shirt)']
+  category varchar(100) [note: 'Commercial apparel category (e.g., Shirts, Pants, Dresses)']
+  is_active boolean [not null, default: true, note: 'Soft active flag controlling catalog sales availability']
+  created_at timestamptz [not null, default: `now()`, note: 'Creation timestamp in UTC']
+  updated_at timestamptz [not null, default: `now()`, note: 'Last modification timestamp in UTC']
+
+  Note: 'Master product catalog definitions. Variations are modeled in product_variants.'
+}
+
+Table product_variants {
+  id uuid [pk, default: `gen_random_uuid()`, note: 'Unique identifier for product variant SKU']
+  product_id uuid [not null, note: 'Foreign key to master product']
+  sku varchar(100) [not null, unique, note: 'Unique stock-keeping unit code (e.g., SLS-WHT-M)']
+  color varchar(50) [note: 'Color attribute (e.g., Pure White, Navy Blue)']
+  size varchar(20) [note: 'Size attribute (e.g., S, M, L, XL, 32)']
+  cost_price numeric(15, 2) [not null, default: 0, note: 'Baseline unit Cost of Goods Sold (COGS) in VND']
+  original_price numeric(15, 2) [not null, note: 'Listed catalog retail selling price in VND (Must be >= cost_price)']
+  is_active boolean [not null, default: true, note: 'Variant sales availability flag']
+  created_at timestamptz [not null, default: `now()`, note: 'Creation timestamp in UTC']
+  updated_at timestamptz [not null, default: `now()`, note: 'Last modification timestamp in UTC']
+
+  indexes {
+    product_id [name: 'idx_product_variants_product_id']
+    sku [name: 'idx_product_variants_sku']
+  }
+
+  Note: 'Specific sellable SKU variant with physical attributes, COGS base, and retail selling price.'
+}
+
+// ----------------------------------------------------------------------------
+// GROUP 2: COMMERCIAL SALES ORDERS & LIFECYCLE AUDIT TRAIL
+// ----------------------------------------------------------------------------
+
+Table orders {
+  id uuid [pk, default: `gen_random_uuid()`, note: 'Internal unique system identifier for sales order']
+  external_order_id varchar(100) [note: 'External marketplace order identifier (TikTok Order ID, Shopee SN, or POS receipt)']
+  channel channel_type [not null, note: 'Sales channel source: TIKTOK, SHOPEE, POS']
+  status order_status [not null, default: 'PENDING', note: 'Lifecycle state: PENDING, SHIPPED, DELIVERED, CANCELLED, RETURNED']
+  payment_method payment_method [not null, note: 'Customer payment instrument: CASH, POS_CARD_QR, MARKETPLACE_WALLET']
+  subtotal numeric(15, 2) [not null, note: 'Pre-discount sum of item quantities × unit prices in VND']
+  shop_voucher numeric(15, 2) [not null, default: 0, note: 'Merchant-funded promotional voucher discount in VND']
+  gross_revenue numeric(15, 2) [not null, note: 'Gross revenue in VND = subtotal - shop_voucher (Customer payable amount)']
+  total_cost_price numeric(15, 2) [not null, default: 0, note: 'Aggregated baseline COGS across all order line items in VND']
+  customer_name varchar(255) [note: 'Full name of purchasing customer']
+  customer_phone varchar(20) [note: 'Contact telephone number of customer']
+  ordered_at timestamptz [not null, note: 'Order placement date/time in UTC']
+  delivered_at timestamptz [note: 'Delivery completion date/time in UTC. Revenue recognized strictly when status = DELIVERED']
+  cancelled_at timestamptz [note: 'Cancellation date/time in UTC. Set only when status = CANCELLED']
+  created_at timestamptz [not null, default: `now()`, note: 'Record creation timestamp in UTC']
+  updated_at timestamptz [not null, default: `now()`, note: 'Record update timestamp in UTC']
+
+  indexes {
+    (channel, external_order_id) [name: 'idx_orders_channel_external', unique]
+    (status, delivered_at) [name: 'idx_orders_status_delivered']
+    ordered_at [name: 'idx_orders_ordered_at']
+  }
+
+  Note: 'Master commercial sales orders. Anti-phantom revenue: recognized strictly when status = DELIVERED and delivered_at is set.'
+}
+
+Table order_items {
+  id uuid [pk, default: `gen_random_uuid()`, note: 'Unique identifier for order line item']
+  order_id uuid [not null, note: 'Foreign key to parent commercial sales order']
+  product_variant_id uuid [not null, note: 'Foreign key to catalog product variant SKU']
+  sku_code_snapshot varchar(100) [not null, note: 'Immutable historical snapshot of SKU code at purchase time']
+  product_name_snapshot varchar(255) [not null, note: 'Immutable historical snapshot of product name at purchase time']
+  quantity integer [not null, note: 'Purchased quantity of units (Must be integer > 0)']
+  unit_price numeric(15, 2) [not null, note: 'Agreed unit selling price in VND at order creation time']
+  total_price numeric(15, 2) [not null, note: 'Line total in VND = quantity × unit_price']
+  unit_cost_snapshot numeric(15, 2) [not null, default: 0, note: 'Unit COGS frozen snapshot at order creation time in VND']
+  total_cost numeric(15, 2) [not null, default: 0, note: 'Line COGS in VND = quantity × unit_cost_snapshot']
+  created_at timestamptz [not null, default: `now()`, note: 'Record creation timestamp in UTC']
+
+  indexes {
+    order_id [name: 'idx_order_items_order_id']
+    product_variant_id [name: 'idx_order_items_variant_id']
+  }
+
+  Note: 'Order line items. Snapshots SKU, product title, unit price, and unit cost at purchase time to guarantee historical audit integrity.'
+}
+
+Table order_status_history {
+  id uuid [pk, default: `gen_random_uuid()`, note: 'Unique identifier for status transition audit entry']
+  order_id uuid [not null, note: 'Foreign key to parent commercial sales order']
+  from_status order_status [note: 'Prior lifecycle status (null for initial order creation)']
+  to_status order_status [not null, note: 'New lifecycle status transitioned into']
+  reason text [note: 'Mandatory explanation note for exceptions/cancellations, or automated system transition notes']
+  changed_by varchar(100) [not null, note: 'Actor identity (user ID, username, or automated system process)']
+  changed_at timestamptz [not null, default: `now()`, note: 'Timestamp when status change occurred in UTC']
+
+  indexes {
+    order_id [name: 'idx_order_status_history_order_id']
+    changed_at [name: 'idx_order_status_history_changed_at']
+  }
+
+  Note: 'Append-only chronological audit log capturing every lifecycle transition, cancellation reason, and actor identity.'
+}
+
+// ----------------------------------------------------------------------------
+// GROUP 3: FEE SCHEDULES & FINANCIAL SNAPSHOTS
+// ----------------------------------------------------------------------------
+
+Table fee_schedules {
+  id uuid [pk, default: `gen_random_uuid()`, note: 'Unique identifier for fee schedule policy']
+  channel channel_type [not null, note: 'Channel to which fee schedule applies: TIKTOK, SHOPEE, POS']
+  payment_method payment_method [not null, note: 'Payment method differentiator: CASH (0%), POS_CARD_QR (1%), MARKETPLACE_WALLET']
+  platform_fee_rate numeric(6, 4) [not null, default: 0, note: 'Marketplace platform fee rate stored as decimal (e.g. 0.0400 for 4.00%)']
+  commission_fee_rate numeric(6, 4) [not null, default: 0, note: 'Commission fee rate stored as decimal (e.g. 0.0250 for 2.50%)']
+  payment_fee_rate numeric(6, 4) [not null, default: 0, note: 'Payment gateway fee rate stored as decimal (e.g. 0.0100 for 1.00%)']
+  fixed_fee numeric(15, 2) [not null, default: 0, note: 'Fixed processing fee per order in VND (e.g. 3,000 VND)']
+  effective_from date [not null, note: 'Start date of fee schedule validity']
+  effective_to date [note: 'End date of validity (null if currently active without expiry)']
+  is_active boolean [not null, default: true, note: 'Active configuration flag']
+  created_at timestamptz [not null, default: `now()`, note: 'Record creation timestamp in UTC']
+  updated_at timestamptz [not null, default: `now()`, note: 'Record update timestamp in UTC']
+
+  indexes {
+    (channel, payment_method, is_active) [name: 'idx_fee_schedules_lookup']
+  }
+
+  Note: 'Configurable fee policy matrix keyed by channel and payment method. Rates stored as decimal fractions.'
+}
+
+Table order_fee_snapshots {
+  id uuid [pk, default: `gen_random_uuid()`, note: 'Unique identifier for fee calculation snapshot']
+  order_id uuid [not null, unique, note: 'Foreign key to parent order (1:0..1 cardinality; one snapshot per order)']
+  fee_schedule_id uuid [not null, note: 'Foreign key to the exact fee schedule version applied upon delivery']
+  platform_fee_rate numeric(6, 4) [not null, note: 'Platform fee rate applied at delivery time']
+  platform_fee_amount numeric(15, 2) [not null, note: 'Calculated platform fee amount in VND = gross_revenue * platform_fee_rate']
+  commission_fee_rate numeric(6, 4) [not null, note: 'Commission rate applied at delivery time']
+  commission_fee_amount numeric(15, 2) [not null, note: 'Calculated commission fee amount in VND = gross_revenue * commission_fee_rate']
+  payment_fee_rate numeric(6, 4) [not null, note: 'Payment fee rate applied at delivery time']
+  payment_fee_amount numeric(15, 2) [not null, note: 'Calculated payment fee amount in VND = gross_revenue * payment_fee_rate']
+  fixed_fee_amount numeric(15, 2) [not null, default: 0, note: 'Fixed order processing fee amount in VND']
+  total_fee_amount numeric(15, 2) [not null, note: 'Sum of all platform deductions in VND = platform + commission + payment + fixed']
+  net_revenue numeric(15, 2) [not null, note: 'Net realized revenue in VND = gross_revenue - total_fee_amount']
+  net_profit numeric(15, 2) [not null, note: 'Net profit in VND = net_revenue - total_cost_price (COGS deduction)']
+  snapshot_at timestamptz [not null, default: `now()`, note: 'Timestamp when fees and profit were frozen upon delivery in UTC']
+
+  indexes {
+    order_id [name: 'idx_order_fee_snapshots_order_id', unique]
+  }
+
+  Note: 'Immutable financial snapshot frozen upon order delivery. Stores applied rates, fee deductions, net revenue, and net profit.'
+}
+
+// ----------------------------------------------------------------------------
+// GROUP 4: SETTLEMENT RECONCILIATION & DISCREPANCY AUDITS
+// ----------------------------------------------------------------------------
+
+Table reconciliation_records {
+  id uuid [pk, default: `gen_random_uuid()`, note: 'Unique identifier for reconciliation record']
+  order_id uuid [not null, unique, note: 'Foreign key to commercial sales order (1:0..1 cardinality; one record per order)']
+  statement_reference varchar(100) [note: 'Batch or payout statement identifier from marketplace/bank']
+  projected_settlement numeric(15, 2) [not null, note: 'Projected net settlement snapshot copied from order_fee_snapshots in VND']
+  actual_settlement numeric(15, 2) [note: 'Actual net cash disbursed into merchant wallet by platform/bank in VND (Null until reconciled)']
+  variance_amount numeric(15, 2) [note: 'Net variance in VND = projected_settlement - actual_settlement (Positive = shortfall / money lost)']
+  status reconciliation_status [not null, default: 'PENDING', note: 'Reconciliation status: PENDING, MATCHED, DISCREPANCY, RESOLVED']
+  settlement_date date [note: 'Disbursement statement settlement date']
+  reconciled_at timestamptz [note: 'Timestamp when reconciliation was executed in UTC']
+  reconciled_by varchar(100) [note: 'Identity of Finance user who performed the reconciliation']
+  notes text [note: 'Reconciliation summary notes']
+  created_at timestamptz [not null, default: `now()`, note: 'Record creation timestamp in UTC']
+  updated_at timestamptz [not null, default: `now()`, note: 'Record update timestamp in UTC']
+
+  indexes {
+    order_id [name: 'idx_reconciliation_records_order_id', unique]
+    status [name: 'idx_reconciliation_records_status']
+    statement_reference [name: 'idx_reconciliation_records_statement_ref']
+  }
+
+  Note: 'Reconciliation record comparing projected settlement against actual wallet payout. Variance formula: variance_amount = projected_settlement - actual_settlement.'
+}
+
+Table discrepancy_audits {
+  id uuid [pk, default: `gen_random_uuid()`, note: 'Unique identifier for discrepancy audit investigation']
+  reconciliation_record_id uuid [not null, note: 'Foreign key to parent reconciliation record exhibiting variance']
+  discrepancy_type varchar(50) [not null, note: 'Variance classification: COMMISSION_RATE_MISMATCH, EXTRA_SHIPPING_CHARGE, RETURN_FEE_DISPUTE, OTHER']
+  expected_amount numeric(15, 2) [not null, note: 'Expected payout/fee amount in VND']
+  actual_amount numeric(15, 2) [not null, note: 'Actual payout/fee amount charged by platform in VND']
+  discrepancy_amount numeric(15, 2) [not null, note: 'Mathematical discrepancy amount in VND']
+  resolution_notes text [note: 'Detailed explanation and documented resolution decision notes']
+  resolution_action varchar(50) [note: 'Action: CLAIM_CHANNEL, ADJUST_BOOK, WAIVE, OTHER']
+  resolved_by varchar(100) [note: 'User identity who approved/resolved the discrepancy']
+  resolved_at timestamptz [note: 'Timestamp when variance was marked resolved in UTC']
+  created_at timestamptz [not null, default: `now()`, note: 'Timestamp when discrepancy was logged in UTC']
+
+  indexes {
+    reconciliation_record_id [name: 'idx_discrepancy_audits_recon_id']
+    discrepancy_type [name: 'idx_discrepancy_audits_type']
+  }
+
+  Note: 'Detailed investigation log tracking root causes and resolution actions for reconciliation variances.'
+}
+
+// ----------------------------------------------------------------------------
+// RELATIONSHIPS & CARDINALITY DEFINITIONS (Ref Syntax)
+// ----------------------------------------------------------------------------
+
+// Catalog Relationships
+Ref: product_variants.product_id > products.id [delete: restrict]
+
+// Order Line Item & Catalog Relationships
+Ref: order_items.order_id > orders.id [delete: cascade]
+Ref: order_items.product_variant_id > product_variants.id [delete: restrict]
+
+// Order Lifecycle Audit Trail
+Ref: order_status_history.order_id > orders.id [delete: cascade]
+
+// Financial Fee Calculation & Snapshots (1:0..1 between Order and Snapshot)
+Ref: orders.id - order_fee_snapshots.order_id [delete: restrict]
+Ref: order_fee_snapshots.fee_schedule_id > fee_schedules.id [delete: restrict]
+
+// Settlement Reconciliation (1:0..1 between Order and ReconciliationRecord)
+Ref: orders.id - reconciliation_records.order_id [delete: restrict]
+
+// Discrepancy Auditing (1:N between ReconciliationRecord and DiscrepancyAudits)
+Ref: discrepancy_audits.reconciliation_record_id > reconciliation_records.id [delete: cascade]
+
+// ----------------------------------------------------------------------------
+// LOGICAL DOMAIN TABLE GROUPS
+// ----------------------------------------------------------------------------
+
+TableGroup Catalog {
+  products
+  product_variants
+}
+
+TableGroup Orders {
+  orders
+  order_items
+  order_status_history
+}
+
+TableGroup Fees {
+  fee_schedules
+  order_fee_snapshots
+}
+
+TableGroup Settlement {
+  reconciliation_records
+  discrepancy_audits
+}
