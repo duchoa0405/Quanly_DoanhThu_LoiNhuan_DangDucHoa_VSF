@@ -72,6 +72,7 @@ Table product_variants {
   color varchar(50) [note: 'Color attribute (e.g., Pure White, Navy Blue)']
   size varchar(20) [note: 'Size attribute (e.g., S, M, L, XL, 32)']
   retail_price numeric(15, 2) [not null, note: 'Listed catalog retail selling price in VND']
+  cost_price numeric(15, 2) [not null, default: 0, note: 'Baseline unit Cost of Goods Sold (COGS) in VND manually maintained by Shop Owner / Finance Manager']
   is_active boolean [not null, default: true, note: 'Variant sales availability flag']
   created_at timestamptz [not null, default: `now()`, note: 'Creation timestamp in UTC']
   updated_at timestamptz [not null, default: `now()`, note: 'Last modification timestamp in UTC']
@@ -123,7 +124,9 @@ Table order_items {
   product_name_snapshot varchar(255) [not null, note: 'Immutable historical snapshot of product name at purchase time']
   quantity integer [not null, note: 'Purchased quantity of units (Must be integer > 0)']
   unit_price numeric(15, 2) [not null, note: 'Agreed unit selling price in VND at order creation time']
-  line_total numeric(15, 2) [not null, note: 'Line total in VND = quantity × unit_price (derived/persisted)']
+  unit_cost_snapshot numeric(15, 2) [not null, default: 0, note: 'Immutable historical snapshot of baseline unit cost at order placement time in VND']
+  line_total numeric(15, 2) [not null, note: 'Line sales total in VND = quantity × unit_price (derived/persisted)']
+  total_cost numeric(15, 2) [not null, default: 0, note: 'Line COGS in VND = quantity × unit_cost_snapshot. Immutable baseline cost for Contribution Profit']
   created_at timestamptz [not null, default: `now()`, note: 'Record creation timestamp in UTC']
 
   indexes {
@@ -131,7 +134,7 @@ Table order_items {
     product_variant_id [name: 'idx_order_items_variant_id']
   }
 
-  Note: 'Order line items. Snapshots SKU, product title, and unit price at purchase time to guarantee historical audit integrity.'
+  Note: 'Order line items. Snapshots SKU, product title, unit price, and baseline unit cost at purchase time to guarantee historical audit integrity and simplified COGS derivation.'
 }
 
 Table order_status_history {
