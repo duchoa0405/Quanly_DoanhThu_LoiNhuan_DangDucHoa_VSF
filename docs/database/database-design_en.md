@@ -339,7 +339,7 @@ Detailed investigation log tracking root cause analysis and resolution notes for
 - **Primary Key:** `id` (`uuid`, default: `gen_random_uuid()`).
 - **Foreign Key:** `reconciliation_record_id` -> `reconciliation_records(id)` ON DELETE CASCADE.
 - **Investigation Fields:**
-  - `discrepancy_type` (`varchar(50)`, not null): Classification (e.g., `COMMISSION_RATE_MISMATCH`, `EXTRA_SHIPPING_CHARGE`, `RETURN_FEE_DISPUTE`, `OTHER`).
+  - `discrepancy_type` (`varchar(50)`, not null): Classification (e.g., `COMMISSION_RATE_MISMATCH`, `PAYMENT_FEE_MISMATCH`, `SERVICE_FEE_MISMATCH`, `UNEXPECTED_PLATFORM_CHARGE`, `OTHER`).
   - `explanation_note` (`text`, not null): Detailed documentation of the root cause.
   - `resolution_notes` (`text`, nullable): Settlement/dispute resolution outcome.
   - `resolved_by` (`varchar(100)`, nullable), `resolved_at` (`timestamptz`, nullable).

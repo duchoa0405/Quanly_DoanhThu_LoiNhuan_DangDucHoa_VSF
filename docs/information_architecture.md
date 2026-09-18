@@ -12,7 +12,7 @@ The system is organized around 4 core business domains mapped directly to 4 oper
 1. Module 0 (Screen 4): Product Catalog & Cost Baseline
 2. Module 1 (Screen 1): Multi-Channel Orders Management
 3. Module 2 (Screen 2): Marketplace Fees & Wallet Settlement
-4. Module 3 (Screen 3): Revenue & Profit Analytics Dashboard
+4. Module 3 (Screen 3): Revenue & Profit Dashboard
 
 > [!NOTE]
 > **Canonical Profit Definition:**
@@ -97,7 +97,7 @@ All business data is organized into 4 cohesive domains:
 
 ---
 
-#### 2.4. Domain 3: Revenue & Profit Analytics (Screen 3)
+#### 2.4. Domain 3: Revenue & Profit Dashboard (Screen 3)
 * **Purpose:** Provide real-time financial performance, channel profitability, and merchandise margin insights.
 * **Field specifications:**
   * **5 Core Financial KPI Cards** (aggregated strictly from `DELIVERED` orders within selected period):
@@ -146,7 +146,7 @@ The screen hierarchy follows the 3-click rule and enforces strict role separatio
 * Navigation tab bar providing seamless switching across the 4 Level 1 screens:
   1. `Orders Management`
   2. `Fees & Settlement`
-  3. `Revenue Dashboard`
+  3. `Revenue & Profit Dashboard`
   4. `Product Catalog & Cost`
 
 #### 2.2. Level 1 & Level 2: 4 Main Workspaces
@@ -161,7 +161,7 @@ The screen hierarchy follows the 3-click rule and enforces strict role separatio
 * **Panel 2.1 (Settlement Counters):** KPI counters (`Pending Settlement`, `Reconciled`, `Discrepancy`) with date-range and status filters.
 * **Panel 2.2 (Fee Breakdown & Reconciliation Table):** Granular columns for commission fee, payment fee, service fee, total platform fees, projected settlement, actual received amount, and variance. Row action opens MOD-03 settlement modal.
 
-##### Screen 3: Revenue Dashboard (SCR-03)
+##### Screen 3: Revenue & Profit Dashboard (SCR-03)
 * **Primary Users:** Shop Owner, Finance Manager.
 * **Panel 3.1 (Global Filters & Actions):** Time presets (Today, Last 7 Days, This Month, Custom Date Range), channel dropdown filter, and CSV export action.
 * **Panel 3.2 (Executive Financial KPI Cards):** Displays Gross Revenue, Total Platform Fees, Net Realized Revenue, Total COGS, and Contribution Profit. Secondary badge displays Delivered Orders count.
@@ -169,7 +169,7 @@ The screen hierarchy follows the 3-click rule and enforces strict role separatio
 
 ##### Screen 4: Product Catalog & Cost Management (SCR-04)
 * **Primary Users:** Shop Owner, Finance Manager. *(Hidden or read-only without cost for Sales & Ops)*.
-* **Panel 4.1 (Catalog Toolbar & Search):** Search by product name or SKU, filter by category and active status, and action button to open MOD-05.
+* **Panel 4.1 (Catalog Toolbar & Search):** Search by product name or SKU, filter by active status, and action button to open MOD-05.
 * **Panel 4.2 (SKU Master Table):** Lists Product Name, SKU code, Color, Size, Retail Price, Baseline Unit Cost, Active Status, and Edit Action.
 
 #### 2.3. Level 3: Transactional Modals
@@ -190,7 +190,7 @@ The screen hierarchy follows the 3-click rule and enforces strict role separatio
 | Level 3 | • Cancel Order Modal (MOD-02) | Allowed | Hidden | Allowed |
 | **Level 1** | **Screen 2: Fees & Settlement (SCR-02)** | No Access (Hidden) | Full Access | Full Access |
 | Level 3 | • Wallet Settlement Modal (MOD-03) | No Access | Allowed | Allowed |
-| **Level 1** | **Screen 3: Revenue Dashboard (SCR-03)** | No Access (Hidden) | Full View | Full View |
+| **Level 1** | **Screen 3: Revenue & Profit Dashboard (SCR-03)** | No Access (Hidden) | Full View | Full View |
 | Level 2 | • Export CSV Report (Panel 3.1) | No Access | Allowed | Allowed |
 | Level 3 | • Source Order Drilldown Modal (MOD-04) | No Access | Allowed | Allowed |
 | **Level 1** | **Screen 4: Product Catalog & Cost (SCR-04)** | No Access (Hidden) | Full Access | Full Access |

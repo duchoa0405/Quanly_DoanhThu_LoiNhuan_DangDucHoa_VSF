@@ -70,7 +70,7 @@ To prevent confusing operational staff and auditors, financial metrics must use 
   - `Ship Order` *(Advance status to Shipped)*
   - `Mark as Delivered` *(Advance status to Delivered & freeze fee/cost snapshot)*
   - `Cancel Order` *(Open cancellation modal MOD-02)*
-  - `Import Settlement` *(Open settlement data import modal MOD-03)*
+  - `Record Settlement` *(Open wallet payout recording modal MOD-03)*
   - `Configure Fees` *(Open fee schedule configuration modal MOD-04)*
   - `View Source Orders` *(Trigger order drilldown modal MOD-05)*
   - `Add Product` *(Open product & SKU editor modal MOD-06)*
@@ -149,7 +149,7 @@ flowchart TB
     subgraph Modals["Level 2 · Operational Modals & Action Drawers"]
         MOD01["MOD-01: Create Order Modal<br/>Order entry & Backend fee preview"]
         MOD02["MOD-02: Cancel Order Modal<br/>Reason tracking & Revenue reversal"]
-        MOD03["MOD-03: Import Settlement Data<br/>Statement reconciliation & Variance audit"]
+        MOD03["MOD-03: Wallet Settlement Drawer<br/>Manual payout reconciliation & Variance audit"]
         MOD04["MOD-04: Fee Schedule Config<br/>Strategy rate parameterization"]
         MOD05["MOD-05: Source Order Drilldown<br/>Itemized delivered orders & CSV export"]
         MOD06["MOD-06: Product & SKU Editor<br/>Catalog pricing & Baseline unit cost"]
@@ -162,7 +162,7 @@ flowchart TB
 
     SCR01 -->|"[+ Create Order]"| MOD01
     SCR01 -->|"[Cancel Action]"| MOD02
-    SCR02 -->|"[Import Settlement]"| MOD03
+    SCR02 -->|"[Record Settlement]"| MOD03
     SCR02 -->|"[Configure Fees >]"| MOD04
     SCR03 -->|"[View Source Orders]"| MOD05
     SCR04 -->|"[+ Add Product]"| MOD06
@@ -184,7 +184,7 @@ flowchart TB
 | **Inline Status Transitions (`[Ship]`, `[Delivered]`)** | Allowed | Hidden | Allowed |
 | **Cancel Order (`[Cancel]` - MOD-02)** | Allowed | Hidden | Allowed |
 | **Screen 2: Fees & Settlement (SCR-02)** | Hidden (No Access) | Full Operational Access | Full Access |
-| **`[Import Settlement]` (MOD-03)** | Hidden | Allowed | Allowed |
+| **`[Record Settlement]` (MOD-03)** | Hidden | Allowed | Allowed/Review |
 | **Confirm Settlement & Discrepancy Note** | Hidden | Allowed | Full Review Access |
 | **`[Configure Fees >]` (MOD-04)** | Hidden | Read-Only | Full Edit Access |
 | **Screen 3: Revenue & Profit Dashboard (SCR-03)** | Hidden (No Access) | Full Access | Full Access |
@@ -266,7 +266,7 @@ flowchart TB
 ### 5.5. Screen 4: Product Catalog & Cost Management (SCR-04)
 * **Toolbar & Action Bar:**
   * Primary Action: **`[+ Add Product]`**: Triggers modal MOD-06 for product and SKU creation.
-  * Filter & Search: Search input for Product Name or SKU code, Category filter dropdown, Active status filter.
+  * Filter & Search: Search input for Product Name or SKU code, Active status filter.
 * **SKU Master Data Table:**
   * Columns: `Product Name`, `SKU Code`, `Color`, `Size`, `Retail Price`, `Baseline Unit Cost`, `Status`, `Actions`.
   * Security Rule: `Baseline Unit Cost` is visible exclusively to `Shop Owner` and `Finance Manager`. For unauthorized roles, this column is omitted.
@@ -294,13 +294,15 @@ flowchart TB
   * Detailed explanation note input required.
   * **Guard Clause:** Delivered orders cannot be cancelled.
 
-### 6.3. MOD-03: Wallet Settlement Modal
-* **Trigger:** Action button on SCR-02 row.
-* **Primary Persona:** `Finance Manager`.
-* **Purpose:** Allows manual entry of `Actual Settlement Amount` from the marketplace payout statement.
-* **Variance Handling:**
-  * Computes `Variance = Projected Settlement - Actual Settlement`.
-  * If `Variance != 0 ₫`, flags order as `Discrepancy` and enforces mandatory explanation note.
+### 6.3. MOD-03: Wallet Settlement Drawer / Record & Reconcile Settlement
+* **Trigger:** Action button `[Record Settlement]` on SCR-02 row.
+* **Primary Persona:** `Finance Manager` (Operational) / `Shop Owner` (Review).
+* **Purpose:** Manual recording of `Actual Settlement Amount` verified from platform wallet / bank statement.
+* **Reconciliation Flow:**
+  * Auto-calculates: $\text{Variance} = \text{Projected Settlement} - \text{Actual Settlement}$.
+  * If `Variance == 0 ₫`, order is flagged as `Reconciled`.
+  * If `Variance != 0 ₫`, enforces mandatory explanation note detailing discrepancy cause (e.g. rate mismatch, unexpected fee) and sets status to `Discrepancy`.
+* **Action Buttons:** `[Record Settlement]`, `[Reconcile]`, `[Cancel]`.
 
 ### 6.4. MOD-04: Fee Schedule Configuration Modal
 * **Trigger:** Button `[Configure Fees >]` on SCR-02.
@@ -314,7 +316,7 @@ flowchart TB
 ### 6.6. MOD-06: Product & SKU Editor Modal
 * **Trigger:** Button `[+ Add Product]` or `[Edit]` on SCR-04.
 * **Primary Persona:** `Shop Owner` / `Finance Manager`.
-* **Form Inputs:** Product Model Name, Category, SKU Code, Color, Size, Retail Selling Price (`numeric`), Baseline Unit Cost (`cost_price`, `numeric`), Active Toggle.
+* **Form Inputs:** Product Model Name, SKU Code, Color, Size, Retail Selling Price (`numeric`), Baseline Unit Cost (`cost_price`, `numeric`), Active Toggle. (Category is omitted from Target MVP UI to strictly mirror database schema).
 
 ---
 

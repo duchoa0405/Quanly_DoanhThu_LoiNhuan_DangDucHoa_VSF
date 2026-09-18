@@ -231,7 +231,7 @@ Table reconciliation_records {
 Table discrepancy_audits {
   id uuid [pk, default: `gen_random_uuid()`, note: 'Unique identifier for discrepancy audit entry']
   reconciliation_record_id uuid [not null, note: 'Foreign key to parent reconciliation record exhibiting variance']
-  discrepancy_type varchar(50) [not null, note: 'Variance classification: COMMISSION_RATE_MISMATCH, EXTRA_SHIPPING_CHARGE, RETURN_FEE_DISPUTE, OTHER']
+  discrepancy_type varchar(50) [not null, note: 'Variance classification: COMMISSION_RATE_MISMATCH, PAYMENT_FEE_MISMATCH, SERVICE_FEE_MISMATCH, UNEXPECTED_PLATFORM_CHARGE, OTHER']
   explanation_note text [not null, note: 'Mandatory explanation note documenting root cause of variance']
   resolution_notes text [note: 'Investigation notes and dispute resolution outcome']
   resolved_by varchar(100) [note: 'User identity who approved/resolved the dispute']
