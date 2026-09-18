@@ -131,7 +131,7 @@ graph LR
   1. Operator selects Channel (*TikTok Shop, Shopee, or POS*) and records external Order ID.
   2. Uses `ProductSelector` to add order line items (SKU code, quantity, agreed unit selling price) and inputs shop voucher. (Baseline unit cost is hidden from operator).
   3. System automatically retrieves current baseline cost and freezes immutable `unit_cost_snapshot`:
-     $$\text{Line COGS} = \text{Quantity} \times \text{unit\_cost\_snapshot}$$
+     $$\text{Line COGS} = \text{Quantity} \times \text{Unit Cost Snapshot}$$
   4. System triggers backend fee preview calculation (`UC02`):
      $$\text{Estimated Fees} = \text{Commission} + \text{Payment Fee} + \text{Service Fee} + \text{Fixed Fee}$$
      $$\text{Projected Settlement} = \text{Gross Revenue} - \text{Estimated Fees}$$
