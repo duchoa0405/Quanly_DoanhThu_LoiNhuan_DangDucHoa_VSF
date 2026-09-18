@@ -245,6 +245,8 @@ The system follows a strict, decoupled three-tier architecture:
 | **Database Schema (DBML)**| [`docs/database/schema.dbml`](docs/database/schema.dbml) | Canonical source of truth for PostgreSQL database design |
 | **Database Specification**| [`docs/database/database-design_en.md`](docs/database/database-design_en.md) | English relational schema design specification, ERD, and table catalog |
 | **Database Constraints & Indexes** | [`docs/database/database-constraints-indexes_en.md`](docs/database/database-constraints-indexes_en.md) | PostgreSQL constraints, check integrity, index matrix, and ACID transactions |
+| **OpenAPI 3.0 Specification** | [`docs/api/openapi.yaml`](docs/api/openapi.yaml) | Authoritative OpenAPI 3.0.3 REST contract, endpoints, DTOs, and RFC 7807 error models |
+| **API Traceability Matrix** | [`docs/api/api_traceability_en.md`](docs/api/api_traceability_en.md) | End-to-end traceability from Use Cases (UC01–UC13) through C4, API, DBML to RBAC |
 | **User Stories & BDD** | [`docs/requirements_invest.md`](docs/requirements_invest.md) | INVEST user stories and Gherkin acceptance criteria |
 | **Use Cases & RBAC** | [`docs/usecase.md`](docs/usecase.md) | Actor specifications, UML use cases, and role-based access matrix |
 | **UI/UX Specifications** | [`docs/uiux_specifications.md`](docs/uiux_specifications.md) | Design tokens, color rules, layout grid, and screen hierarchy |
@@ -272,6 +274,7 @@ Quanly_DoanhThu_LoiNhuan_DangDucHoa_VSF/
 │   │   └── shared/                        # Primitives, API client, formatters, copy dictionaries
 │   └── package.json
 └── docs/                                  # Project architecture and technical specifications
+    ├── api/                               # OpenAPI 3.0 specification & API traceability matrix
     ├── architecture/                      # arc42 and C4 Level 1-3 specifications
     ├── database/                          # DBML schema and relational design specifications
     ├── references/                        # Architectural references and sample guides

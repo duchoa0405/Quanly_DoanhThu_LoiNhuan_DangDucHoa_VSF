@@ -1,0 +1,2229 @@
+openapi: 3.0.3
+info:
+  title: Fashion Revenue & Profit Management System API
+  description: >
+    Formal RESTful API Specification (Phase P06) for the Fashion Revenue & Profit Management System.
+    Provides authoritative API contracts between the React frontend and ASP.NET Core 8 backend API.
+    Enforces Zero Phantom Revenue (DELIVERED recognition only), immutable baseline unit cost snapshots,
+    multi-channel strategy fee deductions, manual settlement reconciliation, and Contribution Profit derivation.
+  version: 1.0.0
+  contact:
+    name: Dang Duc Hoa
+    email: support@fashionweb.local
+
+servers:
+  - url: /api/v1
+    description: Production & Local Development API Gateway (ASP.NET Core 8)
+
+tags:
+  - name: Catalog
+    description: Master products, SKU variants, retail pricing, and baseline COGS cost management.
+  - name: Orders & Fee Preview
+    description: Multi-channel order recording, real-time fee preview calculation, lifecycle transitions, and cancellations.
+  - name: Settlement
+    description: Manual bank/wallet settlement ledger, variance reconciliation, and audit status counters.
+  - name: Discrepancy
+    description: Reconciliation discrepancy investigation, root-cause categorization, and dispute resolution.
+  - name: Analytics
+    description: 5 Core Financial KPIs, Contribution Profit trends, channel distribution, top merchandise performance, and CSV exports.
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ============================================================================
+  # 1. CATALOG API (UC12 & ProductSelector)
+  # ============================================================================
+  /catalog/variants/selectable:
+    get:
+      tags:
+        - Catalog
+      summary: Get Selectable SKU Variants for Order Entry (UC01, UC12)
+      description: >
+        Returns active catalog SKU variants for selection in CreateOrderModal.
+        Baseline unit cost (costPrice) is strictly omitted to prevent COGS leakage to Sales & Ops Staff.
+      operationId: getSelectableVariants
+      parameters:
+        - name: search
+          in: query
+          description: Search term matching product name or SKU code
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of active selectable SKU variants.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelectableVariantListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /catalog/products:
+    get:
+      tags:
+        - Catalog
+      summary: List Catalog Products & Baseline Costs (UC12)
+      description: >
+        Retrieves master products with complete SKU variant matrix, retail prices, and baseline unit cost prices.
+        Restricted to Finance Manager and Shop Owner.
+      operationId: listProducts
+      parameters:
+        - name: search
+          in: query
+          description: Filter products by name or category
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: 1-indexed page number
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Paginated master products with variants and cost prices.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedProductListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Catalog
+      summary: Create Master Product with Variants (UC12)
+      description: >
+        Creates a new master product and its associated SKU variants with retail price and baseline cost price.
+        Restricted to Finance Manager and Shop Owner.
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: SKU Code uniqueness conflict.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /catalog/products/{id}:
+    get:
+      tags:
+        - Catalog
+      summary: Get Product Detail by ID (UC12)
+      description: Retrieves a single master product and its SKU variants.
+      operationId: getProductById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Product UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - Catalog
+      summary: Update Master Product Metadata (UC12)
+      description: Updates product metadata (name, category, description, isActive).
+      operationId: updateProduct
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Product UUID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Updated product metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /catalog/variants/{id}:
+    patch:
+      tags:
+        - Catalog
+      summary: Update SKU Variant Pricing & Baseline Cost (UC12)
+      description: >
+        Updates retail price, baseline cost price, and active status for a SKU variant.
+        Enforces costPrice >= 0 and retailPrice >= 0. Restricted to Finance Manager and Shop Owner.
+      operationId: updateVariant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Product Variant UUID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVariantRequest'
+      responses:
+        '200':
+          description: Updated variant pricing and cost details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductVariantResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # ============================================================================
+  # 2. ORDERS & FEE PREVIEW API (UC01 - UC04)
+  # ============================================================================
+  /orders:
+    get:
+      tags:
+        - Orders & Fee Preview
+      summary: List Multi-Channel Orders (UC01)
+      description: Retrieves a paginated list of commercial orders filtered by channel, status, or search keywords.
+      operationId: listOrders
+      parameters:
+        - name: channel
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ChannelType'
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: search
+          in: query
+          description: Search external order ID, customer name, or phone number
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Paginated orders list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedOrderListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Orders & Fee Preview
+      summary: Create Multi-Channel Order (UC01)
+      description: >
+        Records a new commercial order in PENDING status. Client sends customer and line item inputs.
+        Backend authoritatively queries product_variants.cost_price to freeze unit_cost_snapshot into order_items.
+        Client cannot submit cost or profit figures.
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order successfully created in PENDING status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Specified SKU Variant does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Duplicate external order ID on specified channel.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /orders/preview-fee:
+    post:
+      tags:
+        - Orders & Fee Preview
+      summary: Real-Time Strategy Fee Preview (UC02)
+      description: >
+        Calculates instantaneous fee deductions and projected net payout on-the-fly.
+        Stateless calculation with zero database persistence.
+      operationId: previewOrderFees
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeePreviewRequest'
+      responses:
+        '200':
+          description: Dynamic fee breakdown.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeBreakdownResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /orders/{id}:
+    get:
+      tags:
+        - Orders & Fee Preview
+      summary: Get Order Detail (UC01, UC03)
+      description: Retrieves complete order details including item lines, lifecycle history, and financial snapshots.
+      operationId: getOrderById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Order UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Complete order details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /orders/{id}/status:
+    patch:
+      tags:
+        - Orders & Fee Preview
+      summary: Progress Order Lifecycle Status (UC03)
+      description: >
+        Advances order lifecycle status (PENDING -> SHIPPED -> DELIVERED).
+        When transitioning to DELIVERED:
+        1. Freezes fee snapshot into order_fee_snapshots.
+        2. Officially recognizes Gross Revenue and Merchandise COGS.
+        3. Derives Contribution Profit on-the-fly.
+        4. Initializes reconciliation_records entry in PENDING_SETTLEMENT state.
+      operationId: updateOrderStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Order UUID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrderStatusRequest'
+      responses:
+        '200':
+          description: Status successfully updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Illegal status progression (e.g. DELIVERED -> SHIPPED, or skipping SHIPPED).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /orders/{id}/cancel:
+    post:
+      tags:
+        - Orders & Fee Preview
+      summary: Cancel Order & Exclude from Revenue/Profit (UC04)
+      description: >
+        Cancels a PENDING or SHIPPED order and permanently excludes it from revenue, COGS, and profit figures.
+        Cancelling an order that has already reached DELIVERED is strictly prohibited.
+      operationId: cancelOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Order UUID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
+      responses:
+        '200':
+          description: Order successfully cancelled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Cannot cancel an order that is already in DELIVERED status.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  # ============================================================================
+  # 3. SETTLEMENT API (UC05, UC06)
+  # ============================================================================
+  /settlements:
+    get:
+      tags:
+        - Settlement
+      summary: Get Settlement Ledger (UC05)
+      description: Retrieves a paginated reconciliation ledger of delivered orders. Restricted to Finance Manager and Shop Owner.
+      operationId: getSettlementLedger
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ReconciliationStatus'
+        - name: channel
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ChannelType'
+        - name: from
+          in: query
+          description: Filter delivered date from (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: Filter delivered date to (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Paginated settlement records.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedSettlementLedgerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /settlements/summary:
+    get:
+      tags:
+        - Settlement
+      summary: Get Settlement Audit Counters (UC05)
+      description: Returns aggregate counts of pending, reconciled, and discrepancy settlement records.
+      operationId: getSettlementSummary
+      responses:
+        '200':
+          description: Settlement counter summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettlementSummaryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /settlements/{orderId}/reconcile:
+    post:
+      tags:
+        - Settlement
+      summary: Record Manual Settlement Entry & Reconcile Variance (UC06)
+      description: >
+        Records actual bank/wallet payout for a delivered order.
+        The backend authoritatively derives:
+        Variance Amount = Projected Settlement - Actual Settlement.
+        If variance == 0: reconciliationStatus becomes RECONCILED.
+        If variance != 0: reconciliationStatus becomes DISCREPANCY, and non-empty notes are required.
+        OrderStatus remains DELIVERED.
+      operationId: reconcileSettlement
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          description: Order UUID to reconcile
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReconcileSettlementRequest'
+      responses:
+        '200':
+          description: Order settlement successfully recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconciliationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Order is not in DELIVERED status or has already been reconciled.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # ============================================================================
+  # 4. DISCREPANCY API (UC07)
+  # ============================================================================
+  /discrepancies:
+    get:
+      tags:
+        - Discrepancy
+      summary: List Settlement Discrepancies (UC07)
+      description: Retrieves audit records of settlement variances requiring investigation.
+      operationId: listDiscrepancies
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/DiscrepancyType'
+        - name: resolved
+          in: query
+          description: Filter by resolution status
+          required: false
+          schema:
+            type: boolean
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Paginated discrepancy audit records.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDiscrepancyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /discrepancies/{id}:
+    get:
+      tags:
+        - Discrepancy
+      summary: Get Discrepancy Audit Detail (UC07)
+      description: Retrieves complete discrepancy investigation audit trail.
+      operationId: getDiscrepancyById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Discrepancy Audit UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Discrepancy details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscrepancyDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /discrepancies/{id}/resolve:
+    patch:
+      tags:
+        - Discrepancy
+      summary: Resolve Settlement Discrepancy (UC07)
+      description: >
+        Closes a discrepancy investigation with documented resolution notes.
+        Authenticated user identity is captured as resolvedBy, and resolvedAt is set by server clock.
+      operationId: resolveDiscrepancy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Discrepancy Audit UUID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveDiscrepancyRequest'
+      responses:
+        '200':
+          description: Discrepancy successfully resolved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscrepancyDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Discrepancy is already marked as resolved.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # ============================================================================
+  # 5. ANALYTICS & REPORTING API (UC08 - UC11, UC13)
+  # ============================================================================
+  /analytics/kpis:
+    get:
+      tags:
+        - Analytics
+      summary: Get 5 Core Financial KPIs & Margin (UC08, UC13)
+      description: >
+        Calculates 5 Core Financial KPIs strictly aggregated across DELIVERED orders:
+        Gross Revenue, Total Platform Fees, Projected Settlement, Merchandise COGS,
+        and Contribution Profit (along with Contribution Margin %).
+        Term "Net Profit" is strictly prohibited.
+      operationId: getFinancialKpis
+      parameters:
+        - name: from
+          in: query
+          description: Filter start date-time (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: Filter end date-time (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: channel
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ChannelType'
+      responses:
+        '200':
+          description: 5 Core Financial KPIs and margin percentage.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialKpiResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /analytics/trend:
+    get:
+      tags:
+        - Analytics
+      summary: Get Daily Revenue & Contribution Profit Trend (UC08, UC13)
+      description: Retrieves time-series comparison of daily Gross Revenue and Contribution Profit for delivered orders.
+      operationId: getFinancialTrend
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: channel
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ChannelType'
+      responses:
+        '200':
+          description: Daily financial trend data points.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialTrendResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /analytics/channel-breakdown:
+    get:
+      tags:
+        - Analytics
+      summary: Get Multi-Channel Revenue & Profit Share (UC10, UC13)
+      description: Aggregates delivered revenue, platform fees, contribution profit, and margin % segmented by sales channel.
+      operationId: getChannelBreakdown
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Channel financial breakdown list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelBreakdownListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /analytics/top-skus:
+    get:
+      tags:
+        - Analytics
+      summary: Get Top SKUs by Revenue & Contribution Profit (UC10, UC13)
+      description: Retrieves top-performing merchandise ranked by delivered Gross Revenue or Contribution Profit.
+      operationId: getTopSkus
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: channel
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ChannelType'
+        - name: sortBy
+          in: query
+          description: Metric to rank SKUs by
+          required: false
+          schema:
+            type: string
+            enum: [CONTRIBUTION_PROFIT, GROSS_REVENUE, DELIVERED_UNITS]
+            default: CONTRIBUTION_PROFIT
+        - name: limit
+          in: query
+          description: Max number of top SKUs to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Top SKU ranking list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopSkuListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /analytics/drilldown:
+    get:
+      tags:
+        - Analytics
+      summary: Get Delivered Orders Backing KPI Aggregates (UC11)
+      description: Retrieves paginated itemized delivered orders that constitute the KPI summary totals.
+      operationId: getDrilldownOrders
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: channel
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ChannelType'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Paginated drilldown orders.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDrilldownOrderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /analytics/export-csv:
+    get:
+      tags:
+        - Analytics
+      summary: Export Reconciliation & Financial CSV (UC11)
+      description: Streams standardized RFC 4180 CSV export of delivered order reconciliations for tax and accounting audits.
+      operationId: exportReconciliationCsv
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: channel
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ChannelType'
+      responses:
+        '200':
+          description: RFC 4180 CSV file stream.
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+# ============================================================================
+# COMPONENTS SCHEMAS, RESPONSES & SECURITY
+# ============================================================================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token authentication containing user claims and role (Sales & Ops Staff, Finance Manager, Shop Owner).
+
+  responses:
+    BadRequest:
+      description: Malformed request or invalid parameters.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Unauthorized:
+      description: Authentication required or invalid credentials.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Forbidden:
+      description: Authenticated user does not possess required role permission.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    ValidationError:
+      description: Business validation failure (RFC 7807).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ValidationProblemDetails'
+
+  schemas:
+    # --------------------------------------------------------------------------
+    # Common Reusable Enums
+    # --------------------------------------------------------------------------
+    ChannelType:
+      type: string
+      enum:
+        - TIKTOK
+        - SHOPEE
+        - POS
+      description: Canonical sales channel identifier.
+      example: TIKTOK
+
+    PaymentMethod:
+      type: string
+      enum:
+        - CASH
+        - POS_CARD_QR
+        - MARKETPLACE_WALLET
+      description: Canonical payment method. CASH is only permitted for POS.
+      example: MARKETPLACE_WALLET
+
+    OrderStatus:
+      type: string
+      enum:
+        - PENDING
+        - SHIPPED
+        - DELIVERED
+        - CANCELLED
+      description: Order lifecycle status state machine.
+      example: DELIVERED
+
+    ReconciliationStatus:
+      type: string
+      enum:
+        - PENDING_SETTLEMENT
+        - RECONCILED
+        - DISCREPANCY
+      description: Settlement verification status.
+      example: RECONCILED
+
+    DiscrepancyType:
+      type: string
+      enum:
+        - COMMISSION_RATE_MISMATCH
+        - PAYMENT_FEE_MISMATCH
+        - SERVICE_FEE_MISMATCH
+        - UNEXPECTED_PLATFORM_CHARGE
+        - OTHER
+      description: Root-cause classification for settlement variance discrepancies.
+      example: COMMISSION_RATE_MISMATCH
+
+    MonetaryAmount:
+      type: number
+      multipleOf: 0.01
+      description: VND currency value mapped to C# decimal and PostgreSQL numeric(15,2).
+      example: 500000.00
+
+    # --------------------------------------------------------------------------
+    # Catalog Schemas (UC12 & ProductSelector)
+    # --------------------------------------------------------------------------
+    SelectableVariantResponse:
+      type: object
+      required:
+        - id
+        - skuCode
+        - productName
+        - retailPrice
+        - isActive
+      properties:
+        id:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          example: POLO-BLK-L
+        productName:
+          type: string
+          example: Premium Oxford Polo
+        color:
+          type: string
+          nullable: true
+          example: Black
+        size:
+          type: string
+          nullable: true
+          example: L
+        retailPrice:
+          $ref: '#/components/schemas/MonetaryAmount'
+        isActive:
+          type: boolean
+          example: true
+
+    SelectableVariantListResponse:
+      type: object
+      required:
+        - variants
+      properties:
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelectableVariantResponse'
+
+    ProductVariantResponse:
+      type: object
+      required:
+        - id
+        - productId
+        - skuCode
+        - retailPrice
+        - costPrice
+        - isActive
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          example: POLO-BLK-L
+        color:
+          type: string
+          nullable: true
+          example: Black
+        size:
+          type: string
+          nullable: true
+          example: L
+        retailPrice:
+          $ref: '#/components/schemas/MonetaryAmount'
+        costPrice:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Baseline unit COGS cost.
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProductResponse:
+      type: object
+      required:
+        - id
+        - name
+        - isActive
+        - variants
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Premium Oxford Polo
+        category:
+          type: string
+          nullable: true
+          example: Tops
+        description:
+          type: string
+          nullable: true
+          example: 100% Cotton combed pique polo shirt
+        isActive:
+          type: boolean
+          example: true
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariantResponse'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateProductVariantRequest:
+      type: object
+      required:
+        - skuCode
+        - retailPrice
+        - costPrice
+      properties:
+        skuCode:
+          type: string
+          example: POLO-BLK-L
+        color:
+          type: string
+          nullable: true
+          example: Black
+        size:
+          type: string
+          nullable: true
+          example: L
+        retailPrice:
+          $ref: '#/components/schemas/MonetaryAmount'
+        costPrice:
+          $ref: '#/components/schemas/MonetaryAmount'
+
+    CreateProductRequest:
+      type: object
+      required:
+        - name
+        - variants
+      properties:
+        name:
+          type: string
+          example: Premium Oxford Polo
+        category:
+          type: string
+          nullable: true
+          example: Tops
+        description:
+          type: string
+          nullable: true
+          example: 100% Cotton combed pique polo shirt
+        variants:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CreateProductVariantRequest'
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+          nullable: true
+
+    UpdateVariantRequest:
+      type: object
+      properties:
+        retailPrice:
+          $ref: '#/components/schemas/MonetaryAmount'
+        costPrice:
+          $ref: '#/components/schemas/MonetaryAmount'
+        isActive:
+          type: boolean
+          nullable: true
+
+    PagedProductListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - totalItems
+        - totalPages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductResponse'
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        totalItems:
+          type: integer
+          example: 45
+        totalPages:
+          type: integer
+          example: 3
+
+    # --------------------------------------------------------------------------
+    # Orders & Fee Preview Schemas (UC01 - UC04)
+    # --------------------------------------------------------------------------
+    CreateOrderItemRequest:
+      type: object
+      required:
+        - productVariantId
+        - quantity
+        - unitPrice
+      properties:
+        productVariantId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
+        unitPrice:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Selling price charged to customer.
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - externalOrderId
+        - channel
+        - paymentMethod
+        - shopVoucher
+        - items
+      properties:
+        externalOrderId:
+          type: string
+          example: TT-20260918-001
+        channel:
+          $ref: '#/components/schemas/ChannelType'
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        customerName:
+          type: string
+          nullable: true
+          example: Nguyen Van A
+        customerPhone:
+          type: string
+          nullable: true
+          example: "0901234567"
+        shopVoucher:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Merchant-funded discount coupon. Must be <= subtotal.
+          example: 0.00
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CreateOrderItemRequest'
+
+    OrderItemResponse:
+      type: object
+      required:
+        - id
+        - productVariantId
+        - skuCode
+        - productName
+        - quantity
+        - unitPrice
+        - lineTotal
+      properties:
+        id:
+          type: string
+          format: uuid
+        productVariantId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          example: POLO-BLK-L
+        productName:
+          type: string
+          example: Premium Oxford Polo
+        quantity:
+          type: integer
+          example: 2
+        unitPrice:
+          $ref: '#/components/schemas/MonetaryAmount'
+        lineTotal:
+          $ref: '#/components/schemas/MonetaryAmount'
+        unitCostSnapshot:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Frozen unit cost (only visible to Finance Manager and Shop Owner; omitted for Sales & Ops).
+          nullable: true
+        totalCost:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Total line COGS snapshot (only visible to Finance Manager and Shop Owner).
+          nullable: true
+
+    OrderStatusHistoryResponse:
+      type: object
+      required:
+        - id
+        - toStatus
+        - changedBy
+        - changedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        fromStatus:
+          $ref: '#/components/schemas/OrderStatus'
+          nullable: true
+        toStatus:
+          $ref: '#/components/schemas/OrderStatus'
+        changedBy:
+          type: string
+          example: ops_staff_01
+        changedAt:
+          type: string
+          format: date-time
+
+    FeeSnapshotResponse:
+      type: object
+      required:
+        - commissionFee
+        - paymentFee
+        - serviceFee
+        - fixedFee
+        - totalPlatformFees
+        - projectedSettlement
+        - isImmutable
+        - snapshottedAt
+      properties:
+        commissionFee:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 20000.00
+        paymentFee:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 15000.00
+        serviceFee:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 0.00
+        fixedFee:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 3000.00
+        totalPlatformFees:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 38000.00
+        projectedSettlement:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 462000.00
+        isImmutable:
+          type: boolean
+          example: true
+        snapshottedAt:
+          type: string
+          format: date-time
+
+    OrderResponse:
+      type: object
+      required:
+        - id
+        - externalOrderId
+        - channel
+        - paymentMethod
+        - status
+        - subtotal
+        - shopVoucher
+        - grossRevenue
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        externalOrderId:
+          type: string
+          example: TT-20260918-001
+        channel:
+          $ref: '#/components/schemas/ChannelType'
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        customerName:
+          type: string
+          nullable: true
+          example: Nguyen Van A
+        customerPhone:
+          type: string
+          nullable: true
+          example: "0901234567"
+        subtotal:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 500000.00
+        shopVoucher:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 0.00
+        grossRevenue:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 500000.00
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancellationReason:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/OrderResponse'
+        - type: object
+          required:
+            - items
+            - statusHistory
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderItemResponse'
+            statusHistory:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderStatusHistoryResponse'
+            feeSnapshot:
+              $ref: '#/components/schemas/FeeSnapshotResponse'
+              nullable: true
+              description: Frozen fee snapshot populated upon DELIVERED status.
+            cogs:
+              $ref: '#/components/schemas/MonetaryAmount'
+              nullable: true
+              description: Total merchandise COGS (visible to Finance Manager & Shop Owner).
+            contributionProfit:
+              $ref: '#/components/schemas/MonetaryAmount'
+              nullable: true
+              description: Derived Contribution Profit (visible to Finance Manager & Shop Owner).
+
+    PagedOrderListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - totalItems
+        - totalPages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderResponse'
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        totalItems:
+          type: integer
+          example: 120
+        totalPages:
+          type: integer
+          example: 6
+
+    UpdateOrderStatusRequest:
+      type: object
+      required:
+        - toStatus
+      properties:
+        toStatus:
+          $ref: '#/components/schemas/OrderStatus'
+          description: Legal next status (e.g. PENDING -> SHIPPED, or SHIPPED -> DELIVERED).
+          example: SHIPPED
+
+    CancelOrderRequest:
+      type: object
+      required:
+        - cancellationReason
+      properties:
+        cancellationReason:
+          type: string
+          minLength: 3
+          example: Customer requested cancellation before shipping.
+
+    # --------------------------------------------------------------------------
+    # Fee Preview Schemas (UC02)
+    # --------------------------------------------------------------------------
+    FeePreviewRequest:
+      type: object
+      required:
+        - channel
+        - paymentMethod
+        - subtotal
+        - shopVoucher
+      properties:
+        channel:
+          $ref: '#/components/schemas/ChannelType'
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        subtotal:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 500000.00
+        shopVoucher:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 0.00
+
+    FeeBreakdownResponse:
+      type: object
+      required:
+        - subtotal
+        - shopVoucher
+        - grossRevenue
+        - commissionFee
+        - paymentFee
+        - serviceFee
+        - fixedFee
+        - totalPlatformFees
+        - projectedSettlement
+      properties:
+        subtotal:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 500000.00
+        shopVoucher:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 0.00
+        grossRevenue:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 500000.00
+        commissionFee:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Channel commission fee.
+          example: 20000.00
+        paymentFee:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Payment gateway or processing fee.
+          example: 15000.00
+        serviceFee:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Platform service surcharge or shipping program fee.
+          example: 0.00
+        fixedFee:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Fixed charge per fulfilled transaction (e.g. 3,000 VND on TikTok).
+          example: 3000.00
+        totalPlatformFees:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Sum of all platform fee deductions.
+          example: 38000.00
+        projectedSettlement:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Net payout expected upon delivery (Gross Revenue - Total Platform Fees).
+          example: 462000.00
+
+    # --------------------------------------------------------------------------
+    # Settlement Schemas (UC05, UC06)
+    # --------------------------------------------------------------------------
+    SettlementLedgerItem:
+      type: object
+      required:
+        - id
+        - orderId
+        - externalOrderId
+        - channel
+        - grossRevenue
+        - totalPlatformFees
+        - projectedSettlement
+        - reconciliationStatus
+        - deliveredAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        externalOrderId:
+          type: string
+          example: TT-20260918-001
+        channel:
+          $ref: '#/components/schemas/ChannelType'
+        grossRevenue:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 500000.00
+        totalPlatformFees:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 38000.00
+        projectedSettlement:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 462000.00
+        actualSettlement:
+          $ref: '#/components/schemas/MonetaryAmount'
+          nullable: true
+          example: 462000.00
+        varianceAmount:
+          $ref: '#/components/schemas/MonetaryAmount'
+          nullable: true
+          description: Projected Settlement - Actual Settlement.
+          example: 0.00
+        reconciliationStatus:
+          $ref: '#/components/schemas/ReconciliationStatus'
+        deliveredAt:
+          type: string
+          format: date-time
+        reconciledAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    PagedSettlementLedgerResponse:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - totalItems
+        - totalPages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SettlementLedgerItem'
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        totalItems:
+          type: integer
+          example: 85
+        totalPages:
+          type: integer
+          example: 5
+
+    SettlementSummaryResponse:
+      type: object
+      required:
+        - pendingSettlementCount
+        - reconciledCount
+        - discrepancyCount
+      properties:
+        pendingSettlementCount:
+          type: integer
+          example: 14
+        reconciledCount:
+          type: integer
+          example: 68
+        discrepancyCount:
+          type: integer
+          example: 3
+
+    ReconcileSettlementRequest:
+      type: object
+      required:
+        - actualSettlement
+      properties:
+        actualSettlement:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Actual net funds received according to bank/wallet records.
+          example: 462000.00
+        notes:
+          type: string
+          nullable: true
+          description: Mandatory justification notes when variance != 0.
+          example: Payout matches platform statement settlement report.
+
+    ReconciliationResponse:
+      type: object
+      required:
+        - id
+        - orderId
+        - projectedSettlement
+        - actualSettlement
+        - varianceAmount
+        - reconciliationStatus
+        - reconciledAt
+        - reconciledBy
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        projectedSettlement:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 462000.00
+        actualSettlement:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 462000.00
+        varianceAmount:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Projected Settlement - Actual Settlement.
+          example: 0.00
+        reconciliationStatus:
+          $ref: '#/components/schemas/ReconciliationStatus'
+        reconciliationNotes:
+          type: string
+          nullable: true
+        reconciledAt:
+          type: string
+          format: date-time
+        reconciledBy:
+          type: string
+          example: finance_mgr_01
+
+    # --------------------------------------------------------------------------
+    # Discrepancy Schemas (UC07)
+    # --------------------------------------------------------------------------
+    DiscrepancyResponse:
+      type: object
+      required:
+        - id
+        - reconciliationId
+        - orderId
+        - externalOrderId
+        - channel
+        - discrepancyType
+        - explanationNote
+        - varianceAmount
+        - isResolved
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        reconciliationId:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        externalOrderId:
+          type: string
+          example: TT-20260918-002
+        channel:
+          $ref: '#/components/schemas/ChannelType'
+        discrepancyType:
+          $ref: '#/components/schemas/DiscrepancyType'
+        explanationNote:
+          type: string
+          example: Commission charged at 5.0% instead of contracted 4.0%.
+        varianceAmount:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 5000.00
+        isResolved:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+
+    DiscrepancyDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/DiscrepancyResponse'
+        - type: object
+          properties:
+            resolvedAt:
+              type: string
+              format: date-time
+              nullable: true
+            resolvedBy:
+              type: string
+              nullable: true
+              example: finance_mgr_01
+            resolutionNotes:
+              type: string
+              nullable: true
+              example: TikTok confirmed commission correction credited to wallet.
+
+    PagedDiscrepancyListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - totalItems
+        - totalPages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscrepancyResponse'
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 1
+        totalItems:
+          type: integer
+          example: 3
+        totalPages:
+          type: integer
+          example: 1
+
+    ResolveDiscrepancyRequest:
+      type: object
+      required:
+        - resolutionNotes
+      properties:
+        resolutionNotes:
+          type: string
+          minLength: 5
+          example: Platform credited back the overcharged fee on subsequent payout statement.
+
+    # --------------------------------------------------------------------------
+    # Analytics & Reporting Schemas (UC08 - UC11, UC13)
+    # --------------------------------------------------------------------------
+    FinancialKpiResponse:
+      type: object
+      required:
+        - grossRevenue
+        - totalPlatformFees
+        - projectedSettlement
+        - cogs
+        - contributionProfit
+        - contributionMarginPct
+        - deliveredOrderCount
+      properties:
+        grossRevenue:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Total recognized revenue from delivered orders.
+          example: 125000000.00
+        totalPlatformFees:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Total platform commission, payment, and service fees deducted.
+          example: 9500000.00
+        projectedSettlement:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Net realized sales payout (Gross Revenue - Total Platform Fees).
+          example: 115500000.00
+        cogs:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Total merchandise Cost of Goods Sold for delivered items.
+          example: 52000000.00
+        contributionProfit:
+          $ref: '#/components/schemas/MonetaryAmount'
+          description: Contribution Profit (Projected Settlement - COGS).
+          example: 63500000.00
+        contributionMarginPct:
+          type: number
+          description: (Contribution Profit / Gross Revenue) * 100.
+          example: 50.80
+        deliveredOrderCount:
+          type: integer
+          example: 250
+
+    FinancialTrendPoint:
+      type: object
+      required:
+        - date
+        - grossRevenue
+        - contributionProfit
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2026-09-18"
+        grossRevenue:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 18500000.00
+        contributionProfit:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 9400000.00
+
+    FinancialTrendResponse:
+      type: object
+      required:
+        - points
+      properties:
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinancialTrendPoint'
+
+    ChannelBreakdownResponse:
+      type: object
+      required:
+        - channel
+        - deliveredOrders
+        - grossRevenue
+        - totalPlatformFees
+        - contributionProfit
+        - contributionMarginPct
+      properties:
+        channel:
+          $ref: '#/components/schemas/ChannelType'
+        deliveredOrders:
+          type: integer
+          example: 140
+        grossRevenue:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 70000000.00
+        totalPlatformFees:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 5320000.00
+        contributionProfit:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 35480000.00
+        contributionMarginPct:
+          type: number
+          example: 50.69
+
+    ChannelBreakdownListResponse:
+      type: object
+      required:
+        - channels
+      properties:
+        channels:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChannelBreakdownResponse'
+
+    TopSkuResponse:
+      type: object
+      required:
+        - skuCode
+        - productName
+        - deliveredUnits
+        - grossRevenue
+        - cogs
+        - contributionProfit
+        - contributionMarginPct
+      properties:
+        skuCode:
+          type: string
+          example: POLO-BLK-L
+        productName:
+          type: string
+          example: Premium Oxford Polo
+        deliveredUnits:
+          type: integer
+          example: 110
+        grossRevenue:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 27500000.00
+        cogs:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 11000000.00
+        contributionProfit:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 14410000.00
+        contributionMarginPct:
+          type: number
+          example: 52.40
+
+    TopSkuListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopSkuResponse'
+
+    DrilldownOrderItem:
+      type: object
+      required:
+        - id
+        - externalOrderId
+        - channel
+        - deliveredAt
+        - grossRevenue
+        - totalPlatformFees
+        - projectedSettlement
+        - cogs
+        - contributionProfit
+      properties:
+        id:
+          type: string
+          format: uuid
+        externalOrderId:
+          type: string
+          example: TT-20260918-001
+        channel:
+          $ref: '#/components/schemas/ChannelType'
+        deliveredAt:
+          type: string
+          format: date-time
+        grossRevenue:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 500000.00
+        totalPlatformFees:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 38000.00
+        projectedSettlement:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 462000.00
+        cogs:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 200000.00
+        contributionProfit:
+          $ref: '#/components/schemas/MonetaryAmount'
+          example: 262000.00
+
+    PagedDrilldownOrderResponse:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - totalItems
+        - totalPages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DrilldownOrderItem'
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        totalItems:
+          type: integer
+          example: 250
+        totalPages:
+          type: integer
+          example: 13
+
+    # --------------------------------------------------------------------------
+    # Error Handling Schemas (RFC 7807 Problem Details)
+    # --------------------------------------------------------------------------
+    ProblemDetails:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - detail
+      properties:
+        type:
+          type: string
+          format: uri
+          example: "https://tools.ietf.org/html/rfc7807"
+        title:
+          type: string
+          example: Business Rule Violation
+        status:
+          type: integer
+          example: 422
+        detail:
+          type: string
+          example: Shop voucher (550,000 VND) cannot exceed order subtotal (500,000 VND).
+        instance:
+          type: string
+          example: "/api/v1/orders"
+        traceId:
+          type: string
+          example: "00-84a1d7f6c31a74a1-01"
+
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+              example:
+                shopVoucher:
+                  - "The field shopVoucher must be less than or equal to subtotal."
+                paymentMethod:
+                  - "Payment method CASH is not supported on channel TIKTOK."
