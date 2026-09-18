@@ -132,7 +132,7 @@ graph LR
 * **Workspace:** Screen 1: Orders Management
 * **Main Flow:**
   1. Operator selects Channel (*TikTok Shop, Shopee, or POS*) and records external Order ID.
-  2. Uses `ProductSelector` to add order line items (SKU code, quantity, agreed unit selling price) and inputs shop voucher. (Baseline unit cost is hidden from operator).
+  2. Uses `ProductSelector` to add order line items (SKU code, quantity, agreed unit selling price) and inputs shop voucher. (Baseline unit cost is hidden from Sales & Ops Staff).
   3. System automatically retrieves current baseline cost and freezes immutable `unit_cost_snapshot`:
      $$\text{Line COGS} = \text{Quantity} \times \text{Unit Cost Snapshot}$$
   4. System triggers backend fee preview calculation (`UC02`) to display estimated fees and projected settlement:
@@ -176,6 +176,6 @@ graph LR
 | **Investigate and resolve discrepancies (UC07)** | Screen 2 (Settlement) | No Access | Full Access | Full Access |
 | **View 5 Financial KPI cards & Charts (UC08, UC10, UC13)**| Screen 3 (Dashboard) | No Access | Full Access | Full Access |
 | **Filter revenue & Export CSV reports (UC09, UC11)** | Screen 3 (Dashboard) | No Access | Full Access | Full Access |
-| **Select SKUs for order creation** | Modal (`ProductSelector`) | Full Access | Full Access | Full Access |
+| **Select SKUs for order creation** | Modal (`ProductSelector`) | Full Access | No Access | Full Access |
 | **View baseline unit costs (`cost_price`)** | Screen 4 (Catalog) | **No Access (Hidden)**| Full Access | Full Access |
 | **Manage products, SKUs, and baseline costs (UC12)** | Screen 4 (Catalog) | No Access | Full Access | Full Access |
