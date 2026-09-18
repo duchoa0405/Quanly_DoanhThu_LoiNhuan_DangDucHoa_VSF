@@ -1,7 +1,5 @@
 # C4 Component Specification: ASP.NET Core Backend API
 
-> **Status:** LOCKED (Target MVP Baseline)
-
 ---
 
 ## 1. Target Component Scope & Context

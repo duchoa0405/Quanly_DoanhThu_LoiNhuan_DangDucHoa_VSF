@@ -1,7 +1,5 @@
 # C4 Component Specification: React Web SPA
 
-> **Status:** LOCKED (Target MVP Baseline)
-
 ---
 
 ## 1. Target Component Scope & Boundary Definition
