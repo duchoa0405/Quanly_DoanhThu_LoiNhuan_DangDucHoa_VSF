@@ -1,13 +1,5 @@
 # Database Constraints, Integrity Rules & Indexing Specification
 
-> **System:** Fashion Revenue & Profit Management System  
-> **Database:** PostgreSQL 16+  
-> **Document Role:** Physical Database Integrity Specification (Phase P05 - Database Design)  
-> **Source of Truth for Relational Schema:** [`schema.dbml`](./schema.dbml)  
-> **Companion Document for Business Rationale:** [`database-design_en.md`](./database-design_en.md)
-
----
-
 ## 1. Architectural Scope & Purpose
 
 This specification establishes the authoritative **physical integrity constraints, state-machine validation rules, immutability policies, indexing architecture, and transaction boundaries** for the 9 core tables within the **Fashion Revenue & Profit Management System**:
@@ -193,7 +185,8 @@ ALTER TABLE order_items
 #### The Cost Snapshot Immutability Invariant:
 1. When an order line is created, the system reads `product_variants.cost_price` and freezes it permanently into `order_items.unit_cost_snapshot`.
 2. **Strict Invariant:** Future updates to master catalog baseline costs **must never mutate** historical order line snapshots:
-   $$\Delta(\text{product\_variants.cost\_price}) \centernot\implies \Delta(\text{order\_items.unit\_cost\_snapshot})$$
+   $$\Delta(\text{Catalog Baseline Cost}) \centernot\implies \Delta(\text{Order Line Cost Snapshot})$$
+   *(Mutations to catalog `cost_price` never affect historical `unit_cost_snapshot`).*
 3. **Line Immutability Rule:** After an order transitions to `SHIPPED`, `DELIVERED`, or `CANCELLED`, order line items cannot be modified or deleted. Line items are only cascaded if a draft order is aborted before status progression.
 
 ---
@@ -394,7 +387,8 @@ ALTER TABLE reconciliation_records
 
 #### Mathematical Invariants:
 - **Canonical Variance Formula:**
-  $$\text{variance\_amount} = \text{projected\_settlement} - \text{actual\_settlement}$$
+  $$\text{Variance Amount} = \text{Projected Settlement} - \text{Actual Settlement}$$
+  where `variance_amount = projected_settlement - actual_settlement`.  
   *(Positive variance = payout shortfall / money withheld; Negative variance = unexpected platform overpayment).*
 - **State Guarantee:**
   - An order with `variance_amount != 0` can **never** be labeled `RECONCILED`.
@@ -634,7 +628,7 @@ To maintain single source of truth and eliminate data divergence, financial figu
 | `order_items.line_total` | **Persisted** | `quantity * unit_price` | Item-level customer payable figure. |
 | `order_items.unit_cost_snapshot` | **Persisted** | Copied from `product_variants.cost_price` | Immutable baseline cost for permanent COGS auditability. |
 | `order_items.total_cost` | **Persisted** | `quantity * unit_cost_snapshot` | Item-level Cost of Goods Sold snapshot. |
-| **Total COGS** | **Derived** | $\sum (\text{order\_items.total\_cost})$ for Delivered orders | Aggregated at query time across delivered order items. |
+| **Total COGS** | **Derived** | $\sum (\text{Line Total Cost})$ for Delivered orders | Aggregated at query time across delivered `order_items.total_cost`. |
 | `order_fee_snapshots.total_platform_fees` | **Persisted** | $\sum (\text{Commission} + \text{Payment} + \text{Service} + \text{Fixed})$ | Immutable fee snapshot frozen upon delivery. |
 | `order_fee_snapshots.projected_settlement` | **Persisted** | `gross_revenue - total_platform_fees` | Net realized revenue recognized upon delivery. |
 | **Contribution Profit** | **Derived** | $\text{Projected Settlement} - \text{Total COGS}$ | Computed on-the-fly in analytics layer; never stored as static column. |

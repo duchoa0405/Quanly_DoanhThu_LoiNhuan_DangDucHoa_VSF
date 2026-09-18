@@ -147,7 +147,7 @@ Key architectural decisions consolidated from C4 Level 2, 3 (Backend), and 3 (Fr
 | **Actual Settlement** | The actual net funds deposited into the merchant's commercial bank account or marketplace wallet as recorded in bank statements. |
 | **Variance** | The mathematical discrepancy between projected settlement and actual disbursement (`variance_amount = projected_settlement - actual_settlement`). |
 | **Reconciliation** | The accounting verification workflow comparing internal financial projections against external settlement statements. |
-| **Discrepancy** | An unresolved financial variance ($|\text{variance\_amount}| > 0$) requiring investigation, justification notes, and dispute filing. |
+| **Discrepancy** | An unresolved financial variance ($|\text{Variance Amount}| > 0$, where `variance_amount != 0`) requiring investigation, justification notes, and dispute filing. |
 | **Net Realized Revenue** | Official recognized revenue retained by the business after all platform deductions have been settled (`Projected Settlement`). |
 | **COGS (Cost of Goods Sold)** | Direct merchandise baseline cost associated with delivered order items, computed as $\sum (\text{Quantity} \times \text{Unit Cost Snapshot})$. |
 | **Contribution Profit** | Commercial order/channel profitability after marketplace platform fees and baseline merchandise COGS (`Projected Settlement - COGS` or `Gross Revenue - Total Platform Fees - COGS`). |
