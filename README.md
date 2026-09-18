@@ -106,12 +106,12 @@ flowchart TB
     %% Screen 4: Product Catalog & Cost Management
     subgraph SCR04 [" 🏷️ Screen 4: Catalog & Cost Management (SCR-04) "]
         direction TB
-        p41["<b>[Panel 4.1] Catalog Toolbar & Filters</b><br/>• Search SKU Code / Product Name<br/>• Category Filter | Active Status Toggle<br/>• Action: [Add New Product] | [Export Catalog]"]
-        p42["<b>[Panel 4.2] Product & Variant SKU Ledger</b><br/>• Columns: Master Product | Category | Variant SKU | Color | Size | Retail Selling Price | Baseline Unit Cost (cost_price) | Unit Gross Margin | Status<br/>• Row Action: [Edit Pricing & Cost]"]
+        p41["<b>[Panel 4.1] Catalog Toolbar & Filters</b><br/>• Search SKU Code / Product Name<br/>• Active Status Toggle<br/>• Action: [Add New Product] | [Export Catalog]"]
+        p42["<b>[Panel 4.2] Product & Variant SKU Ledger</b><br/>• Columns: Master Product | Variant SKU | Color | Size | Retail Selling Price | Baseline Unit Cost (cost_price) | Unit Gross Margin | Status<br/>• Row Action: [Edit Pricing & Cost]"]
         p41 --> p42
 
         mod06["<b>[MOD-06] Configure SKU Pricing & Cost Modal</b><br/>• Listed Retail Selling Price Input<br/>• Baseline Unit Cost Input (cost_price >= 0)<br/>• Role Guard: Finance / Shop Owner Only<br/>• Real-time Unit Margin % Preview<br/>• Action: [Save Changes]"]
-        mod07["<b>[MOD-07] Add Product & Variant Matrix Modal</b><br/>• Master Title & Apparel Category<br/>• Variant Matrix Generator (Color × Size)<br/>• Initial Retail Price & Baseline Cost<br/>• Action: [Create Product]"]
+        mod07["<b>[MOD-07] Add Product & Variant Matrix Modal</b><br/>• Master Product Title<br/>• Variant Matrix Generator (Color × Size)<br/>• Initial Retail Price & Baseline Cost<br/>• Action: [Create Product]"]
 
         p41 -.->|Click Add Product| mod07
         p42 -.->|Click Edit Pricing/Cost| mod06
@@ -170,7 +170,7 @@ Where:
 The platform provides four cohesive operational workspaces tailored to business roles:
 
 ### 3.1 Screen 1: Multi-Channel Orders Management (SCR-01)
-- Ingests orders across TikTok Shop, Shopee, and In-Store POS.
+- Records orders from TikTok Shop, Shopee, and In-Store POS channels.
 - Product selector integrated with catalog SKUs, freezing item unit costs into immutable snapshots.
 - Real-time backend fee preview during manual order composition.
 - Governs lifecycle status progression (`Pending` $\rightarrow$ `Shipped` $\rightarrow$ `Delivered` / `Cancelled`).

@@ -75,7 +75,7 @@ The structural decomposition of the system is formally specified across three ar
 - **Level 3 Backend Component Architecture:** [`docs/architecture/c4-component-backend_en.md`](c4-component-backend_en.md) *(LOCKED)*
   - Decomposes the backend into Presentation Controllers (`OrdersController`, `SettlementController`, `AnalyticsController`, `CatalogController`), Application Services (`OrderService`, `SettlementService`, `AnalyticsService`, `CatalogService`), Domain Rules & Fee Strategies, Persistence Ports (`IOrderRepository`, `IFeeScheduleRepository`, `IReconciliationRepository`, `IProductRepository`, `IAnalyticsRepository`), and EF Core Data Adapters.
 - **Level 3 Frontend Component Architecture:** [`docs/architecture/c4-component-frontend_en.md`](c4-component-frontend_en.md) *(LOCKED)*
-  - Decomposes the frontend into App & Routing (`/orders`, `/settlements`, `/analytics`, `/catalog`), Pages Layer, Feature Components (`ProductTable`, `ProductEditor`, `PricingCostEditor`, `ProductSelector`), Feature Hooks (`useCatalog`), Feature Services (`CatalogService`), and Shared Frontend Foundation.
+  - Decomposes the frontend into App & Routing (`/orders`, `/settlement`, `/analytics`, `/catalog`), Pages Layer (`OrdersPage`, `SettlementPage`, `RevenueDashboardPage`, `CatalogPage`), Feature Components (`ProductTable`, `ProductEditor`, `PricingCostEditor`, `ProductSelector`), Feature Hooks (`useCatalog`), Feature Services (`CatalogService`), and Shared Frontend Foundation.
 
 ---
 
