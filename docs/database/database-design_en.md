@@ -9,7 +9,7 @@
 This document specifies the **Target MVP Database Architecture** for the **Fashion Revenue & Profit Management System**. 
 
 > [!IMPORTANT]
-> **Independent Target Specification:** The schema defined in [`schema.dbml`](file:///c:/AI_thuc_chien_khoa_3/VSF/Quanly_DoanhThu_LoiNhuan_DangDucHoa_VSF/docs/database/schema.dbml) and detailed herein represents an independent, clean-room target relational design optimized for ACID transaction integrity, multi-channel fee calculation, manual settlement reconciliation, and baseline **Contribution Profit** reporting. It strictly adheres to current MVP requirements without incorporating out-of-scope enterprise ERP or accounting abstractions.
+> **Independent Target Specification:** The schema defined in [`schema.dbml`](./schema.dbml) and detailed herein represents an independent, clean-room target relational design optimized for ACID transaction integrity, multi-channel fee calculation, manual settlement reconciliation, and baseline **Contribution Profit** reporting. It strictly adheres to current MVP requirements without incorporating out-of-scope enterprise ERP or accounting abstractions.
 
 ### 1.2 Core Standards & Architectural Invariants
 - **Target RDBMS:** **PostgreSQL 16+** with native transactional ACID guarantees.
@@ -37,7 +37,7 @@ This document specifies the **Target MVP Database Architecture** for the **Fashi
 
 ## 2. Target Entity-Relationship Diagram (ERD)
 
-The following diagram reflects the canonical structure declared in [`schema.dbml`](file:///c:/AI_thuc_chien_khoa_3/VSF/Quanly_DoanhThu_LoiNhuan_DangDucHoa_VSF/docs/database/schema.dbml):
+The following diagram reflects the canonical structure declared in [`schema.dbml`](./schema.dbml):
 
 ```mermaid
 erDiagram
@@ -489,7 +489,7 @@ Contribution Margin % = (Contribution Profit / Gross Revenue) * 100  (when Gross
 ## 9. Analytics & Reporting Strategy (No Duplicate Report Tables)
 
 To avoid redundant data synchronization and stale aggregation tables, all analytical views query the transactional tables dynamically:
-- **No Static Report Tables:** Tables such as `dashboard_kpi`, `daily_revenue`, or `channel_summary` are intentionally omitted. PostgreSQL 16+ indexes support sub-50ms analytical queries for MVP volume ($< 500{,}000$ orders).
+- **No Static Report Tables:** Tables such as `dashboard_kpi`, `daily_revenue`, or `channel_summary` are intentionally omitted. PostgreSQL 16+ indexes provide a responsive performance target to be validated by benchmark for MVP volume ($< 500{,}000$ orders).
 - **Approved Analytics Terminology:**
   - *Gross Revenue & Contribution Profit by Channel*
   - *Platform Fee Burden & Breakdown*
@@ -565,10 +565,13 @@ The following capabilities are excluded from the MVP core schema:
 - **Enterprise General Ledger & Net Income:** Store rental leases, payroll/salaries, marketing campaign OPEX, corporate income taxes, and asset depreciation.
 - **`users` & RBAC:** Persistent identity and role management.
 
-### 11.3 Deferred to P06 (Database Implementation)
-- Detailed partial indexes, B-tree configuration, and storage tuning.
-- Trigger implementations (`moddatetime` automated timestamp updates).
-- Materialized views and concurrent refresh strategies for high-volume read scale.
+### 11.3 Physical Integrity & Indexing Specification
+Detailed constraints, CHECK expressions, immutability rules, indexing matrices, transaction boundaries, and timestamp triggers have been fully established within Phase P05 in [`database-constraints-indexes_en.md`](./database-constraints-indexes_en.md):
+- Table-by-table CHECK and UNIQUE constraints DDL.
+- Automated timestamp trigger strategy (`fn_set_updated_at()`).
+- Strategic Index Specification Matrix and partial indexing.
+- ACID Transaction Sequences for Order Creation, Delivery, Cancellation, and Reconciliation.
+- Persisted vs. Derived Financial Data Matrix.
 
 ---
 

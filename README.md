@@ -244,6 +244,7 @@ The system follows a strict, decoupled three-tier architecture:
 | **C4 Frontend Component**| [`docs/architecture/c4-component-frontend_en.md`](docs/architecture/c4-component-frontend_en.md) | Frontend layout, routing, feature modules, hooks, and shared foundation *(LOCKED)* |
 | **Database Schema (DBML)**| [`docs/database/schema.dbml`](docs/database/schema.dbml) | Canonical source of truth for PostgreSQL database design |
 | **Database Specification**| [`docs/database/database-design_en.md`](docs/database/database-design_en.md) | English relational schema design specification, ERD, and table catalog |
+| **Database Constraints & Indexes** | [`docs/database/database-constraints-indexes_en.md`](docs/database/database-constraints-indexes_en.md) | PostgreSQL constraints, check integrity, index matrix, and ACID transactions |
 | **User Stories & BDD** | [`docs/requirements_invest.md`](docs/requirements_invest.md) | INVEST user stories and Gherkin acceptance criteria |
 | **Use Cases & RBAC** | [`docs/usecase.md`](docs/usecase.md) | Actor specifications, UML use cases, and role-based access matrix |
 | **UI/UX Specifications** | [`docs/uiux_specifications.md`](docs/uiux_specifications.md) | Design tokens, color rules, layout grid, and screen hierarchy |
