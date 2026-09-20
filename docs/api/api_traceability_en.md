@@ -1,16 +1,9 @@
-# 07 — API Traceability Matrix: End-to-End Architectural Traceability
+# P06 — API Traceability Matrix: End-to-End Architectural Traceability
 
-> **System:** Fashion Revenue & Profit Management System  
-> **Target Framework:** ASP.NET Core 8 Web API / React 18+ Single Page Application  
-> **API Specification Standard:** OpenAPI 3.0.3 ([`docs/api/openapi.yaml`](./openapi.yaml))  
-> **Relational Persistence Standard:** PostgreSQL 16+ ([`schema.dbml`](../database/schema.dbml), [`database-constraints-indexes_en.md`](../database/database-constraints-indexes_en.md))  
-> **Document Status:** Authoritative API Traceability Specification (Phase P06)
-
----
 
 ## 1. Scope & Architectural Traceability Methodology
 
-This document establishes the **100% authoritative end-to-end traceability matrix** connecting business requirements, use cases, frontend UI components, API routes, ASP.NET Core backend controllers, application services, domain strategy engines, repository ports, and the 9 canonical PostgreSQL database tables.
+This document establishes the **authoritative end-to-end traceability matrix** connecting business requirements, use cases, frontend UI components, API routes, ASP.NET Core backend controllers, application business services, domain strategy engines, repository ports, and the 9 canonical PostgreSQL database tables defined in Phase P05.
 
 ```
 [UI Trigger / Modal / Table]
@@ -19,12 +12,12 @@ This document establishes the **100% authoritative end-to-end traceability matri
 [ASP.NET Core Controller Action] (`FashionWeb.Api.Controllers`)
        │
        ▼ (Dependency Inversion Interface Invocation)
-[Application Business Service] (`FashionWeb.Application.Services`)
+[Application Business Service] (`FashionWeb.Business.Services`)
        │
-       ├─► [Dynamic Fee Engine / Strategy Pattern] (`FashionWeb.Domain.Strategies`)
+       ├─► [Dynamic Fee Engine / Strategy Pattern] (`FashionWeb.Business.Strategies`)
        │
-       ▼ (Repository Port Interface)
-[Persistence Adapter / EF Core Repository] (`FashionWeb.Infrastructure.Repositories`)
+       ▼ (Repository Port Interface) (`FashionWeb.Business.Interfaces`)
+[Persistence Adapter / EF Core Repository] (`FashionWeb.Data.Repositories`)
        │
        ▼ (Npgsql / PostgreSQL 16+)
 [Canonical Relational Tables] (9 P05 Database Tables)
@@ -35,23 +28,32 @@ This document establishes the **100% authoritative end-to-end traceability matri
 
 ### Core Financial Rules & System Invariants:
 1. **Zero Phantom Revenue Invariant:** Revenue is officially recognized **if and only if** order status is `DELIVERED`. `PENDING`, `SHIPPED`, and `CANCELLED` orders strictly contribute **0 VND** to revenue and COGS KPIs.
-2. **Exact Monetary Precision:** All monetary fields use PostgreSQL `numeric(15,2)` and C# `decimal` with rounding to 2 decimal places (`multipleOf: 0.01`). Floating-point approximations (`float`, `double`) are strictly prohibited.
-3. **Immutable Baseline Cost Snapshot:** Upon order item creation, the system queries `product_variants.cost_price` and freezes it permanently into `order_items.unit_cost_snapshot`. Subsequent catalog price mutations never alter historical order line snapshots.
-4. **Immutable Fee Snapshot:** Upon transitioning to `DELIVERED`, marketplace fees are evaluated via the Strategy Pattern and permanently frozen into `order_fee_snapshots` with `is_immutable = true`.
+2. **Exact Monetary Precision:** All monetary fields map to PostgreSQL `numeric(15,2)` and C# `decimal` rounded to 2 decimal places (`multipleOf: 0.01`). Floating-point types (`float`, `double`) are strictly prohibited.
+   - `NonNegativeMonetaryAmount`: Used for values that must never be negative (`retailPrice`, `costPrice`, `unitPrice`, `subtotal`, `shopVoucher`, `actualSettlement`, fee amounts, and fee caps).
+   - `MonetaryAmount`: Used for values that may legally be negative (`varianceAmount`, `contributionProfit`).
+3. **Immutable Baseline Cost Snapshot:** Upon order line creation, the backend queries `product_variants.cost_price` and freezes it permanently into `order_items.unit_cost_snapshot`. Subsequent catalog price mutations never alter historical order line snapshots.
+4. **Immutable Fee Snapshot:** Upon transitioning to `DELIVERED`, marketplace fees are evaluated via the Strategy Pattern and permanently frozen into `order_fee_snapshots`. The `order_fee_snapshots` record is immutable after creation by business/persistence policy.
 5. **Canonical Variance Formula:**
    $$\text{Variance Amount} = \text{Projected Settlement} - \text{Actual Settlement}$$
    *(Positive variance = payout shortfall / funds withheld by channel; Negative variance = unexpected platform overpayment).*
 6. **Separation of Duties (RBAC):** 
-   - `Sales & Ops Staff`: Order recording, status progression, order cancellation, selectable SKU queries (strictly zero visibility into baseline `costPrice` or financial profit analytics).
-   - `Finance Manager`: Read orders, fee previews, manual bank/wallet settlement entry, discrepancy investigation/resolution, 5 Core Financial KPIs, CSV exports, catalog retail price and baseline cost management. No order creation/editing.
-   - `Shop Owner`: Full system access across all business capabilities and executive analytics.
+   - `Sales & Ops Staff`: Order recording, status progression (`SHIPPED`, `DELIVERED`), cancellation, selectable SKU queries, operational order summary counters. Strictly zero visibility into baseline `costPrice`, unit cost snapshots, merchandise COGS, or financial profit analytics.
+   - `Finance Manager`: Order inspection, fee previews, fee schedules read-only inspection, manual settlement reconciliation, discrepancy investigation/resolution, 5 Core Financial KPIs, CSV exports, catalog retail price and baseline cost management. No order creation/editing, no fee schedule mutation.
+   - `Shop Owner`: Full system access across all business capabilities, fee schedule versioning (`POST /fee-schedules`), and executive analytics.
 7. **Strict Prohibition of "Net Profit":** Creating any column, endpoint, or schema property named `net_profit`, `net_income`, or `operating_profit` is strictly prohibited. Contribution Profit is dynamically derived as $\text{Projected Settlement} - \text{COGS}$ and excludes operational overhead (rent, payroll, marketing OPEX, taxes).
+8. **Top SKU Contribution Profit Derivation Rule (Analytics Derivation):**
+   Because platform fees and vouchers are recorded at the order level in the canonical P05 database, calculating SKU-level Contribution Profit requires proportional allocation based on line subtotal share:
+   $$\text{lineShare} = \frac{\text{lineSubtotal}}{\text{orderSubtotal}}$$
+   $$\text{allocatedVoucher} = \text{orderVoucher} \times \text{lineShare}$$
+   $$\text{lineGrossRevenue} = \text{lineSubtotal} - \text{allocatedVoucher}$$
+   $$\text{allocatedPlatformFees} = \text{orderTotalPlatformFees} \times \text{lineShare}$$
+   $$\text{lineContributionProfit} = \text{lineGrossRevenue} - \text{allocatedPlatformFees} - \text{lineCOGS}$$
 
 ---
 
-## 2. Master End-to-End Traceability Matrix (100% OpenAPI Coverage)
+## 2. Master End-to-End Traceability Matrix (100% OpenAPI Coverage — 27 Operations)
 
-| # | Use Case | HTTP & Route | Operation ID | UI Component / Modal | Controller Action | Application Service | Repository Port | Target P05 Tables | RBAC Guard |
+| # | Use Case | HTTP & Route | Operation ID | UI Component / Modal | Controller Action | Application Business Service | Repository Interface | Target P05 Tables | RBAC Guard |
 |---|---|---|---|---|---|---|---|---|---|
 | **01** | `UC01` | `GET /catalog/variants/selectable` | `getSelectableVariants` | `CreateOrderModal` (`ProductSelector`) | `CatalogController.GetSelectableVariants` | `CatalogService.GetSelectableVariantsAsync` | `IProductRepository` | `products`, `product_variants` | `Sales & Ops Staff`, `Shop Owner` |
 | **02** | `UC12` | `GET /catalog/products` | `listProducts` | `CatalogPage` (`ProductTable`) | `CatalogController.ListProducts` | `CatalogService.ListProductsAsync` | `IProductRepository` | `products`, `product_variants` | `Finance Manager`, `Shop Owner` |
@@ -61,22 +63,25 @@ This document establishes the **100% authoritative end-to-end traceability matri
 | **06** | `UC12` | `PATCH /catalog/variants/{id}` | `updateVariant` | `PricingCostEditorModal` | `CatalogController.UpdateVariant` | `CatalogService.UpdateVariantAsync` | `IProductRepository` | `product_variants` | `Finance Manager`, `Shop Owner` |
 | **07** | `UC01` | `GET /orders` | `listOrders` | `OrdersPage` (`OrdersTable`) | `OrdersController.ListOrders` | `OrderService.ListOrdersAsync` | `IOrderRepository` | `orders`, `order_items`, `order_fee_snapshots` | `Sales & Ops Staff`, `Finance Manager`, `Shop Owner` |
 | **08** | `UC01` | `POST /orders` | `createOrder` | `CreateOrderModal` | `OrdersController.CreateOrder` | `OrderService.CreateOrderAsync` | `IOrderRepository`, `IProductRepository` | `orders`, `order_items`, `order_status_history` | `Sales & Ops Staff`, `Shop Owner` |
-| **09** | `UC02` | `POST /orders/preview-fee` | `previewOrderFees` | `CreateOrderModal` (`FeePreviewWidget`) | `OrdersController.PreviewFees` | `DynamicFeeEngine.CalculateFees` | `IFeeScheduleRepository` | `fee_schedules` *(In-Memory calculation)* | `Sales & Ops Staff`, `Finance Manager`, `Shop Owner` |
-| **10** | `UC01`, `UC03` | `GET /orders/{id}` | `getOrderById` | `OrderDetailDrawer` | `OrdersController.GetOrderById` | `OrderService.GetOrderByIdAsync` | `IOrderRepository` | `orders`, `order_items`, `order_status_history`, `order_fee_snapshots` | `Sales & Ops Staff`, `Finance Manager`, `Shop Owner` |
-| **11** | `UC03` | `PATCH /orders/{id}/status` | `updateOrderStatus` | `OrdersTable` (Status Action) | `OrdersController.UpdateStatus` | `OrderService.UpdateStatusAsync` | `IOrderRepository`, `IFeeScheduleRepository`, `IReconciliationRepository` | `orders`, `order_status_history`, `order_fee_snapshots`, `reconciliation_records` | `Sales & Ops Staff`, `Shop Owner` |
-| **12** | `UC04` | `POST /orders/{id}/cancel` | `cancelOrder` | `CancelOrderModal` | `OrdersController.CancelOrder` | `OrderService.CancelOrderAsync` | `IOrderRepository` | `orders`, `order_status_history` | `Sales & Ops Staff`, `Shop Owner` |
-| **13** | `UC05` | `GET /settlements` | `getSettlementLedger` | `SettlementPage` (`LedgerTable`) | `SettlementController.GetLedger` | `SettlementService.GetLedgerAsync` | `IReconciliationRepository` | `reconciliation_records`, `orders`, `order_fee_snapshots` | `Finance Manager`, `Shop Owner` |
-| **14** | `UC05` | `GET /settlements/summary` | `getSettlementSummary` | `SettlementKPIHeader` | `SettlementController.GetSummary` | `SettlementService.GetSummaryAsync` | `IReconciliationRepository` | `reconciliation_records` | `Finance Manager`, `Shop Owner` |
-| **15** | `UC06` | `POST /settlements/{orderId}/reconcile` | `reconcileSettlement` | `RecordSettlementModal` | `SettlementController.Reconcile` | `SettlementService.ReconcileAsync` | `IReconciliationRepository`, `IDiscrepancyRepository` | `reconciliation_records`, `discrepancy_audits` | `Finance Manager`, `Shop Owner` |
-| **16** | `UC07` | `GET /discrepancies` | `listDiscrepancies` | `DiscrepancyPanel` (`DiscrepancyTable`) | `DiscrepanciesController.List` | `DiscrepancyService.ListAsync` | `IDiscrepancyRepository` | `discrepancy_audits`, `reconciliation_records`, `orders` | `Finance Manager`, `Shop Owner` |
-| **17** | `UC07` | `GET /discrepancies/{id}` | `getDiscrepancyById` | `DiscrepancyDetailDrawer` | `DiscrepanciesController.GetById` | `DiscrepancyService.GetByIdAsync` | `IDiscrepancyRepository` | `discrepancy_audits`, `reconciliation_records` | `Finance Manager`, `Shop Owner` |
-| **18** | `UC07` | `PATCH /discrepancies/{id}/resolve` | `resolveDiscrepancy` | `ResolveDiscrepancyModal` | `DiscrepanciesController.Resolve` | `DiscrepancyService.ResolveAsync` | `IDiscrepancyRepository` | `discrepancy_audits` | `Finance Manager`, `Shop Owner` |
-| **19** | `UC08`, `UC13` | `GET /analytics/kpis` | `getFinancialKpis` | `ExecutiveKPIHeader` | `AnalyticsController.GetKpis` | `AnalyticsService.GetKpisAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
-| **20** | `UC08`, `UC13` | `GET /analytics/trend` | `getFinancialTrend` | `RevenueProfitTrendChart` | `AnalyticsController.GetTrend` | `AnalyticsService.GetTrendAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
-| **21** | `UC10`, `UC13` | `GET /analytics/channel-breakdown` | `getChannelBreakdown` | `ChannelBreakdownChart` | `AnalyticsController.GetBreakdown` | `AnalyticsService.GetBreakdownAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
-| **22** | `UC10`, `UC13` | `GET /analytics/top-skus` | `getTopSkus` | `TopSkuTable` | `AnalyticsController.GetTopSkus` | `AnalyticsService.GetTopSkusAsync` | `IAnalyticsRepository` | `order_items`, `orders`, `product_variants`, `products` | `Finance Manager`, `Shop Owner` |
-| **23** | `UC11` | `GET /analytics/drilldown` | `getDrilldownOrders` | `DrilldownOrderModal` | `AnalyticsController.GetDrilldown` | `AnalyticsService.GetDrilldownAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
-| **24** | `UC11` | `GET /analytics/export-csv` | `exportReconciliationCsv` | `ExportCsvButton` | `AnalyticsController.ExportCsv` | `AnalyticsService.ExportCsvAsync` | `IAnalyticsRepository` | `reconciliation_records`, `orders`, `order_fee_snapshots` | `Finance Manager`, `Shop Owner` |
+| **09** | `UC01` | `GET /orders/summary` | `getOrderSummary` | `OrdersPage` (`OrderMetricsCards`) | `OrdersController.GetSummary` | `OrderService.GetSummaryAsync` | `IOrderRepository` | `orders` | `Sales & Ops Staff`, `Finance Manager`, `Shop Owner` |
+| **10** | `UC02` | `POST /orders/preview-fee` | `previewOrderFees` | `CreateOrderModal` (`FeePreviewWidget`) | `OrdersController.PreviewFees` | `DynamicFeeEngine.CalculateFees` | `IFeeScheduleRepository` | `fee_schedules` *(In-Memory)* | `Sales & Ops Staff`, `Finance Manager`, `Shop Owner` |
+| **11** | `UC01`, `UC03` | `GET /orders/{id}` | `getOrderById` | `OrderDetailDrawer` | `OrdersController.GetOrderById` | `OrderService.GetOrderByIdAsync` | `IOrderRepository` | `orders`, `order_items`, `order_status_history`, `order_fee_snapshots` | `Sales & Ops Staff`, `Finance Manager`, `Shop Owner` |
+| **12** | `UC03` | `PATCH /orders/{id}/status` | `updateOrderStatus` | `OrdersTable` (Status Action) | `OrdersController.UpdateStatus` | `OrderService.UpdateStatusAsync` | `IOrderRepository`, `IFeeScheduleRepository`, `IReconciliationRepository` | `orders`, `order_status_history`, `order_fee_snapshots`, `reconciliation_records` | `Sales & Ops Staff`, `Shop Owner` |
+| **13** | `UC04` | `POST /orders/{id}/cancel` | `cancelOrder` | `CancelOrderModal` | `OrdersController.CancelOrder` | `OrderService.CancelOrderAsync` | `IOrderRepository` | `orders`, `order_status_history` | `Sales & Ops Staff`, `Shop Owner` |
+| **14** | `UC02` | `GET /fee-schedules` | `listFeeSchedules` | `FeeSettingsPage` / `FeeScheduleDrawer` | `FeeSchedulesController.ListFeeSchedules` | `FeeScheduleService.GetActiveSchedulesAsync` | `IFeeScheduleRepository` | `fee_schedules` | `Finance Manager`, `Shop Owner` |
+| **15** | `UC02` | `POST /fee-schedules` | `createFeeSchedule` | `CreateFeeScheduleModal` | `FeeSchedulesController.CreateFeeSchedule` | `FeeScheduleService.CreateScheduleVersionAsync` | `IFeeScheduleRepository` | `fee_schedules` | `Shop Owner` |
+| **16** | `UC05` | `GET /settlements` | `getSettlementLedger` | `SettlementPage` (`LedgerTable`) | `SettlementController.GetLedger` | `SettlementService.GetLedgerAsync` | `IReconciliationRepository` | `reconciliation_records`, `orders`, `order_fee_snapshots` | `Finance Manager`, `Shop Owner` |
+| **17** | `UC05` | `GET /settlements/summary` | `getSettlementSummary` | `SettlementKPIHeader` | `SettlementController.GetSummary` | `SettlementService.GetSummaryAsync` | `IReconciliationRepository` | `reconciliation_records` | `Finance Manager`, `Shop Owner` |
+| **18** | `UC06` | `POST /settlements/{orderId}/reconcile` | `reconcileSettlement` | `RecordSettlementModal` | `SettlementController.Reconcile` | `SettlementService.ReconcileAsync` | `IReconciliationRepository`, `IDiscrepancyRepository` | `reconciliation_records`, `discrepancy_audits` | `Finance Manager`, `Shop Owner` |
+| **19** | `UC07` | `GET /discrepancies` | `listDiscrepancies` | `DiscrepancyPanel` (`DiscrepancyTable`) | `DiscrepanciesController.List` | `DiscrepancyService.ListAsync` | `IDiscrepancyRepository` | `discrepancy_audits`, `reconciliation_records`, `orders` | `Finance Manager`, `Shop Owner` |
+| **20** | `UC07` | `GET /discrepancies/{id}` | `getDiscrepancyById` | `DiscrepancyDetailDrawer` | `DiscrepanciesController.GetById` | `DiscrepancyService.GetByIdAsync` | `IDiscrepancyRepository` | `discrepancy_audits`, `reconciliation_records` | `Finance Manager`, `Shop Owner` |
+| **21** | `UC07` | `PATCH /discrepancies/{id}/resolve` | `resolveDiscrepancy` | `ResolveDiscrepancyModal` | `DiscrepanciesController.Resolve` | `DiscrepancyService.ResolveAsync` | `IDiscrepancyRepository` | `discrepancy_audits` | `Finance Manager`, `Shop Owner` |
+| **22** | `UC08`, `UC13` | `GET /analytics/kpis` | `getFinancialKpis` | `ExecutiveKPIHeader` | `AnalyticsController.GetKpis` | `AnalyticsService.GetKpisAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
+| **23** | `UC08`, `UC13` | `GET /analytics/trend` | `getFinancialTrend` | `RevenueProfitTrendChart` | `AnalyticsController.GetTrend` | `AnalyticsService.GetTrendAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
+| **24** | `UC10`, `UC13` | `GET /analytics/channel-breakdown` | `getChannelBreakdown` | `ChannelBreakdownChart` | `AnalyticsController.GetBreakdown` | `AnalyticsService.GetBreakdownAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
+| **25** | `UC10`, `UC13` | `GET /analytics/top-skus` | `getTopSkus` | `TopSkuTable` | `AnalyticsController.GetTopSkus` | `AnalyticsService.GetTopSkusAsync` | `IAnalyticsRepository` | `order_items`, `orders`, `product_variants`, `products` | `Finance Manager`, `Shop Owner` |
+| **26** | `UC11` | `GET /analytics/drilldown` | `getDrilldownOrders` | `DrilldownOrderModal` | `AnalyticsController.GetDrilldown` | `AnalyticsService.GetDrilldownAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
+| **27** | `UC11` | `GET /analytics/export-csv` | `exportReconciliationCsv` | `ExportCsvButton` | `AnalyticsController.ExportCsv` | `AnalyticsService.ExportCsvAsync` | `IAnalyticsRepository` | `reconciliation_records`, `orders`, `order_fee_snapshots` | `Finance Manager`, `Shop Owner` |
 
 ---
 
@@ -99,9 +104,10 @@ This document establishes the **100% authoritative end-to-end traceability matri
 - **UI Triggers:** `CatalogPage`, `AddProductModal`, `PricingCostEditorModal`.
 - **Backend Invocation:** `CatalogController` $\rightarrow$ `ICatalogService` $\rightarrow$ `IProductRepository`.
 - **Target Tables:** `products`, `product_variants`.
-- **Integrity Validation:**
-  - `retail_price >= 0` and `cost_price >= 0` enforced via PostgreSQL CHECK constraints `chk_product_variants_prices`.
-  - Master product soft deactivation toggles `products.is_active` without cascade deletion.
+- **P05 Schema Alignment:**
+  - `products` table in P05 has no `description` column. The API requests (`CreateProductRequest`, `UpdateProductRequest`) and response (`ProductResponse`) strictly omit `description`.
+  - Master product deactivation toggles `products.is_active` without cascade deletion.
+  - Price constraints `retail_price >= 0` and `cost_price >= 0` are enforced via `chk_product_variants_prices` and `NonNegativeMonetaryAmount`.
 
 ---
 
@@ -110,10 +116,17 @@ This document establishes the **100% authoritative end-to-end traceability matri
 #### [07] `GET /orders`
 - **Use Case Trace:** `UC01` (Multi-Channel Order Recording).
 - **UI Trigger:** `OrdersPage` $\rightarrow$ `OrdersTable`.
-- **Backend Invocation:** `OrdersController.ListOrders(channel, status, search, page, pageSize)`.
+- **Backend Invocation:** `OrdersController.ListOrders(channel, status, from, to, search, page, pageSize)` $\rightarrow$ `IOrderService.ListOrdersAsync(...)`.
 - **Repository Interface:** `IOrderRepository.GetPagedOrdersAsync(...)`.
-- **Target Tables:** `orders` (LEFT JOIN `order_items`, `order_fee_snapshots`).
-- **Pagination Standard:** `page >= 1`, `pageSize` (default 20, max 100), returning `totalItems` and `totalPages`.
+- **Query Filter Capabilities:**
+  - `channel`: Filter by `ChannelType` (`TIKTOK`, `SHOPEE`, `POS`).
+  - `status`: Filter by `OrderStatus` (`PENDING`, `SHIPPED`, `DELIVERED`, `CANCELLED`).
+  - `from`, `to`: ISO 8601 created date-time filters.
+  - `search`: Case-insensitive substring search matching across `externalOrderId`, `skuCode`, `customerName`, or `customerPhone`.
+- **Lightweight Table Response (`OrderListItemResponse`):**
+  - Includes: `id`, `externalOrderId`, `channel`, `paymentMethod`, `status`, `orderDate`, `customerName`, `customerPhone`, `subtotal`, `shopVoucher`, `grossRevenue`, `itemCount`, `itemsSummary: [ { skuCode, quantity } ]`, `deliveredAt`, `cancelledAt`, `createdAt`.
+  - **Anti-Cost Leakage Guarantee:** `costPrice`, `cogs`, `unitCostSnapshot`, and `contributionProfit` are strictly omitted from `OrderListItemResponse` so `Sales & Ops Staff` can view orders without cost leaks.
+  - `orderDate`: Populated from `orders.order_date` (`TIMESTAMPTZ`), providing exact order placement date for UI display.
 
 #### [08] `POST /orders`
 - **Use Case Trace:** `UC01` (Multi-Channel Order Recording & Cost Freezing).
@@ -129,7 +142,7 @@ This document establishes the **100% authoritative end-to-end traceability matri
      - `order_items.total_cost = quantity * unit_cost_snapshot`
      - `orders.subtotal = SUM(line_total)`
      - `orders.gross_revenue = subtotal - shop_voucher`
-  6. Order is created in `PENDING` status.
+  6. Order is created in `PENDING` status with server-generated `order_date`.
   7. Inserts initial audit record into `order_status_history` (`from_status = NULL`, `to_status = 'PENDING'`).
 - **Target Tables:** `orders`, `order_items`, `order_status_history`.
 - **Validation Guard:**
@@ -137,162 +150,234 @@ This document establishes the **100% authoritative end-to-end traceability matri
   - Channel / Payment compatibility: `TIKTOK` and `SHOPEE` require `MARKETPLACE_WALLET`; `POS` permits `CASH` or `POS_CARD_QR`.
   - Uniqueness: `(channel, external_order_id)` unique constraint (HTTP 409 Conflict if duplicate).
 
-#### [09] `POST /orders/preview-fee`
+#### [09] `GET /orders/summary`
+- **Use Case Trace:** `UC01` (Operational Order Metrics).
+- **UI Trigger:** `OrdersPage` $\rightarrow$ `OrderMetricsCards`.
+- **Backend Invocation:** `OrdersController.GetSummary(from, to, channel)` $\rightarrow$ `IOrderService.GetSummaryAsync(from, to, channel)`.
+- **Repository Interface:** `IOrderRepository.GetSummaryMetricsAsync(...)`.
+- **Target Tables:** `orders`.
+- **Response Structure (`OrdersSummaryResponse`):**
+  - `totalOrders`: Count of all orders in the filtered range.
+  - `deliveredOrders`: Count of orders with `status = 'DELIVERED'`.
+  - `grossRevenue`: Aggregate gross revenue **strictly recognized from `DELIVERED` orders only** ($\sum \text{gross\_revenue}$ WHERE `status = 'DELIVERED'`). Other statuses strictly contribute 0 VND to prevent phantom revenue.
+  - `inTransitOrders`: Count of orders with `status = 'SHIPPED'`.
+  - `cancelledOrders`: Count of orders with `status = 'CANCELLED'`.
+- **Filter Alignment:** Supports identical `from`, `to`, and `channel` filters to guarantee consistency between metrics cards and table rows.
+
+#### [10] `POST /orders/preview-fee`
 - **Use Case Trace:** `UC02` (Estimate Platform Fees in Real-Time).
 - **UI Trigger:** `CreateOrderModal` $\rightarrow$ `FeePreviewWidget` (dynamic debounce calculation).
 - **Backend Invocation:** `OrdersController.PreviewFees(FeePreviewRequest)` $\rightarrow$ `DynamicFeeEngine.CalculateFees(...)`.
 - **Repository Interface:** `IFeeScheduleRepository.GetActiveScheduleAsync(channel, paymentMethod)`.
-- **Canonical Calculation Rules:**
+- **Canonical Calculation Rules (Consistent with P05 fee_schedules):**
   - **TikTok Shop:**
-    $$\text{Commission} = 4.0\% \times \text{Gross Revenue}$$
-    $$\text{Payment} = 3.0\% \times \text{Gross Revenue}$$
+    $$\text{Commission} = \text{Subtotal} \times 4.0\%$$
+    $$\text{Payment} = \text{Gross Revenue} \times 3.0\%$$
     $$\text{Fixed} = 3{,}000 \text{ VND per order}$$
   - **Shopee:**
-    $$\text{Commission} = 4.5\% \times \text{Gross Revenue}$$
-    $$\text{Payment} = 4.0\% \times \text{Gross Revenue}$$
-    $$\text{Service} = \min(2.0\% \times \text{Gross Revenue}, 20{,}000 \text{ VND})$$
+    $$\text{Commission} = \text{Subtotal} \times 4.5\%$$
+    $$\text{Payment} = \text{Gross Revenue} \times 4.0\%$$
+    $$\text{Service} = \min(\text{Subtotal} \times 2.0\%, \text{configured serviceFeeCap})$$
+    *(The Shopee service fee cap is dynamically resolved from active `fee_schedules.service_fee_cap`; eliminating any hardcoded upper limit).*
   - **POS:**
     - Cash: 0 VND fees.
-    - Card/QR: 1.0% Payment processing fee.
+    - Card/QR: $\text{Gross Revenue} \times 1.0\%$ payment processing fee.
 - **Stateless Guarantee:** Zero database write operations. Pure in-memory calculation.
 
-#### [11] `PATCH /orders/{id}/status`
+#### [11] `GET /orders/{id}`
+- **Use Case Trace:** `UC01`, `UC03`.
+- **UI Trigger:** `OrderDetailDrawer`.
+- **Backend Invocation:** `OrdersController.GetOrderById(id)` $\rightarrow$ `IOrderService.GetOrderByIdAsync(id)`.
+- **Target Tables:** `orders`, `order_items`, `order_status_history`, `order_fee_snapshots`.
+- **Field Details:** Returns `orderDate`, item lines, status progression history, and frozen fee snapshot (if delivered). `cogs`, `unitCostSnapshot`, and `contributionProfit` are populated for `Finance Manager` and `Shop Owner`, but stripped for `Sales & Ops Staff`.
+
+#### [12] `PATCH /orders/{id}/status`
 - **Use Case Trace:** `UC03` (Track Order Status Progression & Recognize Revenue).
 - **UI Trigger:** `OrdersTable` Action Menu $\rightarrow$ "Ship Order" or "Confirm Delivery".
-- **Backend Invocation:** `OrdersController.UpdateStatus(id, toStatus)` $\rightarrow$ `IOrderService.UpdateStatusAsync(...)`.
-- **State Machine Rules:**
-  - Allowed transitions: `PENDING` $\rightarrow$ `SHIPPED` $\rightarrow$ `DELIVERED`.
-  - Skipping states (e.g. `PENDING` $\rightarrow$ `DELIVERED`) returns HTTP 409 Conflict.
-  - Backward transitions (e.g. `DELIVERED` $\rightarrow$ `SHIPPED`) returns HTTP 409 Conflict.
+- **Backend Invocation:** `OrdersController.UpdateStatus(id, request)` $\rightarrow$ `IOrderService.UpdateStatusAsync(...)`.
+- **State Machine Guard (`OrderProgressStatus`):**
+  - `toStatus` in `UpdateOrderStatusRequest` is strictly constrained to enum `OrderProgressStatus`: `SHIPPED` or `DELIVERED`.
+  - Order cancellation is decoupled and strictly routed through `POST /orders/{id}/cancel`.
+  - Allowed progressions: `PENDING` $\rightarrow$ `SHIPPED` $\rightarrow$ `DELIVERED`.
+  - Illegal progressions (e.g. `DELIVERED` $\rightarrow$ `SHIPPED` or skipping `SHIPPED`) return HTTP 409 Conflict.
 - **Delivery Progression Pipeline (`SHIPPED` $\rightarrow$ `DELIVERED`):**
   1. `DynamicFeeEngine` evaluates final fee deduction breakdown.
-  2. Persists immutable snapshot into `order_fee_snapshots` (`is_immutable = TRUE`).
+  2. Persists immutable snapshot into `order_fee_snapshots` (`order_fee_snapshots is immutable after creation by business/persistence policy`).
   3. Officially recognizes `Gross Revenue` and merchandise `COGS`.
   4. Derives `Contribution Profit = Projected Settlement - Total COGS`.
   5. Inserts initial reconciliation record into `reconciliation_records` in `PENDING_SETTLEMENT` status (`actual_settlement = NULL`, `variance_amount = NULL`).
   6. Inserts transition log into `order_status_history`.
 - **Target Tables:** `orders`, `order_status_history`, `order_fee_snapshots`, `reconciliation_records`.
 
-#### [12] `POST /orders/{id}/cancel`
+#### [13] `POST /orders/{id}/cancel`
 - **Use Case Trace:** `UC04` (Cancel Order & Exclude from Revenue/Profit).
 - **UI Trigger:** `CancelOrderModal` Confirmation.
-- **Backend Invocation:** `OrdersController.CancelOrder(id, reason)` $\rightarrow$ `IOrderService.CancelOrderAsync(...)`.
+- **Backend Invocation:** `OrdersController.CancelOrder(id, request)` $\rightarrow$ `IOrderService.CancelOrderAsync(...)`.
 - **Exclusion Guarantee:**
   - Status transitions to `CANCELLED`.
-  - Records `cancelled_at` timestamp and non-empty `cancellation_reason`.
-  - Order is excluded 100% from revenue recognition, COGS accumulation, and analytics.
-  - **Cancelling a `DELIVERED` order is strictly rejected with HTTP 422 Unprocessable Entity.**
+  - Records `cancelled_at` timestamp and mandatory non-empty `cancellationReason`.
+  - Permanently excluded 100% from recognized revenue, COGS accumulation, and analytics.
+  - **Cancelling an order that is already in `DELIVERED` status is strictly rejected with HTTP 422 Unprocessable Entity.**
 - **Target Tables:** `orders`, `order_status_history`.
 
 ---
 
-### 3.3. Module 3: Settlement Ledger & Manual Reconciliation (`/settlements`)
+### 3.3. Module 3: Fee Schedules API (`/fee-schedules`)
 
-#### [13 - 14] `GET /settlements` & `GET /settlements/summary`
+#### [14] `GET /fee-schedules`
+- **Use Case Trace:** `UC02` (Configure Marketplace & POS Fee Schedules).
+- **UI Trigger:** `FeeSettingsPage` / `FeeScheduleDrawer`.
+- **Backend Invocation:** `FeeSchedulesController.ListFeeSchedules(channel, paymentMethod)` $\rightarrow$ `IFeeScheduleService.GetActiveSchedulesAsync(...)`.
+- **Repository Interface:** `IFeeScheduleRepository.GetSchedulesAsync(...)`.
+- **Target Tables:** `fee_schedules`.
+- **RBAC Guard:** Restricted to `Finance Manager` (Read) and `Shop Owner` (Read). `Sales & Ops Staff` have **No Access** (HTTP 403 Forbidden).
+- **Response Structure (`FeeScheduleResponse`):**
+  - Includes: `id`, `channel`, `paymentMethod`, `commissionRate`, `paymentFeeRate`, `serviceFeeRate`, `serviceFeeCap`, `fixedFeePerOrder`, `effectiveFrom`, `effectiveTo`, `isActive`, `createdAt`, `updatedAt`.
+
+#### [15] `POST /fee-schedules`
+- **Use Case Trace:** `UC02` (Fee Schedule Versioning & Policy Updates).
+- **UI Trigger:** `CreateFeeScheduleModal` Submit button.
+- **Backend Invocation:** `FeeSchedulesController.CreateFeeSchedule(CreateFeeScheduleRequest)` $\rightarrow$ `IFeeScheduleService.CreateScheduleVersionAsync(...)`.
+- **Repository Interface:** `IFeeScheduleRepository.InsertScheduleVersionAsync(...)`.
+- **Target Tables:** `fee_schedules`.
+- **RBAC Guard:** Restricted strictly to `Shop Owner`. `Finance Manager` and `Sales & Ops Staff` have **No Access** (HTTP 403 Forbidden).
+- **Versioning Business Policy:**
+  - Creates a new rate schedule version without altering historical snapshots.
+  - Deactivates previous active schedule for the matching channel and payment method by setting `effective_to = new_effective_from` and `is_active = FALSE`.
+  - Inserts new active record with `effective_from = effectiveFrom`.
+  - Orders already delivered retain their historical `order_fee_snapshots` intact.
+
+---
+
+### 3.4. Module 4: Settlement Ledger & Manual Reconciliation (`/settlements`)
+
+#### [16] `GET /settlements`
 - **Use Case Trace:** `UC05` (View Settlement Reconciliation Ledger).
-- **UI Triggers:** `SettlementPage` $\rightarrow$ `LedgerTable`, `SettlementKPIHeader`.
-- **Backend Invocation:** `SettlementController.GetLedger(...)` and `SettlementController.GetSummary()`.
-- **Repository Interface:** `IReconciliationRepository`.
+- **UI Trigger:** `SettlementPage` $\rightarrow$ `LedgerTable`.
+- **Backend Invocation:** `SettlementController.GetLedger(status, channel, from, to, page, pageSize)` $\rightarrow$ `ISettlementService.GetLedgerAsync(...)`.
+- **Repository Interface:** `IReconciliationRepository.GetPagedLedgerAsync(...)`.
 - **Target Tables:** `reconciliation_records` (INNER JOIN `orders`, `order_fee_snapshots`).
-- **Summary Counters:** Returns aggregated counts for `pendingSettlementCount`, `reconciledCount`, and `discrepancyCount`.
+- **Complete Breakdown in `SettlementLedgerItem`:**
+  - Fee breakdown fields: `commissionFee`, `paymentFee`, `serviceFee`, `fixedFee` (read directly from frozen historical `order_fee_snapshots` without invoking dynamic fee engine).
+  - Financial reconciliation fields: `grossRevenue`, `totalPlatformFees`, `projectedSettlement`, `actualSettlement`, `varianceAmount`, `reconciliationStatus`, `deliveredAt`, `reconciledAt`.
+- **RBAC Guard:** Restricted to `Finance Manager` and `Shop Owner`.
 
-#### [15] `POST /settlements/{orderId}/reconcile`
+#### [17] `GET /settlements/summary`
+- **Use Case Trace:** `UC05` (Settlement Reconciliation Counters).
+- **UI Trigger:** `SettlementKPIHeader` (Audit Counter Cards).
+- **Backend Invocation:** `SettlementController.GetSummary(from, to, channel)` $\rightarrow$ `ISettlementService.GetSummaryAsync(from, to, channel)`.
+- **Repository Interface:** `IReconciliationRepository.GetSummaryCountersAsync(...)`.
+- **Target Tables:** `reconciliation_records` (JOIN `orders`).
+- **Filter Parity:** Accepts `from`, `to`, and `channel` query parameters matching `GET /settlements` so summary KPI cards reflect the exact same filter scope as the ledger table.
+- **Summary Counters:** Returns `pendingSettlementCount`, `reconciledCount`, and `discrepancyCount`.
+
+#### [18] `POST /settlements/{orderId}/reconcile`
 - **Use Case Trace:** `UC06` (Record Manual Settlement & Reconcile Variance).
 - **UI Trigger:** `RecordSettlementModal` Submit button.
 - **Backend Invocation:** `SettlementController.Reconcile(orderId, request)` $\rightarrow$ `ISettlementService.ReconcileAsync(...)`.
 - **Authoritative Reconciliation Logic:**
-  1. Client sends: `actualSettlement` and optional/mandatory `notes`.
+  1. Client sends: `actualSettlement` (`NonNegativeMonetaryAmount`) and optional/mandatory `notes`.
   2. Client **never sends** `varianceAmount` or `reconciliationStatus`.
   3. Backend derives variance:
      $$\text{varianceAmount} = \text{projectedSettlement} - \text{actualSettlement}$$
   4. If `varianceAmount == 0`:
-     - Updates `reconciliation_records`: `status = 'RECONCILED'`, `reconciled_at = NOW()`, `reconciled_by = CurrentUser`.
+     - Updates `reconciliation_records`: `status = 'RECONCILED'`, `reconciled_at = NOW()`, `reconciled_by = CurrentUser.Username`.
   5. If `varianceAmount != 0`:
-     - Updates `reconciliation_records`: `status = 'DISCREPANCY'`, `reconciled_at = NOW()`, `reconciled_by = CurrentUser`.
+     - Updates `reconciliation_records`: `status = 'DISCREPANCY'`, `reconciled_at = NOW()`, `reconciled_by = CurrentUser.Username`.
      - Non-empty `notes` is mandatory (HTTP 422 if empty).
-     - Auto-generates initial discrepancy audit entry in `discrepancy_audits` (`discrepancy_type = 'UNEXPECTED_PLATFORM_CHARGE'`).
+     - System creates/updates discrepancy audit in `discrepancy_audits`:
+       $$\text{variance} \ne 0 \longrightarrow \text{DISCREPANCY} \longrightarrow \text{requires explanation / root-cause classification}$$
+       *(The backend flags the record for investigation and does not presume or auto-assign a specific root cause until classified by the auditor/user).*
   6. **Order status is NEVER altered:** The underlying order remains `DELIVERED`.
 - **Target Tables:** `reconciliation_records`, `discrepancy_audits`.
 
 ---
 
-### 3.4. Module 4: Discrepancy Auditing & Dispute Resolution (`/discrepancies`)
+### 3.5. Module 5: Discrepancy Auditing & Dispute Resolution (`/discrepancies`)
 
-#### [16 - 17] `GET /discrepancies` & `GET /discrepancies/{id}`
+#### [19 - 20] `GET /discrepancies` & `GET /discrepancies/{id}`
 - **Use Case Trace:** `UC07` (Audit Discrepancies & File Disputes).
 - **UI Triggers:** `DiscrepancyPanel` (`DiscrepancyTable`), `DiscrepancyDetailDrawer`.
 - **Backend Invocation:** `DiscrepanciesController` $\rightarrow$ `IDiscrepancyService` $\rightarrow$ `IDiscrepancyRepository`.
 - **Target Tables:** `discrepancy_audits` (JOIN `reconciliation_records`, `orders`).
+- **Resolution State:** Returns `isResolved` derived dynamically as `(resolvedAt != null)`.
 
-#### [18] `PATCH /discrepancies/{id}/resolve`
+#### [21] `PATCH /discrepancies/{id}/resolve`
 - **Use Case Trace:** `UC07` (Audit Discrepancies & File Disputes).
 - **UI Trigger:** `ResolveDiscrepancyModal` Confirm.
 - **Backend Invocation:** `DiscrepanciesController.Resolve(id, request)` $\rightarrow$ `IDiscrepancyService.ResolveAsync(...)`.
 - **Resolution Execution:**
-  - Captures `resolutionNotes` (minimum 5 characters).
-  - Automatically sets `is_resolved = TRUE`, `resolved_at = clock_timestamp()`, and `resolved_by = CurrentUser.Username`.
-  - Eliminates legacy multi-level approval workflows (`PENDING_APPROVAL`, `APPROVED`, `REJECTED` are deprecated).
+  - Captures mandatory `resolutionNotes` (minimum 5 characters).
+  - Sets `resolved_at = clock_timestamp()` and `resolved_by = CurrentUser.Username`.
+  - The API response field `isResolved` evaluates to `true` (`resolvedAt != null`).
+  - No fictitious DB column `is_resolved` is required; P05 canonical schema uses `resolved_at` and `resolved_by`.
 - **Target Tables:** `discrepancy_audits`.
 
 ---
 
-### 3.5. Module 5: Financial Analytics & Export (`/analytics`)
+### 3.6. Module 6: Financial Analytics & Export (`/analytics`)
 
-#### [19] `GET /analytics/kpis`
+#### [22] `GET /analytics/kpis`
 - **Use Case Trace:** `UC08` (Analyze Multi-Channel Contribution Profit & Margins), `UC13` (Track Margin Trends).
 - **UI Trigger:** `ExecutiveKPIHeader` (5 KPI Cards).
 - **Backend Invocation:** `AnalyticsController.GetKpis(from, to, channel)` $\rightarrow$ `IAnalyticsService.GetKpisAsync(...)`.
 - **The 5 Core Financial KPIs:**
-  1. `grossRevenue`: $\sum(\text{Gross Revenue})$ (aggregated from `orders.gross_revenue`) for `DELIVERED` orders.
-  2. `totalPlatformFees`: $\sum(\text{Total Platform Fees})$ (aggregated from `order_fee_snapshots.total_platform_fees`) for `DELIVERED` orders.
+  1. `grossRevenue`: $\sum(\text{Gross Revenue})$ for `DELIVERED` orders only.
+  2. `totalPlatformFees`: $\sum(\text{Total Platform Fees})$ from `order_fee_snapshots` for `DELIVERED` orders only.
   3. `projectedSettlement`: $\text{Gross Revenue} - \text{Total Platform Fees}$.
-  4. `cogs`: $\sum(\text{Line Total Cost})$ (aggregated from `order_items.total_cost`) for `DELIVERED` orders.
+  4. `cogs`: $\sum(\text{Line Total Cost})$ from `order_items.total_cost` for `DELIVERED` orders only.
   5. `contributionProfit`: $\text{Projected Settlement} - \text{COGS}$.
   - Plus: `contributionMarginPct`: $(\text{Contribution Profit} / \text{Gross Revenue}) \times 100$.
-- **Zero Phantom Revenue:** Orders with status `PENDING`, `SHIPPED`, or `CANCELLED` are strictly excluded from all aggregations.
+- **Zero Phantom Revenue Invariant:** Orders with status `PENDING`, `SHIPPED`, or `CANCELLED` strictly contribute 0 VND.
 
-#### [20] `GET /analytics/trend`
+#### [23] `GET /analytics/trend`
 - **Use Case Trace:** `UC08`, `UC13`.
 - **UI Trigger:** `RevenueProfitTrendChart`.
-- **Metrics Plotted:** Daily time-series of `Gross Revenue` vs. `Contribution Profit` (replacing legacy "Gross Revenue vs Net Cash").
+- **Metrics Plotted:** Daily time-series points of `Gross Revenue` vs. `Contribution Profit`.
 
-#### [21] `GET /analytics/channel-breakdown`
+#### [24] `GET /analytics/channel-breakdown`
 - **Use Case Trace:** `UC10` (Compare Channel & SKU Profitability), `UC13`.
 - **UI Trigger:** `ChannelBreakdownChart` (Donut / Bar).
-- **Metrics Segmented:** Multi-channel breakdown across `TIKTOK`, `SHOPEE`, and `POS`.
+- **Metrics Segmented:** Channel distribution across `TIKTOK`, `SHOPEE`, and `POS`.
 
-#### [22] `GET /analytics/top-skus`
+#### [25] `GET /analytics/top-skus`
 - **Use Case Trace:** `UC10`, `UC13`.
 - **UI Trigger:** `TopSkuTable`.
 - **Ranking Capabilities:** Sort by `CONTRIBUTION_PROFIT`, `GROSS_REVENUE`, or `DELIVERED_UNITS`.
+- **Mathematical Allocation (Analytics Derivation):**
+  $$\text{lineShare} = \frac{\text{lineSubtotal}}{\text{orderSubtotal}}$$
+  $$\text{allocatedVoucher} = \text{orderVoucher} \times \text{lineShare}$$
+  $$\text{lineGrossRevenue} = \text{lineSubtotal} - \text{allocatedVoucher}$$
+  $$\text{allocatedPlatformFees} = \text{orderTotalPlatformFees} \times \text{lineShare}$$
+  $$\text{lineContributionProfit} = \text{lineGrossRevenue} - \text{allocatedPlatformFees} - \text{lineCOGS}$$
 
-#### [23] `GET /analytics/drilldown`
+#### [26] `GET /analytics/drilldown`
 - **Use Case Trace:** `UC11` (Drilldown to Source Orders).
 - **UI Trigger:** `DrilldownOrderModal` (triggered by clicking KPI cards or chart points).
 - **Itemized Audit:** Returns paginated delivered order records backing the aggregated figures.
 
-#### [24] `GET /analytics/export-csv`
+#### [27] `GET /analytics/export-csv`
 - **Use Case Trace:** `UC11` (Export Financial & Settlement Reports).
 - **UI Trigger:** `ExportCsvButton`.
-- **Stream Format:** RFC 4180 CSV (`text/csv`) containing delivered order items, platform fee breakdowns, actual settlement, and reconciliation variance for accounting audits.
+- **Stream Format:** RFC 4180 CSV (`text/csv`) containing delivered orders, platform fee breakdowns, actual settlement, and reconciliation variance.
 
 ---
 
 ## 4. P05 Entity & Schema Cross-Verification
 
-To prevent schema deviation, the following table confirms that **100% of P06 API operations** map strictly to the 9 canonical PostgreSQL tables defined in Phase P05:
+To ensure 100% fidelity to the canonical PostgreSQL schema, the following table confirms how P06 API operations map strictly to the 9 database tables defined in Phase P05:
 
-| Canonical P05 Table | CRUD Operations in P06 | Excluded Legacy Concepts |
+| Canonical P05 Table | CRUD Operations in P06 | Architectural Integrity Rule |
 |---|---|---|
-| `products` | C, R, U (via `CatalogController`) | Soft-delete / Hard-delete (P05 uses `is_active`) |
-| `product_variants` | C, R, U (via `CatalogController`) | Direct mutation from order creation (Snapshots are decoupled) |
-| `orders` | C, R, U (via `OrdersController`) | Direct net profit columns; client-supplied cost/fees |
-| `order_items` | C, R (via `OrdersController`) | Client-supplied `unit_cost_snapshot` or `total_cost` |
-| `order_status_history` | C, R (via `OrdersController`) | Client-supplied timestamp (server clock sets `changed_at`) |
-| `fee_schedules` | R (via `DynamicFeeEngine`) | Public CRUD UI in MVP (managed as configuration data) |
-| `order_fee_snapshots` | C, R (via `OrdersController`, `SettlementController`) | Mutability after `DELIVERED` (`is_immutable = TRUE`) |
-| `reconciliation_records`| C, R, U (via `SettlementController`) | Statement spreadsheet upload; client-supplied variance |
-| `discrepancy_audits` | C, R, U (via `DiscrepanciesController`) | Multi-level approval status (`PENDING_APPROVAL`, `APPROVED`) |
+| `products` | C, R, U (via `CatalogController`) | No `description` column in P05 schema; strictly omitted from API DTOs. Soft deactivation via `is_active`. |
+| `product_variants` | C, R, U (via `CatalogController`) | Retail and cost prices enforced $\ge 0$ via `NonNegativeMonetaryAmount` and CHECK constraints. |
+| `orders` | C, R, U (via `OrdersController`) | Contains `order_date` (`TIMESTAMPTZ`), returned as `orderDate` in DTOs. Zero net profit columns. |
+| `order_items` | C, R (via `OrdersController`) | Frozen snapshot `unit_cost_snapshot` set upon creation; never editable by client. |
+| `order_status_history` | C, R (via `OrdersController`) | Audit entries logged on lifecycle state transitions. |
+| `fee_schedules` | C, R (via `FeeSchedulesController`, `DynamicFeeEngine`) | Rate versioning managed by Shop Owner (`POST /fee-schedules`). Read by Finance & Owner. |
+| `order_fee_snapshots` | C, R (via `OrdersController`, `SettlementController`) | `order_fee_snapshots is immutable after creation by business/persistence policy` (no fictitious DB column `is_immutable`). |
+| `reconciliation_records`| C, R, U (via `SettlementController`) | Manual payout entry; backend computes variance. Order status remains `DELIVERED`. |
+| `discrepancy_audits` | C, R, U (via `DiscrepanciesController`) | `isResolved` derived as `resolvedAt != null` (no fictitious `is_resolved` column). Root cause requires user classification (no auto-assignment). |
 
 > [!NOTE]
 > **Eliminated Legacy Concepts:**
@@ -301,33 +386,38 @@ To prevent schema deviation, the following table confirms that **100% of P06 API
 > - `statement_imports` and `statement_lines` tables (statement spreadsheet file parsing is out-of-scope for MVP).
 > - `StatementParser` and SHA-256 upload deduplication.
 > - Direct marketplace webhooks or background queue ingestion workers.
+> - Fictitious columns (`is_immutable`, `is_resolved`, `description`).
 
 ---
 
 ## 5. Role-Based Access Control (RBAC) & Cost Privacy Matrix
 
-| Endpoint Group / Route | Operation ID | Sales & Ops Staff | Finance Manager | Shop Owner | Cost Leakage Guard |
-|---|---|:---:|:---:|:---:|---|
-| `GET /catalog/variants/selectable` | `getSelectableVariants` | ✅ | ❌ | ✅ | **`costPrice` strictly stripped from response.** |
-| `GET /catalog/products` | `listProducts` | ❌ | ✅ | ✅ | Full catalog visibility including baseline cost. |
-| `POST /catalog/products` | `createProduct` | ❌ | ✅ | ✅ | Catalog creation restricted to financial managers. |
-| `PATCH /catalog/products/{id}` | `updateProduct` | ❌ | ✅ | ✅ | Master product updates. |
-| `PATCH /catalog/variants/{id}` | `updateVariant` | ❌ | ✅ | ✅ | Baseline cost modification restricted. |
-| `GET /orders` | `listOrders` | ✅ | ✅ | ✅ | Item costs hidden from Sales in list view. |
-| `POST /orders` | `createOrder` | ✅ | ❌ | ✅ | Frontend input only; backend freezes cost. |
-| `POST /orders/preview-fee` | `previewOrderFees` | ✅ | ✅ | ✅ | Real-time fee preview (no cost data shown). |
-| `GET /orders/{id}` | `getOrderById` | ✅ | ✅ | ✅ | `unitCostSnapshot`, `cogs`, `contributionProfit` omitted for Sales. |
-| `PATCH /orders/{id}/status` | `updateOrderStatus` | ✅ | ❌ | ✅ | Status progression. |
-| `POST /orders/{id}/cancel` | `cancelOrder` | ✅ | ❌ | ✅ | Active order cancellation. |
-| `GET /settlements` | `getSettlementLedger` | ❌ | ✅ | ✅ | Settlement ledger restricted to finance/owner. |
-| `GET /settlements/summary` | `getSettlementSummary` | ❌ | ✅ | ✅ | Audit counters restricted to finance/owner. |
-| `POST /settlements/{orderId}/reconcile` | `reconcileSettlement` | ❌ | ✅ | ✅ | Manual actual payout entry. |
-| `GET /discrepancies` | `listDiscrepancies` | ❌ | ✅ | ✅ | Discrepancy investigation restricted. |
-| `GET /discrepancies/{id}` | `getDiscrepancyById` | ❌ | ✅ | ✅ | Discrepancy investigation restricted. |
-| `PATCH /discrepancies/{id}/resolve` | `resolveDiscrepancy` | ❌ | ✅ | ✅ | Discrepancy resolution restricted. |
-| `GET /analytics/kpis` | `getFinancialKpis` | ❌ | ✅ | ✅ | Executive KPIs restricted to finance/owner. |
-| `GET /analytics/trend` | `getFinancialTrend` | ❌ | ✅ | ✅ | Financial trend restricted to finance/owner. |
-| `GET /analytics/channel-breakdown` | `getChannelBreakdown` | ❌ | ✅ | ✅ | Channel breakdown restricted to finance/owner. |
-| `GET /analytics/top-skus` | `getTopSkus` | ❌ | ✅ | ✅ | Top merchandise performance restricted. |
-| `GET /analytics/drilldown` | `getDrilldownOrders` | ❌ | ✅ | ✅ | Order drilldown restricted to finance/owner. |
-| `GET /analytics/export-csv` | `exportReconciliationCsv` | ❌ | ✅ | ✅ | CSV export restricted to finance/owner. |
+| # | Endpoint Route | Operation ID | Sales & Ops Staff | Finance Manager | Shop Owner | Cost Leakage Guard |
+|:---:|---|---|:---:|:---:|:---:|---|
+| **01** | `GET /catalog/variants/selectable` | `getSelectableVariants` | ✅ | ❌ | ✅ | **`costPrice` strictly stripped from response.** |
+| **02** | `GET /catalog/products` | `listProducts` | ❌ | ✅ | ✅ | Full catalog visibility including baseline cost. |
+| **03** | `POST /catalog/products` | `createProduct` | ❌ | ✅ | ✅ | Product creation restricted to finance/owner. |
+| **04** | `GET /catalog/products/{id}` | `getProductById` | ❌ | ✅ | ✅ | Product details with variant cost prices. |
+| **05** | `PATCH /catalog/products/{id}` | `updateProduct` | ❌ | ✅ | ✅ | Master product updates. |
+| **06** | `PATCH /catalog/variants/{id}` | `updateVariant` | ❌ | ✅ | ✅ | Baseline cost modification restricted. |
+| **07** | `GET /orders` | `listOrders` | ✅ | ✅ | ✅ | **`OrderListItemResponse` strips all cost/profit data.** |
+| **08** | `POST /orders` | `createOrder` | ✅ | ❌ | ✅ | Client enters prices; backend freezes snapshot. |
+| **09** | `GET /orders/summary` | `getOrderSummary` | ✅ | ✅ | ✅ | Operational counters; gross revenue DELIVERED only. |
+| **10** | `POST /orders/preview-fee` | `previewOrderFees` | ✅ | ✅ | ✅ | Real-time fee preview (no cost data shown). |
+| **11** | `GET /orders/{id}` | `getOrderById` | ✅ | ✅ | ✅ | `unitCostSnapshot`, `cogs`, `profit` omitted for Sales. |
+| **12** | `PATCH /orders/{id}/status` | `updateOrderStatus` | ✅ | ❌ | ✅ | Lifecycle advancement (`SHIPPED`, `DELIVERED`). |
+| **13** | `POST /orders/{id}/cancel` | `cancelOrder` | ✅ | ❌ | ✅ | Active order cancellation with reason. |
+| **14** | `GET /fee-schedules` | `listFeeSchedules` | ❌ | ✅ | ✅ | Fee schedule inspection restricted to finance/owner. |
+| **15** | `POST /fee-schedules` | `createFeeSchedule` | ❌ | ❌ | ✅ | **Fee schedule versioning restricted strictly to Shop Owner.** |
+| **16** | `GET /settlements` | `getSettlementLedger` | ❌ | ✅ | ✅ | Settlement ledger restricted to finance/owner. |
+| **17** | `GET /settlements/summary` | `getSettlementSummary` | ❌ | ✅ | ✅ | Audit counters restricted to finance/owner. |
+| **18** | `POST /settlements/{orderId}/reconcile` | `reconcileSettlement` | ❌ | ✅ | ✅ | Manual actual payout entry. |
+| **19** | `GET /discrepancies` | `listDiscrepancies` | ❌ | ✅ | ✅ | Discrepancy investigation restricted. |
+| **20** | `GET /discrepancies/{id}` | `getDiscrepancyById` | ❌ | ✅ | ✅ | Discrepancy investigation restricted. |
+| **21** | `PATCH /discrepancies/{id}/resolve` | `resolveDiscrepancy` | ❌ | ✅ | ✅ | Discrepancy resolution restricted. |
+| **22** | `GET /analytics/kpis` | `getFinancialKpis` | ❌ | ✅ | ✅ | Executive KPIs restricted to finance/owner. |
+| **23** | `GET /analytics/trend` | `getFinancialTrend` | ❌ | ✅ | ✅ | Financial trend restricted to finance/owner. |
+| **24** | `GET /analytics/channel-breakdown` | `getChannelBreakdown` | ❌ | ✅ | ✅ | Channel breakdown restricted to finance/owner. |
+| **25** | `GET /analytics/top-skus` | `getTopSkus` | ❌ | ✅ | ✅ | Top merchandise performance restricted. |
+| **26** | `GET /analytics/drilldown` | `getDrilldownOrders` | ❌ | ✅ | ✅ | Order drilldown restricted to finance/owner. |
+| **27** | `GET /analytics/export-csv` | `exportReconciliationCsv` | ❌ | ✅ | ✅ | CSV export restricted to finance/owner. |

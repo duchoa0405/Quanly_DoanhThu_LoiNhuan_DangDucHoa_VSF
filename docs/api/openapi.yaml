@@ -3,7 +3,7 @@ info:
   title: Fashion Revenue & Profit Management System API
   description: >
     Formal RESTful API Specification (Phase P06) for the Fashion Revenue & Profit Management System.
-    Provides authoritative API contracts between the React frontend and ASP.NET Core 8 backend API.
+    Provides authoritative API contracts between the React 18 frontend and ASP.NET Core 8 backend API.
     Enforces Zero Phantom Revenue (DELIVERED recognition only), immutable baseline unit cost snapshots,
     multi-channel strategy fee deductions, manual settlement reconciliation, and Contribution Profit derivation.
   version: 1.0.0
@@ -19,7 +19,9 @@ tags:
   - name: Catalog
     description: Master products, SKU variants, retail pricing, and baseline COGS cost management.
   - name: Orders & Fee Preview
-    description: Multi-channel order recording, real-time fee preview calculation, lifecycle transitions, and cancellations.
+    description: Multi-channel order recording, real-time fee preview calculation, lifecycle transitions, metrics, and cancellations.
+  - name: Fee Schedules
+    description: Multi-channel fee policy rate configuration, versioning, and strategy parameters.
   - name: Settlement
     description: Manual bank/wallet settlement ledger, variance reconciliation, and audit status counters.
   - name: Discrepancy
@@ -176,7 +178,7 @@ paths:
       tags:
         - Catalog
       summary: Update Master Product Metadata (UC12)
-      description: Updates product metadata (name, category, description, isActive).
+      description: Updates master product metadata (name, category, isActive).
       operationId: updateProduct
       parameters:
         - name: id
@@ -255,7 +257,7 @@ paths:
       tags:
         - Orders & Fee Preview
       summary: List Multi-Channel Orders (UC01)
-      description: Retrieves a paginated list of commercial orders filtered by channel, status, or search keywords.
+      description: Retrieves a paginated list of commercial orders filtered by channel, status, date range, or search keywords.
       operationId: listOrders
       parameters:
         - name: channel
@@ -268,9 +270,23 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/OrderStatus'
+        - name: from
+          in: query
+          description: Filter created date-time from (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: Filter created date-time to (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
         - name: search
           in: query
-          description: Search external order ID, customer name, or phone number
+          description: Search externalOrderId, skuCode, customerName, or customerPhone
           required: false
           schema:
             type: string
@@ -308,7 +324,7 @@ paths:
       description: >
         Records a new commercial order in PENDING status. Client sends customer and line item inputs.
         Backend authoritatively queries product_variants.cost_price to freeze unit_cost_snapshot into order_items.
-        Client cannot submit cost or profit figures.
+        Client cannot submit cost, fee snapshot, or profit figures. Server generates orderDate upon recording.
       operationId: createOrder
       requestBody:
         required: true
@@ -344,14 +360,57 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /orders/summary:
+    get:
+      tags:
+        - Orders & Fee Preview
+      summary: Get Order Lifecycle & Revenue Metrics (UC01)
+      description: >
+        Aggregates operational order counters and recognized gross revenue for OrderMetrics cards.
+        grossRevenue strictly aggregates DELIVERED orders to prevent phantom revenue.
+      operationId: getOrderSummary
+      parameters:
+        - name: from
+          in: query
+          description: Start date-time filter (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: End date-time filter (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: channel
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ChannelType'
+      responses:
+        '200':
+          description: Operational order counters and recognized gross revenue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderSummaryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /orders/preview-fee:
     post:
       tags:
         - Orders & Fee Preview
       summary: Real-Time Strategy Fee Preview (UC02)
       description: >
-        Calculates instantaneous fee deductions and projected net payout on-the-fly.
+        Calculates instantaneous fee deductions and Projected Settlement on-the-fly.
         Stateless calculation with zero database persistence.
+        Formulas:
+        TikTok: Commission = 4% * Subtotal, Payment = 3% * Gross Revenue, Fixed = 3,000 VND.
+        Shopee: Commission = 4.5% * Subtotal, Payment = 4% * Gross Revenue, Service = min(2% * Subtotal, configured serviceFeeCap). Exact Shopee cap is configuration data and is not hard-coded by P06.
+        POS: Cash = 0 VND fees; Card/QR = 1.0% * Gross Revenue.
       operationId: previewOrderFees
       requestBody:
         required: true
@@ -407,6 +466,7 @@ paths:
       summary: Progress Order Lifecycle Status (UC03)
       description: >
         Advances order lifecycle status (PENDING -> SHIPPED -> DELIVERED).
+        Target status is constrained to OrderProgressStatus (SHIPPED or DELIVERED).
         When transitioning to DELIVERED:
         1. Freezes fee snapshot into order_fee_snapshots.
         2. Officially recognizes Gross Revenue and Merchandise COGS.
@@ -497,14 +557,85 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
 
   # ============================================================================
-  # 3. SETTLEMENT API (UC05, UC06)
+  # 3. FEE SCHEDULES API (UC02)
+  # ============================================================================
+  /fee-schedules:
+    get:
+      tags:
+        - Fee Schedules
+      summary: List Active Fee Schedules (UC02)
+      description: >
+        Retrieves current active multi-channel fee policy rate schedules.
+        Restricted to Finance Manager (Read) and Shop Owner (Read). Sales & Ops Staff have no access.
+      operationId: listFeeSchedules
+      parameters:
+        - name: channel
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ChannelType'
+        - name: paymentMethod
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/PaymentMethod'
+      responses:
+        '200':
+          description: List of active fee rate schedules.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeScheduleListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Fee Schedules
+      summary: Configure New Fee Schedule Version (UC02)
+      description: >
+        Shop Owner creates a new version of fee schedule rates.
+        Business flow: Deactivates previous schedule version for specified channel and payment method,
+        and inserts the new schedule with effectiveFrom.
+        Historical order fee snapshots remain unchanged. Restricted to Shop Owner only.
+      operationId: createFeeSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFeeScheduleRequest'
+      responses:
+        '201':
+          description: Fee schedule version successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeScheduleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # ============================================================================
+  # 4. SETTLEMENT API (UC05, UC06)
   # ============================================================================
   /settlements:
     get:
       tags:
         - Settlement
       summary: Get Settlement Ledger (UC05)
-      description: Retrieves a paginated reconciliation ledger of delivered orders. Restricted to Finance Manager and Shop Owner.
+      description: >
+        Retrieves a paginated reconciliation ledger of delivered orders.
+        Fee breakdowns (commissionFee, paymentFee, serviceFee, fixedFee) are read directly from
+        frozen historical order_fee_snapshots without recalculating via the fee engine.
+        Restricted to Finance Manager and Shop Owner.
       operationId: getSettlementLedger
       parameters:
         - name: status
@@ -563,8 +694,28 @@ paths:
       tags:
         - Settlement
       summary: Get Settlement Audit Counters (UC05)
-      description: Returns aggregate counts of pending, reconciled, and discrepancy settlement records.
+      description: >
+        Returns aggregate counts of pending, reconciled, and discrepancy settlement records.
+        Supports from, to, and channel query parameters matching the ledger filter context.
       operationId: getSettlementSummary
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: channel
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ChannelType'
       responses:
         '200':
           description: Settlement counter summary.
@@ -585,9 +736,10 @@ paths:
       description: >
         Records actual bank/wallet payout for a delivered order.
         The backend authoritatively derives:
-        Variance Amount = Projected Settlement - Actual Settlement.
+        varianceAmount = projectedSettlement - actualSettlement.
         If variance == 0: reconciliationStatus becomes RECONCILED.
-        If variance != 0: reconciliationStatus becomes DISCREPANCY, and non-empty notes are required.
+        If variance != 0: reconciliationStatus becomes DISCREPANCY, non-empty notes are required,
+        and system creates/updates discrepancy audit requiring root-cause classification.
         OrderStatus remains DELIVERED.
       operationId: reconcileSettlement
       parameters:
@@ -629,7 +781,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
 
   # ============================================================================
-  # 4. DISCREPANCY API (UC07)
+  # 5. DISCREPANCY API (UC07)
   # ============================================================================
   /discrepancies:
     get:
@@ -646,7 +798,7 @@ paths:
             $ref: '#/components/schemas/DiscrepancyType'
         - name: resolved
           in: query
-          description: Filter by resolution status
+          description: Filter by resolution status (derived from resolvedAt != null)
           required: false
           schema:
             type: boolean
@@ -766,7 +918,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
 
   # ============================================================================
-  # 5. ANALYTICS & REPORTING API (UC08 - UC11, UC13)
+  # 6. ANALYTICS & REPORTING API (UC08 - UC11, UC13)
   # ============================================================================
   /analytics/kpis:
     get:
@@ -885,7 +1037,14 @@ paths:
       tags:
         - Analytics
       summary: Get Top SKUs by Revenue & Contribution Profit (UC10, UC13)
-      description: Retrieves top-performing merchandise ranked by delivered Gross Revenue or Contribution Profit.
+      description: >
+        Retrieves top-performing merchandise ranked by delivered Gross Revenue or Contribution Profit.
+        Order-level voucher and platform fees are allocated to SKU lines proportionally by line subtotal:
+        lineShare = lineSubtotal / orderSubtotal;
+        allocatedVoucher = orderVoucher * lineShare;
+        lineGrossRevenue = lineSubtotal - allocatedVoucher;
+        allocatedPlatformFees = orderTotalPlatformFees * lineShare;
+        lineContributionProfit = lineGrossRevenue - allocatedPlatformFees - lineCOGS.
       operationId: getTopSkus
       parameters:
         - name: from
@@ -1099,6 +1258,14 @@ components:
       description: Order lifecycle status state machine.
       example: DELIVERED
 
+    OrderProgressStatus:
+      type: string
+      enum:
+        - SHIPPED
+        - DELIVERED
+      description: Permitted progression targets from PENDING or SHIPPED status.
+      example: SHIPPED
+
     ReconciliationStatus:
       type: string
       enum:
@@ -1122,7 +1289,14 @@ components:
     MonetaryAmount:
       type: number
       multipleOf: 0.01
-      description: VND currency value mapped to C# decimal and PostgreSQL numeric(15,2).
+      description: VND currency value mapped to C# decimal and PostgreSQL numeric(15,2). May be negative (variance, profit).
+      example: 500000.00
+
+    NonNegativeMonetaryAmount:
+      type: number
+      minimum: 0
+      multipleOf: 0.01
+      description: Non-negative VND currency amount mapped to C# decimal and PostgreSQL numeric(15,2).
       example: 500000.00
 
     # --------------------------------------------------------------------------
@@ -1155,7 +1329,7 @@ components:
           nullable: true
           example: L
         retailPrice:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
         isActive:
           type: boolean
           example: true
@@ -1200,9 +1374,9 @@ components:
           nullable: true
           example: L
         retailPrice:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
         costPrice:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Baseline unit COGS cost.
         isActive:
           type: boolean
@@ -1234,10 +1408,6 @@ components:
           type: string
           nullable: true
           example: Tops
-        description:
-          type: string
-          nullable: true
-          example: 100% Cotton combed pique polo shirt
         isActive:
           type: boolean
           example: true
@@ -1261,6 +1431,7 @@ components:
       properties:
         skuCode:
           type: string
+          minLength: 1
           example: POLO-BLK-L
         color:
           type: string
@@ -1271,9 +1442,9 @@ components:
           nullable: true
           example: L
         retailPrice:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
         costPrice:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
 
     CreateProductRequest:
       type: object
@@ -1283,15 +1454,12 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
           example: Premium Oxford Polo
         category:
           type: string
           nullable: true
           example: Tops
-        description:
-          type: string
-          nullable: true
-          example: 100% Cotton combed pique polo shirt
         variants:
           type: array
           minItems: 1
@@ -1303,11 +1471,9 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
           nullable: true
         category:
-          type: string
-          nullable: true
-        description:
           type: string
           nullable: true
         isActive:
@@ -1318,9 +1484,9 @@ components:
       type: object
       properties:
         retailPrice:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
         costPrice:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
         isActive:
           type: boolean
           nullable: true
@@ -1369,7 +1535,7 @@ components:
           minimum: 1
           example: 2
         unitPrice:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Selling price charged to customer.
 
     CreateOrderRequest:
@@ -1383,6 +1549,7 @@ components:
       properties:
         externalOrderId:
           type: string
+          minLength: 1
           example: TT-20260918-001
         channel:
           $ref: '#/components/schemas/ChannelType'
@@ -1397,7 +1564,7 @@ components:
           nullable: true
           example: "0901234567"
         shopVoucher:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Merchant-funded discount coupon. Must be <= subtotal.
           example: 0.00
         items:
@@ -1405,6 +1572,87 @@ components:
           minItems: 1
           items:
             $ref: '#/components/schemas/CreateOrderItemRequest'
+
+    OrderItemSummary:
+      type: object
+      required:
+        - skuCode
+        - quantity
+      properties:
+        skuCode:
+          type: string
+          example: POLO-BLK-L
+        quantity:
+          type: integer
+          example: 2
+
+    OrderListItemResponse:
+      type: object
+      required:
+        - id
+        - externalOrderId
+        - channel
+        - paymentMethod
+        - status
+        - orderDate
+        - subtotal
+        - shopVoucher
+        - grossRevenue
+        - itemCount
+        - itemsSummary
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        externalOrderId:
+          type: string
+          example: TT-20260918-001
+        channel:
+          $ref: '#/components/schemas/ChannelType'
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        orderDate:
+          type: string
+          format: date-time
+          description: Commercial order placement timestamp.
+        customerName:
+          type: string
+          nullable: true
+          example: Nguyen Van A
+        customerPhone:
+          type: string
+          nullable: true
+          example: "0901234567"
+        subtotal:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          example: 500000.00
+        shopVoucher:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          example: 0.00
+        grossRevenue:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          example: 500000.00
+        itemCount:
+          type: integer
+          example: 2
+        itemsSummary:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemSummary'
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
 
     OrderItemResponse:
       type: object
@@ -1433,15 +1681,15 @@ components:
           type: integer
           example: 2
         unitPrice:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
         lineTotal:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
         unitCostSnapshot:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Frozen unit cost (only visible to Finance Manager and Shop Owner; omitted for Sales & Ops).
           nullable: true
         totalCost:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Total line COGS snapshot (only visible to Finance Manager and Shop Owner).
           nullable: true
 
@@ -1477,30 +1725,26 @@ components:
         - fixedFee
         - totalPlatformFees
         - projectedSettlement
-        - isImmutable
         - snapshottedAt
       properties:
         commissionFee:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 20000.00
         paymentFee:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 15000.00
         serviceFee:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 0.00
         fixedFee:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 3000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 38000.00
         projectedSettlement:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 462000.00
-        isImmutable:
-          type: boolean
-          example: true
         snapshottedAt:
           type: string
           format: date-time
@@ -1513,6 +1757,7 @@ components:
         - channel
         - paymentMethod
         - status
+        - orderDate
         - subtotal
         - shopVoucher
         - grossRevenue
@@ -1531,6 +1776,9 @@ components:
           $ref: '#/components/schemas/PaymentMethod'
         status:
           $ref: '#/components/schemas/OrderStatus'
+        orderDate:
+          type: string
+          format: date-time
         customerName:
           type: string
           nullable: true
@@ -1540,13 +1788,13 @@ components:
           nullable: true
           example: "0901234567"
         subtotal:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         shopVoucher:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 0.00
         grossRevenue:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         deliveredAt:
           type: string
@@ -1587,7 +1835,7 @@ components:
               nullable: true
               description: Frozen fee snapshot populated upon DELIVERED status.
             cogs:
-              $ref: '#/components/schemas/MonetaryAmount'
+              $ref: '#/components/schemas/NonNegativeMonetaryAmount'
               nullable: true
               description: Total merchandise COGS (visible to Finance Manager & Shop Owner).
             contributionProfit:
@@ -1607,7 +1855,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/OrderResponse'
+            $ref: '#/components/schemas/OrderListItemResponse'
         page:
           type: integer
           example: 1
@@ -1621,14 +1869,43 @@ components:
           type: integer
           example: 6
 
+    OrderSummaryResponse:
+      type: object
+      required:
+        - totalOrders
+        - deliveredOrders
+        - grossRevenue
+        - inTransitOrders
+        - cancelledOrders
+      properties:
+        totalOrders:
+          type: integer
+          example: 120
+        deliveredOrders:
+          type: integer
+          example: 95
+        grossRevenue:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          description: Total recognized revenue from DELIVERED orders only.
+          example: 47500000.00
+        inTransitOrders:
+          type: integer
+          description: Orders currently in SHIPPED status.
+          example: 15
+        cancelledOrders:
+          type: integer
+          example: 10
+
+    OrdersSummaryResponse:
+      $ref: '#/components/schemas/OrderSummaryResponse'
+
     UpdateOrderStatusRequest:
       type: object
       required:
         - toStatus
       properties:
         toStatus:
-          $ref: '#/components/schemas/OrderStatus'
-          description: Legal next status (e.g. PENDING -> SHIPPED, or SHIPPED -> DELIVERED).
+          $ref: '#/components/schemas/OrderProgressStatus'
           example: SHIPPED
 
     CancelOrderRequest:
@@ -1642,7 +1919,7 @@ components:
           example: Customer requested cancellation before shipping.
 
     # --------------------------------------------------------------------------
-    # Fee Preview Schemas (UC02)
+    # Fee Preview & Fee Schedule Schemas (UC02)
     # --------------------------------------------------------------------------
     FeePreviewRequest:
       type: object
@@ -1657,10 +1934,10 @@ components:
         paymentMethod:
           $ref: '#/components/schemas/PaymentMethod'
         subtotal:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         shopVoucher:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 0.00
 
     FeeBreakdownResponse:
@@ -1677,38 +1954,164 @@ components:
         - projectedSettlement
       properties:
         subtotal:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         shopVoucher:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 0.00
         grossRevenue:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         commissionFee:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Channel commission fee.
           example: 20000.00
         paymentFee:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Payment gateway or processing fee.
           example: 15000.00
         serviceFee:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Platform service surcharge or shipping program fee.
           example: 0.00
         fixedFee:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Fixed charge per fulfilled transaction (e.g. 3,000 VND on TikTok).
           example: 3000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Sum of all platform fee deductions.
           example: 38000.00
         projectedSettlement:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Net payout expected upon delivery (Gross Revenue - Total Platform Fees).
           example: 462000.00
+
+    FeeScheduleResponse:
+      type: object
+      required:
+        - id
+        - channel
+        - paymentMethod
+        - commissionRate
+        - paymentFeeRate
+        - serviceFeeRate
+        - fixedFeePerOrder
+        - effectiveFrom
+        - isActive
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        channel:
+          $ref: '#/components/schemas/ChannelType'
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        commissionRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Commission fee rate (0.00 to 1.00).
+          example: 0.04
+        paymentFeeRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Payment processing fee rate (0.00 to 1.00).
+          example: 0.03
+        serviceFeeRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Service surcharge rate (0.00 to 1.00).
+          example: 0.00
+        serviceFeeCap:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          nullable: true
+          description: Configured upper cap for service fee if applicable.
+          example: null
+        fixedFeePerOrder:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          description: Fixed fee per fulfilled order in VND.
+          example: 3000.00
+        effectiveFrom:
+          type: string
+          format: date-time
+        effectiveTo:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    FeeScheduleListResponse:
+      type: object
+      required:
+        - schedules
+      properties:
+        schedules:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeeScheduleResponse'
+
+    CreateFeeScheduleRequest:
+      type: object
+      required:
+        - channel
+        - paymentMethod
+        - commissionRate
+        - paymentFeeRate
+        - serviceFeeRate
+        - fixedFeePerOrder
+        - effectiveFrom
+      properties:
+        channel:
+          $ref: '#/components/schemas/ChannelType'
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        commissionRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.04
+        paymentFeeRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.03
+        serviceFeeRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.00
+        serviceFeeCap:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          nullable: true
+          example: null
+        fixedFeePerOrder:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          example: 3000.00
+        effectiveFrom:
+          type: string
+          format: date-time
+        effectiveTo:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        isActive:
+          type: boolean
+          default: true
+          example: true
 
     # --------------------------------------------------------------------------
     # Settlement Schemas (UC05, UC06)
@@ -1721,6 +2124,10 @@ components:
         - externalOrderId
         - channel
         - grossRevenue
+        - commissionFee
+        - paymentFee
+        - serviceFee
+        - fixedFee
         - totalPlatformFees
         - projectedSettlement
         - reconciliationStatus
@@ -1738,16 +2145,32 @@ components:
         channel:
           $ref: '#/components/schemas/ChannelType'
         grossRevenue:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
+        commissionFee:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          description: Read directly from frozen historical order_fee_snapshots.
+          example: 20000.00
+        paymentFee:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          description: Read directly from frozen historical order_fee_snapshots.
+          example: 15000.00
+        serviceFee:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          description: Read directly from frozen historical order_fee_snapshots.
+          example: 0.00
+        fixedFee:
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          description: Read directly from frozen historical order_fee_snapshots.
+          example: 3000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 38000.00
         projectedSettlement:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 462000.00
         actualSettlement:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           nullable: true
           example: 462000.00
         varianceAmount:
@@ -1814,7 +2237,7 @@ components:
         - actualSettlement
       properties:
         actualSettlement:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Actual net funds received according to bank/wallet records.
           example: 462000.00
         notes:
@@ -1842,10 +2265,10 @@ components:
           type: string
           format: uuid
         projectedSettlement:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 462000.00
         actualSettlement:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 462000.00
         varianceAmount:
           $ref: '#/components/schemas/MonetaryAmount'
@@ -1904,6 +2327,7 @@ components:
           example: 5000.00
         isResolved:
           type: boolean
+          description: Derived field representing (resolvedAt != null).
           example: false
         createdAt:
           type: string
@@ -1925,7 +2349,7 @@ components:
             resolutionNotes:
               type: string
               nullable: true
-              example: TikTok confirmed commission correction credited to wallet.
+              example: Platform credited back the overcharged fee on subsequent payout statement.
 
     PagedDiscrepancyListResponse:
       type: object
@@ -1978,19 +2402,19 @@ components:
         - deliveredOrderCount
       properties:
         grossRevenue:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Total recognized revenue from delivered orders.
           example: 125000000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Total platform commission, payment, and service fees deducted.
           example: 9500000.00
         projectedSettlement:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Net realized sales payout (Gross Revenue - Total Platform Fees).
           example: 115500000.00
         cogs:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Total merchandise Cost of Goods Sold for delivered items.
           example: 52000000.00
         contributionProfit:
@@ -2017,7 +2441,7 @@ components:
           format: date
           example: "2026-09-18"
         grossRevenue:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 18500000.00
         contributionProfit:
           $ref: '#/components/schemas/MonetaryAmount'
@@ -2049,10 +2473,10 @@ components:
           type: integer
           example: 140
         grossRevenue:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 70000000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 5320000.00
         contributionProfit:
           $ref: '#/components/schemas/MonetaryAmount'
@@ -2092,13 +2516,15 @@ components:
           type: integer
           example: 110
         grossRevenue:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          description: Allocated gross revenue based on proportional line subtotal share.
           example: 27500000.00
         cogs:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 11000000.00
         contributionProfit:
           $ref: '#/components/schemas/MonetaryAmount'
+          description: Allocated contribution profit (lineGrossRevenue - allocatedPlatformFees - lineCOGS).
           example: 14410000.00
         contributionMarginPct:
           type: number
@@ -2139,16 +2565,16 @@ components:
           type: string
           format: date-time
         grossRevenue:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 38000.00
         projectedSettlement:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 462000.00
         cogs:
-          $ref: '#/components/schemas/MonetaryAmount'
+          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 200000.00
         contributionProfit:
           $ref: '#/components/schemas/MonetaryAmount'
