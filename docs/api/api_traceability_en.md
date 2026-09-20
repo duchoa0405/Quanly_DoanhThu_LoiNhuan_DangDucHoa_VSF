@@ -159,7 +159,7 @@ This document establishes the **authoritative end-to-end traceability matrix** c
 - **Response Structure (`OrdersSummaryResponse`):**
   - `totalOrders`: Count of all orders in the filtered range.
   - `deliveredOrders`: Count of orders with `status = 'DELIVERED'`.
-  - `grossRevenue`: Aggregate gross revenue **strictly recognized from `DELIVERED` orders only** ($\sum \text{gross\_revenue}$ WHERE `status = 'DELIVERED'`). Other statuses strictly contribute 0 VND to prevent phantom revenue.
+  - `grossRevenue`: Aggregate gross revenue **strictly recognized from `DELIVERED` orders only** ($\sum(\text{Gross Revenue})$ WHERE `status = 'DELIVERED'`). Other statuses strictly contribute 0 VND to prevent phantom revenue.
   - `inTransitOrders`: Count of orders with `status = 'SHIPPED'`.
   - `cancelledOrders`: Count of orders with `status = 'CANCELLED'`.
 - **Filter Alignment:** Supports identical `from`, `to`, and `channel` filters to guarantee consistency between metrics cards and table rows.
