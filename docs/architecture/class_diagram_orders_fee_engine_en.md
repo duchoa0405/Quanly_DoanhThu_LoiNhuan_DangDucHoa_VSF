@@ -123,7 +123,7 @@ classDiagram
         +decimal? ContributionProfit
         +List~OrderItemResponse~ Items
         +List~OrderStatusHistoryResponse~ StatusHistory
-        +OrderFeeSnapshotResponse? FeeSnapshot
+        +FeeSnapshotResponse? FeeSnapshot
     }
 
     class OrderItemResponse {
@@ -148,7 +148,7 @@ classDiagram
         +DateTime ChangedAt
     }
 
-    class OrderFeeSnapshotResponse {
+    class FeeSnapshotResponse {
         <<Response DTO>>
         +decimal CommissionFee
         +decimal PaymentFee
@@ -302,7 +302,7 @@ classDiagram
 
     OrderDetailResponse "1" *-- "1..*" OrderItemResponse : contains
     OrderDetailResponse "1" *-- "0..*" OrderStatusHistoryResponse : contains
-    OrderDetailResponse "1" o-- "0..1" OrderFeeSnapshotResponse : contains
+    OrderDetailResponse "1" o-- "0..1" FeeSnapshotResponse : contains
 
     IOrderService <|.. OrderService : implements
     OrderService --> IOrderRepository : uses

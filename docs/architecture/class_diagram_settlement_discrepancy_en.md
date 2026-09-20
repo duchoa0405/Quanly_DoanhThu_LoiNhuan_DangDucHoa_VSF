@@ -87,8 +87,9 @@ classDiagram
         +decimal ActualSettlement
         +decimal VarianceAmount
         +ReconciliationStatus ReconciliationStatus
+        +string? ReconciliationNotes
         +DateTime ReconciledAt
-        +string? ReconciledBy
+        +string ReconciledBy
     }
 
     %% Application / Business Commands & Results
@@ -222,7 +223,7 @@ classDiagram
     class DiscrepanciesController {
         <<Controller>>
         -IDiscrepancyService _discrepancyService
-        +ListDiscrepancies(DiscrepancyFilterRequest filter) Task~ActionResult~PagedDiscrepancyResponse~~
+        +ListDiscrepancies(DiscrepancyFilterRequest filter) Task~ActionResult~PagedDiscrepancyListResponse~~
         +GetDiscrepancyById(Guid id) Task~ActionResult~DiscrepancyDetailResponse~~
         +ResolveDiscrepancy(Guid id, ResolveDiscrepancyRequest request) Task~ActionResult~DiscrepancyDetailResponse~~
     }
@@ -232,17 +233,25 @@ classDiagram
         +string ResolutionNotes
     }
 
-    class DiscrepancyListItemResponse {
+    class PagedDiscrepancyListResponse {
+        <<Response DTO>>
+        +List~DiscrepancyResponse~ Items
+        +int Page
+        +int PageSize
+        +int TotalItems
+        +int TotalPages
+    }
+
+    class DiscrepancyResponse {
         <<Response DTO>>
         +Guid Id
-        +Guid ReconciliationRecordId
+        +Guid ReconciliationId
         +Guid OrderId
         +string ExternalOrderId
         +ChannelType Channel
-        +decimal ProjectedSettlement
-        +decimal ActualSettlement
-        +decimal VarianceAmount
         +DiscrepancyType DiscrepancyType
+        +string ExplanationNote
+        +decimal VarianceAmount
         +bool IsResolved
         +DateTime CreatedAt
     }
@@ -250,20 +259,18 @@ classDiagram
     class DiscrepancyDetailResponse {
         <<Response DTO>>
         +Guid Id
-        +Guid ReconciliationRecordId
+        +Guid ReconciliationId
         +Guid OrderId
         +string ExternalOrderId
         +ChannelType Channel
-        +decimal ProjectedSettlement
-        +decimal ActualSettlement
-        +decimal VarianceAmount
         +DiscrepancyType DiscrepancyType
         +string ExplanationNote
-        +string? ResolutionNotes
-        +string? ResolvedBy
-        +DateTime? ResolvedAt
+        +decimal VarianceAmount
         +bool IsResolved
         +DateTime CreatedAt
+        +DateTime? ResolvedAt
+        +string? ResolvedBy
+        +string? ResolutionNotes
     }
 
     %% Application / Business Commands & Results
@@ -277,7 +284,7 @@ classDiagram
     class DiscrepancyDetailResult {
         <<Result>>
         +Guid Id
-        +Guid ReconciliationRecordId
+        +Guid ReconciliationId
         +Guid OrderId
         +string ExternalOrderId
         +ChannelType Channel
@@ -329,7 +336,9 @@ classDiagram
     DiscrepanciesController ..> IDiscrepancyService : invokes
     DiscrepanciesController ..> ResolveDiscrepancyRequest : binds
     DiscrepanciesController ..> ResolveDiscrepancyCommand : maps to
+    DiscrepanciesController ..> PagedDiscrepancyListResponse : returns
     DiscrepanciesController ..> DiscrepancyDetailResponse : returns
+    PagedDiscrepancyListResponse o-- DiscrepancyResponse : contains
 
     IDiscrepancyService <|.. DiscrepancyService : implements
     DiscrepancyService --> IDiscrepancyRepository : queries / updates
@@ -367,7 +376,7 @@ classDiagram
     class DiscrepancyAudit {
         <<Entity>>
         +Guid Id
-        +Guid ReconciliationRecordId
+        +Guid ReconciliationId
         +DiscrepancyType DiscrepancyType
         +string ExplanationNote
         +string? ResolutionNotes

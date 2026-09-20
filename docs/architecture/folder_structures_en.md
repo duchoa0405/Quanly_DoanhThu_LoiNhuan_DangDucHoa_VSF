@@ -110,26 +110,35 @@ backend/
 │   │   │   │   ├── UpdateOrderStatusRequest.cs  # Progression target (SHIPPED, DELIVERED)
 │   │   │   │   ├── CancelOrderRequest.cs        # Cancellation reason
 │   │   │   │   ├── OrderListItemResponse.cs     # Lightweight table item (no cost leak)
+│   │   │   │   ├── PagedOrderListResponse.cs    # Paginated orders wrapper
+│   │   │   │   ├── OrderResponse.cs             # Order lifecycle response
 │   │   │   │   ├── OrderDetailResponse.cs       # Full order details with frozen fee snapshot
+│   │   │   │   ├── OrderItemResponse.cs         # Order item line response
+│   │   │   │   ├── OrderStatusHistoryResponse.cs# State transition history log item
+│   │   │   │   ├── FeeSnapshotResponse.cs       # Frozen platform fee snapshot response
 │   │   │   │   └── OrderSummaryResponse.cs      # Operational counters & recognized gross revenue
 │   │   │   ├── FeeSchedules/                    # Fee Schedule contracts
 │   │   │   │   ├── CreateFeeScheduleRequest.cs  # Shop Owner rate versioning payload
 │   │   │   │   └── FeeScheduleResponse.cs       # Active schedule rates & caps
 │   │   │   ├── Settlements/                     # Settlement & Reconciliation contracts
-│   │   │   │   ├── ReconcileSettlementRequest.cs# Actual bank/wallet payout input
 │   │   │   │   ├── SettlementLedgerItemResponse.cs# Ledger item with 4 frozen fee breakdowns
+│   │   │   │   ├── PagedSettlementLedgerResponse.cs# Paginated settlement ledger wrapper
 │   │   │   │   ├── SettlementSummaryResponse.cs # Audit counters (pending, reconciled, discrepancy)
+│   │   │   │   ├── ReconcileSettlementRequest.cs# Actual bank/wallet payout input
 │   │   │   │   └── ReconciliationResponse.cs    # Single order reconciliation state
 │   │   │   ├── Discrepancies/                   # Discrepancy & Dispute contracts
 │   │   │   │   ├── DiscrepancyResponse.cs       # Variance investigation record
 │   │   │   │   ├── DiscrepancyDetailResponse.cs # Full discrepancy audit trail
+│   │   │   │   ├── PagedDiscrepancyListResponse.cs# Paginated discrepancy list wrapper
 │   │   │   │   └── ResolveDiscrepancyRequest.cs # Resolution notes payload
 │   │   │   ├── Analytics/                       # Executive Analytics contracts
 │   │   │   │   ├── FinancialKpiResponse.cs      # 5 Core Financial KPIs & margin %
-│   │   │   │   ├── FinancialTrendPointResponse.cs# Daily time-series data point
+│   │   │   │   ├── FinancialTrendResponse.cs    # Trend response wrapper with points
+│   │   │   │   ├── FinancialTrendPoint.cs       # Daily time-series data point
 │   │   │   │   ├── ChannelBreakdownResponse.cs  # Multi-channel revenue/profit distribution
 │   │   │   │   ├── TopSkuResponse.cs            # SKU contribution profit ranking
-│   │   │   │   └── DrilldownOrderResponse.cs    # Itemized delivered order backing KPIs
+│   │   │   │   ├── PagedDrilldownOrderResponse.cs# Paginated drilldown orders wrapper
+│   │   │   │   └── DrilldownOrderItem.cs        # Itemized delivered order backing KPIs
 │   │   │   └── Common/                          # Transport concerns only
 │   │   │       └── PaginationResponse.cs        # Generic paginated wrapper (page, pageSize, totals)
 │   │   │
