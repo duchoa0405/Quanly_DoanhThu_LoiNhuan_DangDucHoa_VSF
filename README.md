@@ -92,7 +92,7 @@ flowchart TB
     subgraph SCR03 [" 📊 Screen 3: Revenue & Profit Dashboard (SCR-03) "]
         direction TB
         p31["<b>[Panel 3.1] Global Filters & Actions</b><br/>• Date Presets: Today | 7 Days | 30 Days | Custom<br/>• Channel Selector: All | TikTok | Shopee | POS<br/>• Action: [Export CSV Report]"]
-        p32["<b>[Panel 3.2] Executive Financial KPI Cards (5 Cards)</b><br/>• Card 1: Gross Revenue<br/>• Card 2: Total Platform Fees Deducted<br/>• Card 3: Net Realized Revenue (Projected Settlement)<br/>• Card 4: Cost of Goods Sold (COGS)<br/>• Card 5: Contribution Profit (with Contribution Margin %)"]
+        p32["<b>[Panel 3.2] Executive Financial KPI Cards (5 Cards)</b><br/>• Card 1: Gross Revenue<br/>• Card 2: Total Platform Fees Deducted<br/>• Card 3: Projected Settlement<br/>• Card 4: Cost of Goods Sold (COGS)<br/>• Card 5: Contribution Profit (with Contribution Margin %)"]
         p33["<b>[Panel 3.3] Visual Analytics Panels</b><br/>• Trend: Gross Revenue vs Contribution Profit over time<br/>• Donut: Revenue & Profit Share by Channel (%)<br/>• Leaderboard: Top 5 Best-Selling SKUs (Revenue & Contribution Margin)"]
         p31 --> p32 --> p33
 
@@ -185,7 +185,7 @@ The platform provides four cohesive operational workspaces tailored to business 
 ![Screen 2: Fees & Settlement](docs/screenshots/scr_2.png)
 
 ### 3.3 Screen 3: Revenue & Profit Dashboard (SCR-03)
-- Executive KPI summary cards (Gross Revenue, Total Platform Fees, Net Realized Revenue, COGS, Contribution Profit).
+- Executive KPI summary cards (Gross Revenue, Total Platform Fees, Projected Settlement, COGS, Contribution Profit).
 - Comparative cash flow and contribution profit trend charts evaluating revenue against marketplace deductions and merchandise costs.
 - Channel revenue share distribution and Top 5 SKU leaderboard by revenue and contribution profit.
 
@@ -245,8 +245,8 @@ The system follows a strict, decoupled three-tier architecture:
 | **Database Schema (DBML)**| [`docs/database/schema.dbml`](docs/database/schema.dbml) | Canonical source of truth for PostgreSQL database design |
 | **Database Specification**| [`docs/database/database-design_en.md`](docs/database/database-design_en.md) | English relational schema design specification, ERD, and table catalog |
 | **Database Constraints & Indexes** | [`docs/database/database-constraints-indexes_en.md`](docs/database/database-constraints-indexes_en.md) | PostgreSQL constraints, check integrity, index matrix, and ACID transactions |
-| **OpenAPI 3.0 Specification** | [`docs/api/openapi.yaml`](docs/api/openapi.yaml) | Authoritative OpenAPI 3.0.3 REST contract, endpoints, DTOs, and RFC 7807 error models |
-| **API Traceability Matrix** | [`docs/api/api_traceability_en.md`](docs/api/api_traceability_en.md) | End-to-end traceability from Use Cases (UC01–UC13) through C4, API, DBML to RBAC |
+| **OpenAPI 3.0 Specification** | [`docs/api/openapi.yaml`](docs/api/openapi.yaml) | Authoritative OpenAPI 3.0.3 REST contract, endpoints, DTOs, and RFC 7807 error models *(LOCKED)* |
+| **API Traceability Matrix** | [`docs/api/api_traceability_en.md`](docs/api/api_traceability_en.md) | End-to-end traceability from Use Cases (UC01–UC13) through C4, API, DBML to RBAC *(LOCKED)* |
 | **User Stories & BDD** | [`docs/requirements_invest.md`](docs/requirements_invest.md) | INVEST user stories and Gherkin acceptance criteria |
 | **Use Cases & RBAC** | [`docs/usecase.md`](docs/usecase.md) | Actor specifications, UML use cases, and role-based access matrix |
 | **UI/UX Specifications** | [`docs/uiux_specifications.md`](docs/uiux_specifications.md) | Design tokens, color rules, layout grid, and screen hierarchy |

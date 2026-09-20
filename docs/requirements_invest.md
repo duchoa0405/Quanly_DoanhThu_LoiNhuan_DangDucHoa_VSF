@@ -19,7 +19,7 @@ This document standardizes the functional requirements of the system into **User
 > In this system, **Contribution Profit** represents order/channel profitability after deducting marketplace fees and Cost of Goods Sold (COGS), but before corporate operating expenses (rent, payroll, marketing) and taxes.
 > - `Gross Revenue = Subtotal - Shop Voucher`
 > - `COGS = Σ(Quantity × Unit Cost Snapshot)`
-> - `Projected Settlement (Net Realized Revenue) = Gross Revenue - Total Platform Fees`
+> - `Projected Settlement = Gross Revenue - Total Platform Fees`
 > - `Contribution Profit = Projected Settlement - COGS = Gross Revenue - Total Platform Fees - COGS`
 > - `Contribution Margin % = (Contribution Profit / Gross Revenue) × 100` (when `Gross Revenue > 0`)
 > 
@@ -370,7 +370,7 @@ Scenario: Compute Contribution Profit upon delivery
 #### US-DASH-01: Monitor Core Financial KPI Cards (Revenue, Fees, COGS, Profit)
 - **User Story:**
   - **As a:** Shop Owner,
-  - **I want to:** View 5 core financial KPI cards: Total Gross Revenue, Total Platform Fees, Net Realized Revenue, Total COGS, and Total Contribution Profit,
+  - **I want to:** View 5 core financial KPI cards: Total Gross Revenue, Total Platform Fees, Projected Settlement, Total COGS, and Total Contribution Profit,
   - **So that:** Executive leadership immediately understands true commercial take-home earnings.
 
 - **INVEST Assessment:**
@@ -393,7 +393,7 @@ Scenario: Accurate headline financial KPI calculation from delivered orders
   When User views Screen 3: Revenue Dashboard
   Then "Total Gross Revenue" card displays 1,500,000 VND
   And "Total Platform Fees" card displays 150,000 VND
-  And "Net Realized Revenue" card displays 1,350,000 VND
+  And "Projected Settlement" card displays 1,350,000 VND
   And "Total COGS" card displays 900,000 VND
   And "Contribution Profit" card displays 450,000 VND (1,350,000 - 900,000)
   And The CANCELLED order is completely excluded from all financial cards

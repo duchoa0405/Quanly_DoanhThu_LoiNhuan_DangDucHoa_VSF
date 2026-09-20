@@ -1376,7 +1376,8 @@ components:
         retailPrice:
           $ref: '#/components/schemas/NonNegativeMonetaryAmount'
         costPrice:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Baseline unit COGS cost.
         isActive:
           type: boolean
@@ -1535,7 +1536,8 @@ components:
           minimum: 1
           example: 2
         unitPrice:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Selling price charged to customer.
 
     CreateOrderRequest:
@@ -1564,7 +1566,8 @@ components:
           nullable: true
           example: "0901234567"
         shopVoucher:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Merchant-funded discount coupon. Must be <= subtotal.
           example: 0.00
         items:
@@ -1627,13 +1630,16 @@ components:
           nullable: true
           example: "0901234567"
         subtotal:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         shopVoucher:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 0.00
         grossRevenue:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         itemCount:
           type: integer
@@ -1685,11 +1691,13 @@ components:
         lineTotal:
           $ref: '#/components/schemas/NonNegativeMonetaryAmount'
         unitCostSnapshot:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Frozen unit cost (only visible to Finance Manager and Shop Owner; omitted for Sales & Ops).
           nullable: true
         totalCost:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Total line COGS snapshot (only visible to Finance Manager and Shop Owner).
           nullable: true
 
@@ -1705,7 +1713,8 @@ components:
           type: string
           format: uuid
         fromStatus:
-          $ref: '#/components/schemas/OrderStatus'
+          allOf:
+            - $ref: '#/components/schemas/OrderStatus'
           nullable: true
         toStatus:
           $ref: '#/components/schemas/OrderStatus'
@@ -1728,22 +1737,28 @@ components:
         - snapshottedAt
       properties:
         commissionFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 20000.00
         paymentFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 15000.00
         serviceFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 0.00
         fixedFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 3000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 38000.00
         projectedSettlement:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 462000.00
         snapshottedAt:
           type: string
@@ -1788,13 +1803,16 @@ components:
           nullable: true
           example: "0901234567"
         subtotal:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         shopVoucher:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 0.00
         grossRevenue:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         deliveredAt:
           type: string
@@ -1831,15 +1849,18 @@ components:
               items:
                 $ref: '#/components/schemas/OrderStatusHistoryResponse'
             feeSnapshot:
-              $ref: '#/components/schemas/FeeSnapshotResponse'
+              allOf:
+                - $ref: '#/components/schemas/FeeSnapshotResponse'
               nullable: true
               description: Frozen fee snapshot populated upon DELIVERED status.
             cogs:
-              $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+              allOf:
+                - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
               nullable: true
               description: Total merchandise COGS (visible to Finance Manager & Shop Owner).
             contributionProfit:
-              $ref: '#/components/schemas/MonetaryAmount'
+              allOf:
+                - $ref: '#/components/schemas/MonetaryAmount'
               nullable: true
               description: Derived Contribution Profit (visible to Finance Manager & Shop Owner).
 
@@ -1885,7 +1906,8 @@ components:
           type: integer
           example: 95
         grossRevenue:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Total recognized revenue from DELIVERED orders only.
           example: 47500000.00
         inTransitOrders:
@@ -1905,7 +1927,8 @@ components:
         - toStatus
       properties:
         toStatus:
-          $ref: '#/components/schemas/OrderProgressStatus'
+          allOf:
+            - $ref: '#/components/schemas/OrderProgressStatus'
           example: SHIPPED
 
     CancelOrderRequest:
@@ -1934,10 +1957,12 @@ components:
         paymentMethod:
           $ref: '#/components/schemas/PaymentMethod'
         subtotal:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         shopVoucher:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 0.00
 
     FeeBreakdownResponse:
@@ -1954,36 +1979,45 @@ components:
         - projectedSettlement
       properties:
         subtotal:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         shopVoucher:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 0.00
         grossRevenue:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         commissionFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Channel commission fee.
           example: 20000.00
         paymentFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Payment gateway or processing fee.
           example: 15000.00
         serviceFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Platform service surcharge or shipping program fee.
           example: 0.00
         fixedFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Fixed charge per fulfilled transaction (e.g. 3,000 VND on TikTok).
           example: 3000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Sum of all platform fee deductions.
           example: 38000.00
         projectedSettlement:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Net payout expected upon delivery (Gross Revenue - Total Platform Fees).
           example: 462000.00
 
@@ -2028,12 +2062,14 @@ components:
           description: Service surcharge rate (0.00 to 1.00).
           example: 0.00
         serviceFeeCap:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           nullable: true
           description: Configured upper cap for service fee if applicable.
           example: null
         fixedFeePerOrder:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Fixed fee per fulfilled order in VND.
           example: 3000.00
         effectiveFrom:
@@ -2096,11 +2132,13 @@ components:
           maximum: 1
           example: 0.00
         serviceFeeCap:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           nullable: true
           example: null
         fixedFeePerOrder:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 3000.00
         effectiveFrom:
           type: string
@@ -2139,36 +2177,45 @@ components:
         channel:
           $ref: '#/components/schemas/ChannelType'
         grossRevenue:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         commissionFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Read directly from frozen historical order_fee_snapshots.
           example: 20000.00
         paymentFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Read directly from frozen historical order_fee_snapshots.
           example: 15000.00
         serviceFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Read directly from frozen historical order_fee_snapshots.
           example: 0.00
         fixedFee:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Read directly from frozen historical order_fee_snapshots.
           example: 3000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 38000.00
         projectedSettlement:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 462000.00
         actualSettlement:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           nullable: true
           example: 462000.00
         varianceAmount:
-          $ref: '#/components/schemas/MonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/MonetaryAmount'
           nullable: true
           description: Projected Settlement - Actual Settlement.
           example: 0.00
@@ -2231,7 +2278,8 @@ components:
         - actualSettlement
       properties:
         actualSettlement:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Actual net funds received according to bank/wallet records.
           example: 462000.00
         notes:
@@ -2240,7 +2288,8 @@ components:
           description: Mandatory justification notes when variance != 0 (used as discrepancy explanation).
           example: Payout matches platform statement settlement report.
         discrepancyType:
-          $ref: '#/components/schemas/DiscrepancyType'
+          allOf:
+            - $ref: '#/components/schemas/DiscrepancyType'
           nullable: true
           description: Mandatory discrepancy category when variance != 0.
           example: COMMISSION_RATE_MISMATCH
@@ -2264,13 +2313,16 @@ components:
           type: string
           format: uuid
         projectedSettlement:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 462000.00
         actualSettlement:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 462000.00
         varianceAmount:
-          $ref: '#/components/schemas/MonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/MonetaryAmount'
           description: Projected Settlement - Actual Settlement.
           example: 0.00
         reconciliationStatus:
@@ -2322,7 +2374,8 @@ components:
           type: string
           example: Commission charged at 5.0% instead of contracted 4.0%.
         varianceAmount:
-          $ref: '#/components/schemas/MonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/MonetaryAmount'
           example: 5000.00
         isResolved:
           type: boolean
@@ -2401,23 +2454,28 @@ components:
         - deliveredOrderCount
       properties:
         grossRevenue:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Total recognized revenue from delivered orders.
           example: 125000000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Total platform commission, payment, and service fees deducted.
           example: 9500000.00
         projectedSettlement:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Net realized sales payout (Gross Revenue - Total Platform Fees).
           example: 115500000.00
         cogs:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Total merchandise Cost of Goods Sold for delivered items.
           example: 52000000.00
         contributionProfit:
-          $ref: '#/components/schemas/MonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/MonetaryAmount'
           description: Contribution Profit (Projected Settlement - COGS).
           example: 63500000.00
         contributionMarginPct:
@@ -2440,10 +2498,12 @@ components:
           format: date
           example: "2026-09-18"
         grossRevenue:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 18500000.00
         contributionProfit:
-          $ref: '#/components/schemas/MonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/MonetaryAmount'
           example: 9400000.00
 
     FinancialTrendResponse:
@@ -2472,13 +2532,16 @@ components:
           type: integer
           example: 140
         grossRevenue:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 70000000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 5320000.00
         contributionProfit:
-          $ref: '#/components/schemas/MonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/MonetaryAmount'
           example: 35480000.00
         contributionMarginPct:
           type: number
@@ -2515,14 +2578,17 @@ components:
           type: integer
           example: 110
         grossRevenue:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           description: Allocated gross revenue based on proportional line subtotal share.
           example: 27500000.00
         cogs:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 11000000.00
         contributionProfit:
-          $ref: '#/components/schemas/MonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/MonetaryAmount'
           description: Allocated contribution profit (lineGrossRevenue - allocatedPlatformFees - lineCOGS).
           example: 14410000.00
         contributionMarginPct:
@@ -2564,19 +2630,24 @@ components:
           type: string
           format: date-time
         grossRevenue:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 500000.00
         totalPlatformFees:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 38000.00
         projectedSettlement:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 462000.00
         cogs:
-          $ref: '#/components/schemas/NonNegativeMonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/NonNegativeMonetaryAmount'
           example: 200000.00
         contributionProfit:
-          $ref: '#/components/schemas/MonetaryAmount'
+          allOf:
+            - $ref: '#/components/schemas/MonetaryAmount'
           example: 262000.00
 
     PagedDrilldownOrderResponse:

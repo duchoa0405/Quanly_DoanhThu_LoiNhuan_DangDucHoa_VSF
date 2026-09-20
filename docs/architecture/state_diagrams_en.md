@@ -161,5 +161,4 @@ stateDiagram-v2
 | Source State | Target State | Triggering API | Guard Condition / Validation Rule | Architectural & Financial Impact |
 |---|---|---|---|---|
 | `[*] (None)` | `OPEN` | Child creation on discrepancy | Spawned automatically when `ReconciliationRecord` status transitions to `DISCREPANCY`. | Row inserted into `discrepancy_audits` with `reconciliation_record_id`, `discrepancy_type`, `explanation_note = notes`, `created_at = NOW()`, `resolved_at = NULL`. |
-| `OPEN` | `RESOLVED` | `PATCH /discrepancies/{id}/resolve` | `resolutionNotes` must not be empty. Actor must possess `FinanceManager` or `ShopOwner` role. | Updates `resolution_notes = @notes`, `resolved_by = @actorIdentity`, `resolved_at = NOW()`. Dynamic property `IsResolved` evaluates to `true`. |
-| `RESOLVED` | Any | `PATCH /discrepancies/{id}/resolve` | Already resolved audit record. | RESOLVED is terminal for the target state model. |
+| `OPEN` | `RESOLVED` | `PATCH /discrepancies/{id}/resolve` | `resolutionNotes` must not be empty. Actor must possess `FinanceManager` or `ShopOwner` role. | Updates `resolution_notes = @notes`, `resolved_by = @actorIdentity`, `resolved_at = NOW()`. Dynamic property `IsResolved` evaluates to `true`. State `RESOLVED` is terminal. |

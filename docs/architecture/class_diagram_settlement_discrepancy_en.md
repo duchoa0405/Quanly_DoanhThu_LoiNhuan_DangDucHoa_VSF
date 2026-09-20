@@ -41,7 +41,7 @@ classDiagram
         <<Controller>>
         -ISettlementService _settlementService
         +GetSettlementLedger(SettlementLedgerFilterRequest filter) Task~ActionResult~PagedSettlementLedgerResponse~~
-        +GetSettlementSummary(DateTime? fromDate, DateTime? toDate) Task~ActionResult~SettlementSummaryResponse~~
+        +GetSettlementSummary(DateTime? fromDate, DateTime? toDate, ChannelType? channel) Task~ActionResult~SettlementSummaryResponse~~
         +ReconcileSettlement(Guid orderId, ReconcileSettlementRequest request) Task~ActionResult~ReconciliationResponse~~
     }
 
@@ -54,6 +54,7 @@ classDiagram
 
     class SettlementLedgerItemResponse {
         <<Response DTO>>
+        +Guid Id
         +Guid OrderId
         +string ExternalOrderId
         +ChannelType Channel
@@ -67,6 +68,7 @@ classDiagram
         +decimal? ActualSettlement
         +decimal? VarianceAmount
         +ReconciliationStatus ReconciliationStatus
+        +DateTime DeliveredAt
         +DateTime? ReconciledAt
     }
 
@@ -101,6 +103,7 @@ classDiagram
 
     class SettlementLedgerResult {
         <<Result>>
+        +Guid Id
         +Guid OrderId
         +string ExternalOrderId
         +ChannelType Channel
@@ -114,6 +117,7 @@ classDiagram
         +decimal? ActualSettlement
         +decimal? VarianceAmount
         +ReconciliationStatus Status
+        +DateTime DeliveredAt
         +DateTime? ReconciledAt
     }
 
@@ -128,7 +132,7 @@ classDiagram
     class ISettlementService {
         <<Service Interface>>
         +GetLedgerAsync(SettlementQueryFilter filter) Task~PagedResult~SettlementLedgerResult~~
-        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate) Task~SettlementSummaryResult~
+        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate, ChannelType? channel) Task~SettlementSummaryResult~
         +ReconcileAsync(ReconcileSettlementCommand command) Task~ReconciliationRecord~
     }
 
@@ -140,7 +144,7 @@ classDiagram
         -IOrderRepository _orderRepo
         -IUnitOfWork _unitOfWork
         +GetLedgerAsync(SettlementQueryFilter filter) Task~PagedResult~SettlementLedgerResult~~
-        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate) Task~SettlementSummaryResult~
+        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate, ChannelType? channel) Task~SettlementSummaryResult~
         +ReconcileAsync(ReconcileSettlementCommand command) Task~ReconciliationRecord~
     }
 
@@ -150,7 +154,7 @@ classDiagram
         +GetByOrderIdAsync(Guid orderId) Task~ReconciliationRecord?~
         +GetByIdAsync(Guid id) Task~ReconciliationRecord?~
         +ListLedgerAsync(SettlementQueryFilter filter) Task~PagedResult~SettlementLedgerResult~~
-        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate) Task~SettlementSummaryResult~
+        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate, ChannelType? channel) Task~SettlementSummaryResult~
         +AddAsync(ReconciliationRecord record) Task
         +UpdateAsync(ReconciliationRecord record) Task
     }
@@ -433,7 +437,7 @@ classDiagram
 | Endpoint | Method | Controller Action | Command / Parameter | Service Invocations | Database Operations |
 |---|---|---|---|---|---|
 | `/settlements` | `GET` | `SettlementController.GetSettlementLedger` | `SettlementLedgerFilterRequest` | `ISettlementService.GetLedgerAsync` | Joined read: `reconciliation_records`, `orders`, `order_fee_snapshots` |
-| `/settlements/summary` | `GET` | `SettlementController.GetSettlementSummary` | `fromDate`, `toDate` | `ISettlementService.GetSummaryAsync` | Aggregated status count query over `reconciliation_records` |
+| `/settlements/summary` | `GET` | `SettlementController.GetSettlementSummary` | `fromDate`, `toDate`, `channel` | `ISettlementService.GetSummaryAsync` | Aggregated status count query over `reconciliation_records` |
 | `/settlements/{orderId}/reconcile` | `POST` | `SettlementController.ReconcileSettlement` | `ReconcileSettlementCommand` | `ISettlementService.ReconcileAsync`<br/>`IUnitOfWork.ExecuteTransactionAsync` | Atomic transaction: Update `reconciliation_records` (`ActualSettlement`, `VarianceAmount`, `Status`, `ReconciledAt`, `ReconciledBy`).<br/>If variance != 0: Insert `discrepancy_audits` |
 | `/discrepancies` | `GET` | `DiscrepanciesController.ListDiscrepancies` | `DiscrepancyFilterRequest` | `IDiscrepancyService.ListDiscrepanciesAsync` | Joined read: `discrepancy_audits`, `reconciliation_records`, `orders` |
 | `/discrepancies/{id}` | `GET` | `DiscrepanciesController.GetDiscrepancyById` | `Guid id` | `IDiscrepancyService.GetByIdAsync` | Read `discrepancy_audits` with parent `reconciliation_records` & `orders` |

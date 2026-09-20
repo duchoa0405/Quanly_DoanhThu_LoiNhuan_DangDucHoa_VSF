@@ -97,7 +97,8 @@ classDiagram
         +List~DrilldownOrderItem~ Items
         +int Page
         +int PageSize
-        +int TotalCount
+        +int TotalItems
+        +int TotalPages
     }
 
     class DrilldownOrderItem {

@@ -65,23 +65,23 @@ This document establishes the **authoritative end-to-end traceability matrix** c
 | **08** | `UC01` | `POST /orders` | `createOrder` | `CreateOrderModal` | `OrdersController.CreateOrder` | `OrderService.CreateOrderAsync` | `IOrderRepository`, `IProductRepository` | `orders`, `order_items`, `order_status_history` | `Sales & Ops Staff`, `Shop Owner` |
 | **09** | `UC01` | `GET /orders/summary` | `getOrderSummary` | `OrdersPage` (`OrderMetricsCards`) | `OrdersController.GetSummary` | `OrderService.GetSummaryAsync` | `IOrderRepository` | `orders` | `Sales & Ops Staff`, `Finance Manager`, `Shop Owner` |
 | **10** | `UC02` | `POST /orders/preview-fee` | `previewOrderFees` | `CreateOrderModal` (`FeePreviewWidget`) | `OrdersController.PreviewFees` | `DynamicFeeEngine.CalculateFees` | `IFeeScheduleRepository` | `fee_schedules` *(In-Memory)* | `Sales & Ops Staff`, `Finance Manager`, `Shop Owner` |
-| **11** | `UC01`, `UC03` | `GET /orders/{id}` | `getOrderById` | `OrderDetailDrawer` | `OrdersController.GetOrderById` | `OrderService.GetOrderByIdAsync` | `IOrderRepository` | `orders`, `order_items`, `order_status_history`, `order_fee_snapshots` | `Sales & Ops Staff`, `Finance Manager`, `Shop Owner` |
+| **11** | `UC01`, `UC03` | `GET /orders/{id}` | `getOrderById` | `OrderTable / useOrders` | `OrdersController.GetOrderById` | `OrderService.GetOrderByIdAsync` | `IOrderRepository` | `orders`, `order_items`, `order_status_history`, `order_fee_snapshots` | `Sales & Ops Staff`, `Finance Manager`, `Shop Owner` |
 | **12** | `UC03` | `PATCH /orders/{id}/status` | `updateOrderStatus` | `OrdersTable` (Status Action) | `OrdersController.UpdateStatus` | `OrderService.UpdateStatusAsync` | `IOrderRepository`, `IFeeScheduleRepository`, `IReconciliationRepository` | `orders`, `order_status_history`, `order_fee_snapshots`, `reconciliation_records` | `Sales & Ops Staff`, `Shop Owner` |
 | **13** | `UC04` | `POST /orders/{id}/cancel` | `cancelOrder` | `CancelOrderModal` | `OrdersController.CancelOrder` | `OrderService.CancelOrderAsync` | `IOrderRepository` | `orders`, `order_status_history` | `Sales & Ops Staff`, `Shop Owner` |
 | **14** | `UC02` | `GET /fee-schedules` | `listFeeSchedules` | `FeeSettingsPage` / `FeeScheduleDrawer` | `FeeSchedulesController.ListFeeSchedules` | `FeeScheduleService.GetActiveSchedulesAsync` | `IFeeScheduleRepository` | `fee_schedules` | `Finance Manager`, `Shop Owner` |
 | **15** | `UC02` | `POST /fee-schedules` | `createFeeSchedule` | `CreateFeeScheduleModal` | `FeeSchedulesController.CreateFeeSchedule` | `FeeScheduleService.CreateScheduleVersionAsync` | `IFeeScheduleRepository` | `fee_schedules` | `Shop Owner` |
 | **16** | `UC05` | `GET /settlements` | `getSettlementLedger` | `SettlementPage` (`LedgerTable`) | `SettlementController.GetLedger` | `SettlementService.GetLedgerAsync` | `IReconciliationRepository` | `reconciliation_records`, `orders`, `order_fee_snapshots` | `Finance Manager`, `Shop Owner` |
-| **17** | `UC05` | `GET /settlements/summary` | `getSettlementSummary` | `SettlementKPIHeader` | `SettlementController.GetSummary` | `SettlementService.GetSummaryAsync` | `IReconciliationRepository` | `reconciliation_records` | `Finance Manager`, `Shop Owner` |
+| **17** | `UC05` | `GET /settlements/summary` | `getSettlementSummary` | `SettlementSummary` | `SettlementController.GetSummary` | `SettlementService.GetSummaryAsync` | `IReconciliationRepository` | `reconciliation_records` | `Finance Manager`, `Shop Owner` |
 | **18** | `UC06` | `POST /settlements/{orderId}/reconcile` | `reconcileSettlement` | `RecordSettlementModal` | `SettlementController.Reconcile` | `SettlementService.ReconcileAsync` | `IReconciliationRepository`, `IDiscrepancyRepository` | `reconciliation_records`, `discrepancy_audits` | `Finance Manager`, `Shop Owner` |
 | **19** | `UC07` | `GET /discrepancies` | `listDiscrepancies` | `DiscrepancyPanel` (`DiscrepancyTable`) | `DiscrepanciesController.List` | `DiscrepancyService.ListAsync` | `IDiscrepancyRepository` | `discrepancy_audits`, `reconciliation_records`, `orders` | `Finance Manager`, `Shop Owner` |
 | **20** | `UC07` | `GET /discrepancies/{id}` | `getDiscrepancyById` | `DiscrepancyDetailDrawer` | `DiscrepanciesController.GetById` | `DiscrepancyService.GetByIdAsync` | `IDiscrepancyRepository` | `discrepancy_audits`, `reconciliation_records` | `Finance Manager`, `Shop Owner` |
 | **21** | `UC07` | `PATCH /discrepancies/{id}/resolve` | `resolveDiscrepancy` | `ResolveDiscrepancyModal` | `DiscrepanciesController.Resolve` | `DiscrepancyService.ResolveAsync` | `IDiscrepancyRepository` | `discrepancy_audits` | `Finance Manager`, `Shop Owner` |
-| **22** | `UC08`, `UC13` | `GET /analytics/kpis` | `getFinancialKpis` | `ExecutiveKPIHeader` | `AnalyticsController.GetKpis` | `AnalyticsService.GetKpisAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
+| **22** | `UC08`, `UC13` | `GET /analytics/kpis` | `getFinancialKpis` | `KpiCards` | `AnalyticsController.GetKpis` | `AnalyticsService.GetKpisAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
 | **23** | `UC08`, `UC13` | `GET /analytics/trend` | `getFinancialTrend` | `RevenueProfitTrendChart` | `AnalyticsController.GetTrend` | `AnalyticsService.GetTrendAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
 | **24** | `UC10`, `UC13` | `GET /analytics/channel-breakdown` | `getChannelBreakdown` | `ChannelBreakdownChart` | `AnalyticsController.GetBreakdown` | `AnalyticsService.GetBreakdownAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
 | **25** | `UC10`, `UC13` | `GET /analytics/top-skus` | `getTopSkus` | `TopSkuTable` | `AnalyticsController.GetTopSkus` | `AnalyticsService.GetTopSkusAsync` | `IAnalyticsRepository` | `order_items`, `orders`, `product_variants`, `products` | `Finance Manager`, `Shop Owner` |
 | **26** | `UC11` | `GET /analytics/drilldown` | `getDrilldownOrders` | `DrilldownOrderModal` | `AnalyticsController.GetDrilldown` | `AnalyticsService.GetDrilldownAsync` | `IAnalyticsRepository` | `orders`, `order_fee_snapshots`, `order_items` | `Finance Manager`, `Shop Owner` |
-| **27** | `UC11` | `GET /analytics/export-csv` | `exportReconciliationCsv` | `ExportCsvButton` | `AnalyticsController.ExportCsv` | `AnalyticsService.ExportCsvAsync` | `IAnalyticsRepository` | `reconciliation_records`, `orders`, `order_fee_snapshots` | `Finance Manager`, `Shop Owner` |
+| **27** | `UC11` | `GET /analytics/export-csv` | `exportReconciliationCsv` | `SourceOrderDrilldown` (Export CSV trigger) | `AnalyticsController.ExportCsv` | `AnalyticsService.ExportCsvAsync` | `IAnalyticsRepository` | `reconciliation_records`, `orders`, `order_fee_snapshots` | `Finance Manager`, `Shop Owner` |
 
 ---
 
@@ -186,7 +186,7 @@ This document establishes the **authoritative end-to-end traceability matrix** c
 
 #### [11] `GET /orders/{id}`
 - **Use Case Trace:** `UC01`, `UC03`.
-- **UI Trigger:** `OrderDetailDrawer`.
+- **UI Trigger:** `OrderTable / useOrders`.
 - **Backend Invocation:** `OrdersController.GetOrderById(id)` $\rightarrow$ `IOrderService.GetOrderByIdAsync(id)`.
 - **Target Tables:** `orders`, `order_items`, `order_status_history`, `order_fee_snapshots`.
 - **Field Details:** Returns `orderDate`, item lines, status progression history, and frozen fee snapshot (if delivered). `cogs`, `unitCostSnapshot`, and `contributionProfit` are populated for `Finance Manager` and `Shop Owner`, but stripped for `Sales & Ops Staff`.
@@ -264,7 +264,7 @@ This document establishes the **authoritative end-to-end traceability matrix** c
 
 #### [17] `GET /settlements/summary`
 - **Use Case Trace:** `UC05` (Settlement Reconciliation Counters).
-- **UI Trigger:** `SettlementKPIHeader` (Audit Counter Cards).
+- **UI Trigger:** `SettlementSummary`.
 - **Backend Invocation:** `SettlementController.GetSummary(from, to, channel)` $\rightarrow$ `ISettlementService.GetSummaryAsync(from, to, channel)`.
 - **Repository Interface:** `IReconciliationRepository.GetSummaryCountersAsync(...)`.
 - **Target Tables:** `reconciliation_records` (JOIN `orders`).
@@ -281,9 +281,9 @@ This document establishes the **authoritative end-to-end traceability matrix** c
   3. Backend derives variance:
      $$\text{varianceAmount} = \text{projectedSettlement} - \text{actualSettlement}$$
   4. If `varianceAmount == 0`:
-     - Updates `reconciliation_records`: `status = 'RECONCILED'`, `reconciled_at = NOW()`, `reconciled_by = CurrentUser.Username`.
+     - Updates `reconciliation_records`: `status = 'RECONCILED'`, `reconciled_at = NOW()`, `reconciled_by = authenticated actor identity`.
   5. If `varianceAmount != 0`:
-     - Updates `reconciliation_records`: `status = 'DISCREPANCY'`, `reconciled_at = NOW()`, `reconciled_by = CurrentUser.Username`.
+     - Updates `reconciliation_records`: `status = 'DISCREPANCY'`, `reconciled_at = NOW()`, `reconciled_by = authenticated actor identity`.
      - Non-empty `notes` is mandatory (HTTP 422 if empty).
      - System creates/updates discrepancy audit in `discrepancy_audits`:
        $$\text{variance} \ne 0 \longrightarrow \text{DISCREPANCY} \longrightarrow \text{requires explanation / root-cause classification}$$
@@ -308,7 +308,7 @@ This document establishes the **authoritative end-to-end traceability matrix** c
 - **Backend Invocation:** `DiscrepanciesController.Resolve(id, request)` $\rightarrow$ `IDiscrepancyService.ResolveAsync(...)`.
 - **Resolution Execution:**
   - Captures mandatory `resolutionNotes` (minimum 5 characters).
-  - Sets `resolved_at = clock_timestamp()` and `resolved_by = CurrentUser.Username`.
+  - Sets `resolvedAt = current UTC timestamp` and `resolvedBy = authenticated actor identity`.
   - The API response field `isResolved` evaluates to `true` (`resolvedAt != null`).
   - No fictitious DB column `is_resolved` is required; P05 canonical schema uses `resolved_at` and `resolved_by`.
 - **Target Tables:** `discrepancy_audits`.
@@ -319,7 +319,7 @@ This document establishes the **authoritative end-to-end traceability matrix** c
 
 #### [22] `GET /analytics/kpis`
 - **Use Case Trace:** `UC08` (Analyze Multi-Channel Contribution Profit & Margins), `UC13` (Track Margin Trends).
-- **UI Trigger:** `ExecutiveKPIHeader` (5 KPI Cards).
+- **UI Trigger:** `KpiCards`.
 - **Backend Invocation:** `AnalyticsController.GetKpis(from, to, channel)` $\rightarrow$ `IAnalyticsService.GetKpisAsync(...)`.
 - **The 5 Core Financial KPIs:**
   1. `grossRevenue`: $\sum(\text{Gross Revenue})$ for `DELIVERED` orders only.
@@ -358,7 +358,7 @@ This document establishes the **authoritative end-to-end traceability matrix** c
 
 #### [27] `GET /analytics/export-csv`
 - **Use Case Trace:** `UC11` (Export Financial & Settlement Reports).
-- **UI Trigger:** `ExportCsvButton`.
+- **UI Trigger:** `SourceOrderDrilldown` (Export CSV trigger).
 - **Stream Format:** RFC 4180 CSV (`text/csv`) containing delivered orders, platform fee breakdowns, actual settlement, and reconciliation variance.
 
 ---

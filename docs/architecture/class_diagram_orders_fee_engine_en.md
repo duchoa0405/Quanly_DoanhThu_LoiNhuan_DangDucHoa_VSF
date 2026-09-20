@@ -39,10 +39,10 @@ classDiagram
         +CreateOrder(CreateOrderRequest request) Task~ActionResult~OrderDetailResponse~~
         +PreviewFee(FeePreviewRequest request) Task~ActionResult~FeeBreakdownResponse~~
         +ListOrders(OrderListFilterRequest filter) Task~ActionResult~PagedOrderListResponse~~
-        +GetOrderSummary(DateTime? fromDate, DateTime? toDate) Task~ActionResult~OrderSummaryResponse~~
+        +GetOrderSummary(DateTime? fromDate, DateTime? toDate, ChannelType? channel) Task~ActionResult~OrderSummaryResponse~~
         +GetOrderById(Guid id) Task~ActionResult~OrderDetailResponse~~
-        +UpdateOrderStatus(Guid id, UpdateOrderStatusRequest request) Task~ActionResult~OrderDetailResponse~~
-        +CancelOrder(Guid id, CancelOrderRequest request) Task~ActionResult~OrderDetailResponse~~
+        +UpdateOrderStatus(Guid id, UpdateOrderStatusRequest request) Task~ActionResult~OrderResponse~~
+        +CancelOrder(Guid id, CancelOrderRequest request) Task~ActionResult~OrderResponse~~
     }
 
     class CreateOrderRequest {
@@ -81,6 +81,26 @@ classDiagram
         +string CancellationReason
     }
 
+    class OrderResponse {
+        <<Response DTO>>
+        +Guid Id
+        +string ExternalOrderId
+        +ChannelType Channel
+        +PaymentMethod PaymentMethod
+        +OrderStatus Status
+        +string? CustomerName
+        +string? CustomerPhone
+        +decimal Subtotal
+        +decimal ShopVoucher
+        +decimal GrossRevenue
+        +DateTime OrderDate
+        +DateTime? DeliveredAt
+        +DateTime? CancelledAt
+        +string? CancellationReason
+        +DateTime CreatedAt
+        +DateTime UpdatedAt
+    }
+
     class OrderDetailResponse {
         <<Response DTO>>
         +Guid Id
@@ -94,9 +114,49 @@ classDiagram
         +decimal ShopVoucher
         +decimal GrossRevenue
         +DateTime OrderDate
+        +DateTime? DeliveredAt
+        +DateTime? CancelledAt
+        +string? CancellationReason
+        +DateTime CreatedAt
+        +DateTime UpdatedAt
+        +decimal? Cogs
+        +decimal? ContributionProfit
         +List~OrderItemResponse~ Items
         +List~OrderStatusHistoryResponse~ StatusHistory
         +OrderFeeSnapshotResponse? FeeSnapshot
+    }
+
+    class OrderItemResponse {
+        <<Response DTO>>
+        +Guid Id
+        +Guid ProductVariantId
+        +string SkuCode
+        +string ProductName
+        +int Quantity
+        +decimal UnitPrice
+        +decimal LineTotal
+        +decimal? UnitCostSnapshot
+        +decimal? TotalCost
+    }
+
+    class OrderStatusHistoryResponse {
+        <<Response DTO>>
+        +Guid Id
+        +OrderStatus? FromStatus
+        +OrderStatus ToStatus
+        +string ChangedBy
+        +DateTime ChangedAt
+    }
+
+    class OrderFeeSnapshotResponse {
+        <<Response DTO>>
+        +decimal CommissionFee
+        +decimal PaymentFee
+        +decimal ServiceFee
+        +decimal FixedFee
+        +decimal TotalPlatformFees
+        +decimal ProjectedSettlement
+        +DateTime SnapshottedAt
     }
 
     class FeeBreakdownResponse {
@@ -158,7 +218,7 @@ classDiagram
         +CreateOrderAsync(CreateOrderCommand command) Task~Order~
         +GetOrderByIdAsync(Guid id) Task~Order?~
         +ListOrdersAsync(OrderQueryFilter filter) Task~PagedResult~Order~~
-        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate) Task~OrderSummaryResult~
+        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate, ChannelType? channel) Task~OrderSummaryResult~
         +UpdateOrderStatusAsync(UpdateOrderStatusCommand command) Task~Order~
         +CancelOrderAsync(CancelOrderCommand command) Task~Order~
     }
@@ -180,7 +240,7 @@ classDiagram
         +CreateOrderAsync(CreateOrderCommand command) Task~Order~
         +GetOrderByIdAsync(Guid id) Task~Order?~
         +ListOrdersAsync(OrderQueryFilter filter) Task~PagedResult~Order~~
-        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate) Task~OrderSummaryResult~
+        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate, ChannelType? channel) Task~OrderSummaryResult~
         +UpdateOrderStatusAsync(UpdateOrderStatusCommand command) Task~Order~
         +CancelOrderAsync(CancelOrderCommand command) Task~Order~
     }
@@ -191,7 +251,7 @@ classDiagram
         +GetByIdAsync(Guid id) Task~Order?~
         +GetByExternalIdAsync(ChannelType channel, string externalOrderId) Task~Order?~
         +ListAsync(OrderQueryFilter filter) Task~PagedResult~Order~~
-        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate) Task~OrderSummaryResult~
+        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate, ChannelType? channel) Task~OrderSummaryResult~
         +AddAsync(Order order) Task
         +UpdateAsync(Order order) Task
         +AddStatusHistoryAsync(OrderStatusHistory history) Task
@@ -233,11 +293,16 @@ classDiagram
     OrdersController ..> FeePreviewRequest : binds
     OrdersController ..> UpdateOrderStatusRequest : binds
     OrdersController ..> CancelOrderRequest : binds
+    OrdersController ..> OrderResponse : returns
     OrdersController ..> OrderDetailResponse : returns
     OrdersController ..> FeeBreakdownResponse : returns
     OrdersController ..> CreateOrderCommand : maps to
     OrdersController ..> UpdateOrderStatusCommand : maps to
     OrdersController ..> CancelOrderCommand : maps to
+
+    OrderDetailResponse "1" *-- "1..*" OrderItemResponse : contains
+    OrderDetailResponse "1" *-- "0..*" OrderStatusHistoryResponse : contains
+    OrderDetailResponse "1" o-- "0..1" OrderFeeSnapshotResponse : contains
 
     IOrderService <|.. OrderService : implements
     OrderService --> IOrderRepository : uses
@@ -520,6 +585,7 @@ classDiagram
 4. **Lifecycle Constraints:** All orders begin in status `PENDING`. Direct transition to `DELIVERED` on order creation is forbidden. Direct store POS orders must transition from `PENDING` $\rightarrow$ `DELIVERED`.
 5. **Fee Snapshot Immutability:** `OrderFeeSnapshot` does not carry a dedicated immutability column in the database; immutability is an architectural invariant enforced because `OrderService` only creates a snapshot once upon reaching `DELIVERED` status and never issues SQL updates against `order_fee_snapshots`.
 6. **Actor Tracking:** `changed_by` in `OrderStatusHistory` stores `string` (max 100 chars), matching the database column type.
+7. **Cost Privacy & RBAC Masking:** `UnitCostSnapshot`, `TotalCost` in `OrderItemResponse`, and `Cogs`, `ContributionProfit` in `OrderDetailResponse` are strictly exposed only to `Finance Manager` and `Shop Owner` roles. For `Sales & Ops Staff`, these fields are sanitized/null in API responses to prevent baseline profit leakage.
 
 ---
 
@@ -530,7 +596,7 @@ classDiagram
 | `/orders` | `POST` | `OrdersController.CreateOrder` | `CreateOrderCommand` | `IOrderService.CreateOrderAsync`<br/>`IProductRepository.GetVariantsByIdsAsync`<br/>`IUnitOfWork.ExecuteTransactionAsync` | Check unique `(channel, external_order_id)`<br/>Look up `product_variants`<br/>Atomic commit: Insert `orders`, `order_items`, `order_status_history` (`PENDING`) |
 | `/orders/preview-fee` | `POST` | `OrdersController.PreviewFee` | `FeePreviewRequest` | `IDynamicFeeEngine.CalculateFeePreviewAsync`<br/>`IFeeScheduleRepository.GetActiveScheduleAsync` | Read `fee_schedules`<br/>**Zero database writes** |
 | `/orders` | `GET` | `OrdersController.ListOrders` | `OrderQueryFilter` | `IOrderService.ListOrdersAsync`<br/>`IOrderRepository.ListAsync` | Read `orders`, `order_items`, `order_fee_snapshots` |
-| `/orders/summary` | `GET` | `OrdersController.GetOrderSummary` | `fromDate`, `toDate` | `IOrderService.GetSummaryAsync`<br/>`IOrderRepository.GetSummaryAsync` | Read aggregated count/status metrics on `orders` |
+| `/orders/summary` | `GET` | `OrdersController.GetOrderSummary` | `fromDate`, `toDate`, `channel` | `IOrderService.GetSummaryAsync`<br/>`IOrderRepository.GetSummaryAsync` | Read aggregated count/status metrics on `orders` |
 | `/orders/{id}` | `GET` | `OrdersController.GetOrderById` | `Guid id` | `IOrderService.GetOrderByIdAsync`<br/>`IOrderRepository.GetByIdAsync` | Read `orders` + joins on `order_items`, `order_status_history`, `order_fee_snapshots` |
 | `/orders/{id}/status` | `PATCH` | `OrdersController.UpdateOrderStatus` | `UpdateOrderStatusCommand` | `IOrderService.UpdateOrderStatusAsync`<br/>`IDynamicFeeEngine.CalculateAndFreezeFeeAsync`<br/>`IUnitOfWork.ExecuteTransactionAsync` | Update `orders.status`<br/>Insert `order_status_history`<br/>If `DELIVERED`: Insert `order_fee_snapshots` & Insert `reconciliation_records` (`PENDING_SETTLEMENT`) |
 | `/orders/{id}/cancel` | `POST` | `OrdersController.CancelOrder` | `CancelOrderCommand` | `IOrderService.CancelOrderAsync`<br/>`IUnitOfWork.ExecuteTransactionAsync` | Guard checks: If `DELIVERED` $\rightarrow$ 422.<br/>If `PENDING`/`SHIPPED` $\rightarrow$ Atomic commit: Update `orders.status = 'CANCELLED'`, Insert `order_status_history` |

@@ -605,10 +605,10 @@ Every business flow executes across a strictly defined traversal path connecting
        │
        ▼ (HTTPS REST / JSON)
 [DiscrepanciesController.cs] (`FashionWeb.Api/Controllers/`)
-       │ (maps ResolveDiscrepancyRequest -> ResolveDiscrepancyCommand)
+       │ (maps ResolveDiscrepancyRequest -> ResolveDiscrepancyCommand with authenticated ActorIdentity from JWT)
        ▼
 [DiscrepancyService.cs] (`FashionWeb.Business/Services/`)
-       │ (sets resolved_at = clock_timestamp(), resolved_by = CurrentUser; derives isResolved = true)
+       │ (sets resolvedAt = current UTC timestamp, resolvedBy = authenticated actor identity supplied by command; derives isResolved = true)
        ▼
 [DiscrepancyRepository.cs] (`FashionWeb.Data/Repositories/`)
        │

@@ -72,7 +72,8 @@ This document specifies the **C4 Level 3 Component Architecture** for the **Reac
    │       └── useFeePreview.ts
    ├── settlements/
    │   ├── api/
-   │   │   └── SettlementService.ts
+   │   │   ├── SettlementService.ts
+   │   │   └── FeeScheduleService.ts
    │   ├── components/
    │   │   ├── FeeScheduleModal.tsx
    │   │   ├── RecordSettlementModal.tsx
@@ -138,7 +139,7 @@ Page components reside in `src/pages/` and act strictly as high-level view orche
 - **Rule:** `Page = composition/orchestration`, `Feature = business capability UI`. A Page is never considered a Feature, and business capability components must never be placed in `src/pages/`.
 - **`OrdersPage` (`src/pages/orders/OrdersPage.tsx` / SCR-01):** Assembles order metrics, channel filters, master orders table, and modal dialogs (`CreateOrderModal`, `CancelOrderModal`).
 - **`SettlementPage` (`src/pages/settlement/SettlementPage.tsx` / SCR-02):** Assembles reconciliation summary cards, status filters, fee ledger table, period selector, fee schedule modal, and the embedded discrepancy review drawer (`DiscrepancyPanel`).
-- **`RevenueDashboardPage` (`src/pages/analytics/RevenueDashboardPage.tsx` / SCR-03):** Assembles executive KPI cards (Gross Revenue, Platform Fees, Net Realized Revenue, COGS, Contribution Profit, Contribution Margin %), financial trend chart, channel share donut, top SKU leaderboard, and source order drilldown modal (`SourceOrderDrilldown`).
+- **`RevenueDashboardPage` (`src/pages/analytics/RevenueDashboardPage.tsx` / SCR-03):** Assembles executive KPI cards (Gross Revenue, Total Platform Fees, Projected Settlement, COGS, Contribution Profit, Contribution Margin %), financial trend chart, channel share donut, top SKU leaderboard, and source order drilldown modal (`SourceOrderDrilldown`).
 - **`CatalogPage` (`src/pages/catalog/CatalogPage.tsx` / SCR-04):** Composes the catalog feature only: master product catalog table, product creation/edit modals, and baseline cost/price management dialogs.
 
 ### 2.3. Group 3: Features (Business Capability UI)
@@ -161,7 +162,7 @@ Features reside in `src/features/` and are organized strictly by **business doma
   - `DiscrepancyDetails` (internal subcomponent): Itemized comparison between projected settlement and marketplace adjustments.
   - `DiscrepancyReviewAction` (internal subcomponent): Resolution inputs for saving authorized explanation notes and recording `resolved_by`/`resolved_at` audit stamps.
 - **`analytics` (`src/features/analytics/`):**
-  - `KpiCards`: Executive metric cards presenting 5 core financial KPIs: **Gross Revenue**, **Platform Fees**, **Net Realized Revenue**, **Cost of Goods Sold (COGS)**, and **Contribution Profit** (`Projected Settlement - COGS`), alongside **Contribution Margin %** display.
+  - `KpiCards`: Executive metric cards presenting 5 core financial KPIs: **Gross Revenue**, **Total Platform Fees**, **Projected Settlement**, **Cost of Goods Sold (COGS)**, and **Contribution Profit** (`Projected Settlement - COGS`), alongside **Contribution Margin %** display.
   - `FinancialTrendChart` (formerly `RevenueTrendChart`): Multi-series bar/area visualization comparing Gross Revenue against Contribution Profit trends over time.
   - `ChannelShareChart`: Donut visualization detailing revenue contribution and profit share by sales channel.
   - `TopSkuTable`: Leaderboard table ranking Top 5 SKUs by Gross Revenue, COGS, Contribution Profit, and Contribution Margin %.
@@ -176,17 +177,18 @@ Features reside in `src/features/` and are organized strictly by **business doma
 Feature hooks reside in `src/features/*/hooks/` and serve as the explicit intermediate orchestration layer between React components and API services. They manage asynchronous server-state lifecycle (fetching, caching, mutation state, loading, error handling):
 - **`useOrders` (`src/features/orders/hooks/useOrders.ts`):** Manages order remote data queries, order creation mutations, status transitions, and cancellations (`useCancelOrder`) via `OrderService`.
 - **`useFeePreview` (`src/features/orders/hooks/useFeePreview.ts`):** Manages real-time backend fee calculation preview requests during order composition via `FeeService.previewFee()`.
-- **`useFeeSchedule` (`src/features/settlements/hooks/useFeeSchedule.ts`):** Manages fee schedule retrieval and configuration updates via `FeeService.getFeeSchedule()` and `FeeService.updateFeeSchedule()`.
+- **`useFeeSchedule` (`src/features/settlements/hooks/useFeeSchedule.ts`):** Manages fee schedule retrieval and configuration updates via `FeeScheduleService.getFeeSchedule()` and `FeeScheduleService.updateFeeSchedule()`.
 - **`useSettlement` (`src/features/settlements/hooks/useSettlement.ts`):** Manages settlement ledger queries, manual actual payout recording (`recordActualSettlement`), and payout reconciliation mutations (`reconcileSettlement`) via `SettlementService`. Wording of statement imports is completely removed from target MVP operations.
 - **`useDiscrepancies` (`src/features/discrepancies/hooks/useDiscrepancies.ts`):** Manages discrepancy audit queries, explanation note submission, and resolution audit records via `DiscrepancyService`.
-- **`useAnalytics` (`src/features/analytics/hooks/useAnalytics.ts`):** Manages queries for 5 executive KPIs (Gross Revenue, Platform Fees, Net Realized Revenue, COGS, Contribution Profit), Contribution Margin %, trend series, channel share distributions, and CSV export triggers via `AnalyticsService`.
+- **`useAnalytics` (`src/features/analytics/hooks/useAnalytics.ts`):** Manages queries for 5 executive KPIs (Gross Revenue, Total Platform Fees, Projected Settlement, COGS, Contribution Profit), Contribution Margin %, trend series, channel share distributions, and CSV export triggers via `AnalyticsService`.
 - **`useCatalog` (`src/features/catalog/hooks/useCatalog.ts`):** Manages product queries, variant queries, product/SKU creation mutations, and pricing/cost mutations via `CatalogService`.
 - *Server-State Policy:* The server-state library is an implementation decision, not yet fixed. Custom hooks provide a clean abstraction boundary, allowing future adoption of TanStack Query or SWR without altering presentation components.
 
 ### 2.5. Group 5: Feature API Services
 Feature services reside in `src/features/*/api/` and encapsulate domain-specific HTTP endpoints, request payloads, and response DTO mappings. They depend strictly on `ApiClient` and **never depend on React UI components, custom hooks, or shared UI primitives**:
 - **`OrderService` (`src/features/orders/api/OrderService.ts`):** Executes HTTP calls for order queries, summary metrics, creation, lifecycle status transitions, and cancellation (`GET /api/v1/orders`, `GET /api/v1/orders/summary`, `POST /api/v1/orders`, `PATCH /api/v1/orders/{id}/status`, `POST /api/v1/orders/{id}/cancel`).
-- **`FeeService` (`src/features/orders/api/FeeService.ts`):** Executes HTTP calls for real-time backend fee calculation previews and channel fee schedule configurations (`POST /api/v1/orders/preview-fee`, `GET /api/v1/fee-schedules`, `POST /api/v1/fee-schedules`).
+- **`FeeService` (`src/features/orders/api/FeeService.ts`):** Executes HTTP calls for real-time backend fee calculation previews (`POST /api/v1/orders/preview-fee`).
+- **`FeeScheduleService` (`src/features/settlements/api/FeeScheduleService.ts`):** Executes HTTP calls for channel fee schedule configurations (`GET /api/v1/fee-schedules`, `POST /api/v1/fee-schedules`).
 - **`SettlementService` (`src/features/settlements/api/SettlementService.ts`):** Executes HTTP calls for settlement ledger queries (`GET /api/v1/settlements`), settlement summary counters (`GET /api/v1/settlements/summary`), and reconciling projected vs. actual settlement (`POST /api/v1/settlements/{orderId}/reconcile`). Does not include statement import endpoints in target MVP scope.
 - **`DiscrepancyService` (`src/features/discrepancies/api/DiscrepancyService.ts`):** Executes HTTP calls for discrepancy audit records (`GET /api/v1/discrepancies`, `GET /api/v1/discrepancies/{id}`) and resolution notes (`PATCH /api/v1/discrepancies/{id}/resolve`).
 - **`AnalyticsService` (`src/features/analytics/api/AnalyticsService.ts`):** Executes HTTP calls for executive revenue and profit KPIs (`GET /api/v1/analytics/kpis`), financial trends (`GET /api/v1/analytics/trend`), channel breakdown (`GET /api/v1/analytics/channel-breakdown`), top SKU profit leaderboard (`GET /api/v1/analytics/top-skus`), source order drilldown (`GET /api/v1/analytics/drilldown`), and CSV data export (`GET /api/v1/analytics/export-csv`).
@@ -240,7 +242,7 @@ The React Web SPA is decomposed into logical frontend component groups. Only arc
 | **`DiscrepancyPanel`** | Slide-over drawer presenting audit discrepancies and resolution actions. | `src/features/discrepancies/components/DiscrepancyPanel.tsx` | `Modal`, `DiscrepancyDetails`, `DiscrepancyReviewAction`, `useDiscrepancies` | Implemented |
 | **`DiscrepancyDetails`** | Subcomponent rendering itemized comparison between projected and actual values. | `src/features/discrepancies/components/DiscrepancyDetails.tsx` | `Table`, `Badge`, `formatters`, `useDiscrepancies` | Implemented |
 | **`DiscrepancyReviewAction`** | Subcomponent capturing resolution explanation notes and save action. | `src/features/discrepancies/components/DiscrepancyReviewAction.tsx` | `Input`, `Button`, `useDiscrepancies` | Implemented |
-| **`KpiCards`** | Executive cards for 5 KPIs: Gross Revenue, Platform Fees, Net Realized Revenue, COGS, Contribution Profit + Margin %. | `src/features/analytics/components/KpiCards.tsx` | `Card`, `formatters`, `useAnalytics`, `SourceOrderDrilldown` | Implemented |
+| **`KpiCards`** | Executive cards for 5 KPIs: Gross Revenue, Total Platform Fees, Projected Settlement, COGS, Contribution Profit + Margin %. | `src/features/analytics/components/KpiCards.tsx` | `Card`, `formatters`, `useAnalytics`, `SourceOrderDrilldown` | Implemented |
 | **`FinancialTrendChart`** | Multi-series bar/area visualization comparing Gross Revenue vs. Contribution Profit trend. | `src/features/analytics/components/FinancialTrendChart.tsx` | Pure SVG primitives, `formatters`, `useAnalytics` | Implemented |
 | **`ChannelShareChart`** | Interactive donut chart detailing revenue contribution and profit share by channel. | `src/features/analytics/components/ChannelShareChart.tsx` | Pure SVG primitives, `formatters`, `useAnalytics` | Implemented |
 | **`TopSkuTable`** | Leaderboard table ranking Top 5 SKUs by Gross Revenue, COGS, Contribution Profit, Margin %. | `src/features/analytics/components/TopSkuTable.tsx` | `Table`, `formatters`, `useAnalytics` | Implemented |
@@ -251,13 +253,14 @@ The React Web SPA is decomposed into logical frontend component groups. Only arc
 | **`ProductSelector`** | Domain component consumed by `CreateOrderModal` to select SKUs/prices (cost hidden). | `src/features/catalog/components/ProductSelector.tsx` | `Select`, `Input`, `Badge`, `useCatalog` | Target Only |
 | **`useOrders`** | Feature hook managing order queries, mutations, and status transitions. | `src/features/orders/hooks/useOrders.ts` | `OrderService` | Target Only |
 | **`useFeePreview`** | Feature hook managing real-time fee calculation preview for order creation. | `src/features/orders/hooks/useFeePreview.ts` | `FeeService` | Target Only |
-| **`useFeeSchedule`** | Feature hook managing retrieval and updates of fee schedules. | `src/features/settlements/hooks/useFeeSchedule.ts` | `FeeService` | Target Only |
+| **`useFeeSchedule`** | Feature hook managing retrieval and updates of fee schedules. | `src/features/settlements/hooks/useFeeSchedule.ts` | `FeeScheduleService` | Target Only |
 | **`useSettlement`** | Feature hook managing settlement queries, actual payout recording, and reconciliation. | `src/features/settlements/hooks/useSettlement.ts` | `SettlementService` | Target Only |
 | **`useDiscrepancies`** | Feature hook managing discrepancy audit queue and resolution note submission. | `src/features/discrepancies/hooks/useDiscrepancies.ts` | `DiscrepancyService` | Target Only |
 | **`useAnalytics`** | Feature hook managing 5 executive KPIs, profit trend charts, and CSV download. | `src/features/analytics/hooks/useAnalytics.ts` | `AnalyticsService` | Target Only |
 | **`useCatalog`** | Feature hook managing product/variant queries, creation mutations, and pricing/cost edits. | `src/features/catalog/hooks/useCatalog.ts` | `CatalogService` | Target Only |
 | **`OrderService`** | Feature service executing order queries, creation, and status transitions. | `src/features/orders/api/OrderService.ts` | `ApiClient`, `OrderDto` contracts | Target Only |
-| **`FeeService`** | Feature service requesting real-time fee preview calculations and fee schedules. | `src/features/orders/api/FeeService.ts` | `ApiClient`, `FeeBreakdownDto` contracts | Target Only |
+| **`FeeService`** | Feature service requesting real-time fee preview calculations. | `src/features/orders/api/FeeService.ts` | `ApiClient`, `FeeBreakdownDto` contracts | Target Only |
+| **`FeeScheduleService`** | Feature service requesting fee schedule retrieval and updates. | `src/features/settlements/api/FeeScheduleService.ts` | `ApiClient`, `FeeScheduleDto` contracts | Target Only |
 | **`SettlementService`** | Feature service executing ledger queries, manual payout recording, and reconciliation. | `src/features/settlements/api/SettlementService.ts` | `ApiClient`, `SettlementDto` contracts | Target Only |
 | **`DiscrepancyService`** | Feature service querying discrepancy audits and persisting review notes. | `src/features/discrepancies/api/DiscrepancyService.ts` | `ApiClient`, `DiscrepancyDto` contracts | Target Only |
 | **`AnalyticsService`** | Feature service retrieving executive KPIs, trends, channel share, and CSV exports. | `src/features/analytics/api/AnalyticsService.ts` | `ApiClient`, `AnalyticsDto` contracts | Target Only |
@@ -343,7 +346,7 @@ flowchart TB
         subgraph ServicesLayer [" 🌐 5. Feature API Services Layer "]
             direction LR
             ordersServices["<b>Orders Services</b><br/><i>(OrderService, FeeService)</i><br/>Order lifecycle & backend fee preview"]
-            settleServices["<b>Settlement & Discrepancy Services</b><br/><i>(SettlementService, DiscrepancyService)</i><br/>Ledger records, actual payout & audit logs"]
+            settleServices["<b>Settlement & Discrepancy Services</b><br/><i>(SettlementService, FeeScheduleService, DiscrepancyService)</i><br/>Ledger records, fee schedules, actual payout & audit logs"]
             analyticsServices["<b>Analytics Service</b><br/><i>(AnalyticsService)</i><br/>KPIs, COGS, contribution profit & CSV download"]
             catalogServices["<b>Catalog Service</b><br/><i>(CatalogService)</i><br/>Products, SKU variants, retail prices & baseline cost"]
         end
@@ -522,7 +525,7 @@ ApplicationShell
 | **Catalog & Cost Subsystem** | Entirely missing from prototype UI; no product or baseline cost management. | Dedicated feature in `src/features/catalog/` (`ProductTable`, `PricingCostEditor`, `ProductSelector`) and `CatalogPage`. | Implement `CatalogPage` (SCR-04) and `features/catalog/` components. |
 | **Settlement Reconciliation** | Prototype references mock statement import CSV flow. | Manual wallet payout entry (`RecordSettlementModal` / MOD-03: Wallet Settlement Drawer); auto variance calculation against projected payout. | Replace statement file import UI with manual wallet settlement drawer; defer batch CSV/XLSX import to Future Scope. |
 | **Discrepancy View Location** | Standalone top-level tab (`currentTab === 'discrepancies'`). | Embedded audit drawer (`DiscrepancyPanel`) inside `SettlementPage` (SCR-02). | Remove top-level `/discrepancies` tab; mount `DiscrepancyPanel` inside `SettlementPage`. |
-| **Profit & Analytics Metrics** | Limited to Gross Revenue and Delivered counts. | 5 core financial KPIs: Gross Revenue, Platform Fees, Net Realized Revenue, COGS, Contribution Profit + Margin %. | Expand `KpiCards`, `FinancialTrendChart`, and `TopSkuTable` with COGS and Contribution Profit metrics. |
+| **Profit & Analytics Metrics** | Limited to Gross Revenue and Delivered counts. | 5 core financial KPIs: Gross Revenue, Total Platform Fees, Projected Settlement, COGS, Contribution Profit + Margin %. | Expand `KpiCards`, `FinancialTrendChart`, and `TopSkuTable` with COGS and Contribution Profit metrics. |
 | **Data Access & Services** | Hardcoded in-memory arrays (`sampleOrders`) inline in components. | Co-located feature services (`features/*/api/`) backed by shared `ApiClient`. | Create `src/shared/api/ApiClient.ts` and domain services; eliminate inline sample data arrays. |
 | **Feature Hooks** | State logic mixed directly inside JSX presentation components. | Dedicated hooks (`useOrders`, `useFeePreview`, `useSettlement`, `useDiscrepancies`, `useAnalytics`, `useCatalog`). | Extract asynchronous operations and state management into co-located `hooks/`. |
 | **Fee Calculation** | Inline JavaScript formulas inside modal component inputs. | Canonical backend fee preview via Backend Fee Preview API. | Connect `CreateOrderModal` $\rightarrow$ `useFeePreview` $\rightarrow$ `FeeService` $\rightarrow$ `ApiClient`. |
@@ -558,11 +561,11 @@ ApplicationShell
 | **SCR-04: Product Catalog & Cost** | `CatalogPage` (`src/pages/catalog/`) | `ProductTable`, `ProductEditor`, `PricingCostEditor` | `useCatalog` | `CatalogService` | `Table`, `Modal`, `Input`, `Badge`, `formatters.ts`, `tokens.css` |
 | **US-CAT-01: Product & Cost Management** | `CatalogPage` | `ProductTable`, `PricingCostEditor`, `ProductSelector` | `useCatalog` | `CatalogService` | Validates `cost_price >= 0`, restricts baseline cost visibility to Finance/Owner |
 | **US-ORD-01: Order Creation & Cost Freeze** | `OrdersPage` | `CreateOrderModal` | `useFeePreview` | `FeeService` | Consumes `ProductSelector` (SKU/price visible, unit cost hidden); Backend freezes `unit_cost_snapshot` |
-| **US-PROFIT-01: Contribution Profit Analysis**| `RevenueDashboardPage` | `KpiCards`, `FinancialTrendChart`, `TopSkuTable` | `useAnalytics` | `AnalyticsService` | Displays 5 KPIs (Gross Revenue, Platform Fees, Net Realized Revenue, COGS, Contribution Profit) |
+| **US-PROFIT-01: Contribution Profit Analysis**| `RevenueDashboardPage` | `KpiCards`, `FinancialTrendChart`, `TopSkuTable` | `useAnalytics` | `AnalyticsService` | Displays 5 KPIs (Gross Revenue, Total Platform Fees, Projected Settlement, COGS, Contribution Profit) |
 | **MOD-01: Create Order Modal** | `OrdersPage` | `CreateOrderModal` (consumes `ProductSelector`) | `useFeePreview` | `FeeService` | `Modal`, `Input`, `Select`, `Button`, `formatters.ts` |
 | **MOD-02: Cancel Order Modal** | `OrdersPage` | `CancelOrderModal` | `useOrders` (`useCancelOrder`) | `OrderService` | `Modal`, `Select`, `Input`, `Button`, `uiCopy.ts` |
 | **MOD-03: Wallet Settlement Drawer** | `SettlementPage` | `RecordSettlementModal` | `useSettlement` | `SettlementService` | `Modal`, `Input`, `Button`, `formatters.ts` (Manual wallet payout entry & variance auto-calc) |
-| **MOD-04: Fee Schedule Modal** | `SettlementPage` | `FeeScheduleModal` | `useFeeSchedule` | `FeeService` | `Modal`, `Table`, `Input`, `Button`, `formatters.ts` |
+| **MOD-04: Fee Schedule Modal** | `SettlementPage` | `FeeScheduleModal` | `useFeeSchedule` | `FeeScheduleService` | `Modal`, `Table`, `Input`, `Button`, `formatters.ts` |
 | **MOD-05: Source Order Drilldown** | `RevenueDashboardPage` | `SourceOrderDrilldown` | `useAnalytics` | `AnalyticsService` | `Modal`, `Table`, `Button`, `formatters.ts` |
 | **Persona Role Simulation** | `ApplicationShell` | `Topbar` (Persona Switcher) | Demo Persona Context | — | `uiCopy.ts` (Visibility simulation only; target production: Authenticated User Session) |
 | **P03.5 English-Only Copy** | All Pages | All Features | — | — | `uiCopy.ts` (Centralized English terminology, ADR-FE-06) |
