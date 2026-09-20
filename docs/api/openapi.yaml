@@ -2038,11 +2038,13 @@ components:
           example: 3000.00
         effectiveFrom:
           type: string
-          format: date-time
+          format: date
+          example: "2026-09-01"
         effectiveTo:
           type: string
-          format: date-time
+          format: date
           nullable: true
+          example: null
         isActive:
           type: boolean
           example: true
@@ -2102,16 +2104,8 @@ components:
           example: 3000.00
         effectiveFrom:
           type: string
-          format: date-time
-        effectiveTo:
-          type: string
-          format: date-time
-          nullable: true
-          example: null
-        isActive:
-          type: boolean
-          default: true
-          example: true
+          format: date
+          example: "2026-09-01"
 
     # --------------------------------------------------------------------------
     # Settlement Schemas (UC05, UC06)
@@ -2243,8 +2237,13 @@ components:
         notes:
           type: string
           nullable: true
-          description: Mandatory justification notes when variance != 0.
+          description: Mandatory justification notes when variance != 0 (used as discrepancy explanation).
           example: Payout matches platform statement settlement report.
+        discrepancyType:
+          $ref: '#/components/schemas/DiscrepancyType'
+          nullable: true
+          description: Mandatory discrepancy category when variance != 0.
+          example: COMMISSION_RATE_MISMATCH
 
     ReconciliationResponse:
       type: object

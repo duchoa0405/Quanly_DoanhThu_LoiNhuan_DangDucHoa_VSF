@@ -10,8 +10,8 @@
 | Metadata Attribute | Authoritative Value |
 |---|---|
 | **Use Cases** | `UC05` (Settlement Ledger & Reconciliation Status Ingestion)<br/>`UC06` (Manual Settlement Reconciliation & Variance Computation)<br/>`UC07` (Discrepancy Audit Investigation & Resolution) |
-| **OpenAPI Operations** | `GET /settlements` (`listSettlementLedger`)<br/>`GET /settlements/summary` (`getSettlementSummary`)<br/>`POST /settlements/{orderId}/reconcile` (`reconcileSettlement`)<br/>`GET /discrepancies` (`listDiscrepancies`)<br/>`GET /discrepancies/{id}` (`getDiscrepancyById`)<br/>`PATCH /discrepancies/{id}/resolve` (`resolveDiscrepancy`) |
-| **Source Files** | `FashionWeb.Api/Controllers/SettlementController.cs`, `DiscrepanciesController.cs`<br/>`FashionWeb.Api/Contracts/Settlement/*`, `Discrepancies/*`<br/>`FashionWeb.Business/Commands/ReconcileSettlementCommand.cs`, `ResolveDiscrepancyCommand.cs`<br/>`FashionWeb.Business/Results/SettlementLedgerResult.cs`, `SettlementSummaryResult.cs`, `DiscrepancyDetailResult.cs`<br/>`FashionWeb.Business/Interfaces/Services/ISettlementService.cs`, `IDiscrepancyService.cs`<br/>`FashionWeb.Business/Services/SettlementService.cs`, `DiscrepancyService.cs`<br/>`FashionWeb.Business/Interfaces/Repositories/IReconciliationRepository.cs`, `IDiscrepancyRepository.cs`, `IOrderRepository.cs`<br/>`FashionWeb.Business/Domain/Entities/ReconciliationRecord.cs`, `DiscrepancyAudit.cs`<br/>`FashionWeb.Business/Domain/Enums/ReconciliationStatus.cs`, `DiscrepancyType.cs`<br/>`FashionWeb.Data/Repositories/ReconciliationRepository.cs`, `DiscrepancyRepository.cs` |
+| **OpenAPI Operations** | `GET /settlements` (`getSettlementLedger`)<br/>`GET /settlements/summary` (`getSettlementSummary`)<br/>`POST /settlements/{orderId}/reconcile` (`reconcileSettlement`)<br/>`GET /discrepancies` (`listDiscrepancies`)<br/>`GET /discrepancies/{id}` (`getDiscrepancyById`)<br/>`PATCH /discrepancies/{id}/resolve` (`resolveDiscrepancy`) |
+| **Source Files** | `FashionWeb.Api/Controllers/SettlementController.cs`, `DiscrepanciesController.cs`<br/>`FashionWeb.Api/Contracts/Settlement/*`, `Discrepancies/*`<br/>`FashionWeb.Business/Commands/ReconcileSettlementCommand.cs`, `ResolveDiscrepancyCommand.cs`<br/>`FashionWeb.Business/Results/SettlementLedgerResult.cs`, `SettlementSummaryResult.cs`, `DiscrepancyDetailResult.cs`<br/>`FashionWeb.Business/Interfaces/Services/ISettlementService.cs`, `IDiscrepancyService.cs`<br/>`FashionWeb.Business/Services/SettlementService.cs`, `DiscrepancyService.cs`<br/>`FashionWeb.Business/Interfaces/Repositories/IReconciliationRepository.cs`, `IDiscrepancyRepository.cs`, `IOrderRepository.cs`, `IUnitOfWork.cs`<br/>`FashionWeb.Business/Domain/Entities/ReconciliationRecord.cs`, `DiscrepancyAudit.cs`<br/>`FashionWeb.Business/Domain/Enums/ChannelType.cs`, `ReconciliationStatus.cs`, `DiscrepancyType.cs`<br/>`FashionWeb.Data/Repositories/ReconciliationRepository.cs`, `DiscrepancyRepository.cs`, `UnitOfWork.cs` |
 | **Target Database Tables** | `reconciliation_records`, `discrepancy_audits`, `orders`, `order_fee_snapshots` |
 | **Actors & RBAC Permissions** | `Sales & Ops Staff` (No Access)<br/>`Finance Manager` (Read ledger/summary, reconcile settlements, view discrepancies, resolve discrepancies)<br/>`Shop Owner` (Full access across settlements and discrepancies) |
 
@@ -27,9 +27,10 @@ Settlement management provides visibility into platform fees and handles manual 
    $$\text{VarianceAmount} = \text{ProjectedSettlement} - \text{ActualSettlement}$$
    *(A positive variance denotes an underpayment/unexpected deduction by the platform; a negative variance indicates an overpayment).*
 3. **Reconciliation Outcomes:**
-   - When $\text{VarianceAmount} == 0 \implies \text{Status} = \text{RECONCILED}$
-   - When $\text{VarianceAmount} \ne 0 \implies \text{Status} = \text{DISCREPANCY}$ (requires explanation notes; automatically spawns a `DiscrepancyAudit` record).
+   - When $\text{VarianceAmount} == 0 \implies \text{Status} = \text{RECONCILED}$ (notes & discrepancyType optional)
+   - When $\text{VarianceAmount} \ne 0 \implies \text{Status} = \text{DISCREPANCY}$ (`notes` and `discrepancyType` mandatory; automatically spawns a `DiscrepancyAudit` record using `notes` as `explanation_note`).
 4. **Order State Invariance:** After reconciliation, the corresponding `Order` status remains `DELIVERED`. Reconciliation updates the settlement ledger and financial state, not the logistical order status.
+5. **Transaction Boundary (`IUnitOfWork`):** Reconciling an order with a variance atomically updates `reconciliation_records` and inserts `discrepancy_audits`.
 
 ```mermaid
 classDiagram
@@ -39,7 +40,7 @@ classDiagram
     class SettlementController {
         <<Controller>>
         -ISettlementService _settlementService
-        +ListSettlementLedger(SettlementLedgerFilterRequest filter) Task~ActionResult~PagedSettlementLedgerResponse~~
+        +GetSettlementLedger(SettlementLedgerFilterRequest filter) Task~ActionResult~PagedSettlementLedgerResponse~~
         +GetSettlementSummary(DateTime? fromDate, DateTime? toDate) Task~ActionResult~SettlementSummaryResponse~~
         +ReconcileSettlement(Guid orderId, ReconcileSettlementRequest request) Task~ActionResult~ReconciliationResponse~~
     }
@@ -47,17 +48,15 @@ classDiagram
     class ReconcileSettlementRequest {
         <<Request DTO>>
         +decimal ActualSettlement
-        +string? ReconciliationNotes
+        +string? Notes
         +DiscrepancyType? DiscrepancyType
-        +string? ExplanationNote
     }
 
     class SettlementLedgerItemResponse {
         <<Response DTO>>
         +Guid OrderId
-        +string OrderCode
-        +string? ExternalOrderCode
-        +SalesChannel Channel
+        +string ExternalOrderId
+        +ChannelType Channel
         +decimal GrossRevenue
         +decimal CommissionFee
         +decimal PaymentFee
@@ -73,9 +72,6 @@ classDiagram
 
     class SettlementSummaryResponse {
         <<Response DTO>>
-        +decimal TotalProjectedSettlement
-        +decimal TotalActualSettlement
-        +decimal TotalVarianceAmount
         +int PendingSettlementCount
         +int ReconciledCount
         +int DiscrepancyCount
@@ -83,14 +79,14 @@ classDiagram
 
     class ReconciliationResponse {
         <<Response DTO>>
-        +Guid ReconciliationId
+        +Guid Id
         +Guid OrderId
         +decimal ProjectedSettlement
         +decimal ActualSettlement
         +decimal VarianceAmount
-        +ReconciliationStatus Status
+        +ReconciliationStatus ReconciliationStatus
         +DateTime ReconciledAt
-        +string? ReconciliationNotes
+        +string? ReconciledBy
     }
 
     %% Application / Business Commands & Results
@@ -98,18 +94,16 @@ classDiagram
         <<Command>>
         +Guid OrderId
         +decimal ActualSettlement
-        +string? ReconciliationNotes
+        +string? Notes
         +DiscrepancyType? DiscrepancyType
-        +string? ExplanationNote
-        +Guid ActorId
+        +string ActorIdentity
     }
 
     class SettlementLedgerResult {
         <<Result>>
         +Guid OrderId
-        +string OrderCode
-        +string? ExternalOrderCode
-        +SalesChannel Channel
+        +string ExternalOrderId
+        +ChannelType Channel
         +decimal GrossRevenue
         +decimal CommissionFee
         +decimal PaymentFee
@@ -125,10 +119,7 @@ classDiagram
 
     class SettlementSummaryResult {
         <<Result>>
-        +decimal TotalProjectedSettlement
-        +decimal TotalActualSettlement
-        +decimal TotalVarianceAmount
-        +int PendingCount
+        +int PendingSettlementCount
         +int ReconciledCount
         +int DiscrepancyCount
     }
@@ -164,9 +155,22 @@ classDiagram
         +UpdateAsync(ReconciliationRecord record) Task
     }
 
+    class IUnitOfWork {
+        <<Repository Port>>
+        +ExecuteTransactionAsync(Func~Task~ action) Task
+        +SaveChangesAsync() Task~int~
+    }
+
     class ReconciliationRepository {
         <<Repository Adapter>>
         -AppDbContext _context
+    }
+
+    class UnitOfWork {
+        <<Repository Adapter>>
+        -AppDbContext _context
+        +ExecuteTransactionAsync(Func~Task~ action) Task
+        +SaveChangesAsync() Task~int~
     }
 
     class AppDbContext {
@@ -185,9 +189,12 @@ classDiagram
     SettlementService --> IReconciliationRepository : persists/reads records
     SettlementService --> IDiscrepancyRepository : spawns audit if variance != 0
     SettlementService --> IOrderRepository : verifies DELIVERED status
+    SettlementService --> IUnitOfWork : atomic reconciliation transaction
 
     IReconciliationRepository <|.. ReconciliationRepository : implements
+    IUnitOfWork <|.. UnitOfWork : implements
     ReconciliationRepository --> AppDbContext : executes SQL
+    UnitOfWork --> AppDbContext : manages transaction
 ```
 
 ---
@@ -226,8 +233,8 @@ classDiagram
         +Guid Id
         +Guid ReconciliationRecordId
         +Guid OrderId
-        +string OrderCode
-        +SalesChannel Channel
+        +string ExternalOrderId
+        +ChannelType Channel
         +decimal ProjectedSettlement
         +decimal ActualSettlement
         +decimal VarianceAmount
@@ -241,15 +248,15 @@ classDiagram
         +Guid Id
         +Guid ReconciliationRecordId
         +Guid OrderId
-        +string OrderCode
-        +SalesChannel Channel
+        +string ExternalOrderId
+        +ChannelType Channel
         +decimal ProjectedSettlement
         +decimal ActualSettlement
         +decimal VarianceAmount
         +DiscrepancyType DiscrepancyType
         +string ExplanationNote
         +string? ResolutionNotes
-        +Guid? ResolvedBy
+        +string? ResolvedBy
         +DateTime? ResolvedAt
         +bool IsResolved
         +DateTime CreatedAt
@@ -260,7 +267,7 @@ classDiagram
         <<Command>>
         +Guid DiscrepancyId
         +string ResolutionNotes
-        +Guid ActorId
+        +string ActorIdentity
     }
 
     class DiscrepancyDetailResult {
@@ -268,15 +275,15 @@ classDiagram
         +Guid Id
         +Guid ReconciliationRecordId
         +Guid OrderId
-        +string OrderCode
-        +SalesChannel Channel
+        +string ExternalOrderId
+        +ChannelType Channel
         +decimal ProjectedSettlement
         +decimal ActualSettlement
         +decimal VarianceAmount
         +DiscrepancyType DiscrepancyType
         +string ExplanationNote
         +string? ResolutionNotes
-        +Guid? ResolvedBy
+        +string? ResolvedBy
         +DateTime? ResolvedAt
         +DateTime CreatedAt
         +bool IsResolved
@@ -346,11 +353,11 @@ classDiagram
         +ReconciliationStatus Status
         +string? ReconciliationNotes
         +DateTime? ReconciledAt
-        +Guid? ReconciledBy
+        +string? ReconciledBy
         +DateTime CreatedAt
         +DateTime? UpdatedAt
         +List~DiscrepancyAudit~ Audits
-        +Reconcile(decimal actual, Guid actorId, string? notes)
+        +Reconcile(decimal actual, string actorIdentity, string? notes, DiscrepancyType? type)
     }
 
     class DiscrepancyAudit {
@@ -360,17 +367,18 @@ classDiagram
         +DiscrepancyType DiscrepancyType
         +string ExplanationNote
         +string? ResolutionNotes
-        +Guid? ResolvedBy
+        +string? ResolvedBy
         +DateTime? ResolvedAt
         +DateTime CreatedAt
-        +Resolve(string notes, Guid actorId)
+        +Resolve(string notes, string actorIdentity)
         +bool IsResolved()
     }
 
     class Order {
         <<Entity>>
         +Guid Id
-        +string OrderCode
+        +string ExternalOrderId
+        +ChannelType Channel
         +OrderStatus Status
         +decimal Subtotal
         +decimal GrossRevenue
@@ -402,12 +410,20 @@ classDiagram
         OTHER
     }
 
+    class ChannelType {
+        <<Enumeration>>
+        TIKTOK
+        SHOPEE
+        POS
+    }
+
     %% Cardinality & Relationships
     Order "1" -- "0..1" ReconciliationRecord : linked when DELIVERED
     Order "1" -- "0..1" OrderFeeSnapshot : provides ProjectedSettlement
     ReconciliationRecord "1" *-- "0..*" DiscrepancyAudit : tracks investigations
     ReconciliationRecord --> ReconciliationStatus : current state
     DiscrepancyAudit --> DiscrepancyType : classification
+    Order --> ChannelType : originating channel
 ```
 
 ---
@@ -416,9 +432,9 @@ classDiagram
 
 | Endpoint | Method | Controller Action | Command / Parameter | Service Invocations | Database Operations |
 |---|---|---|---|---|---|
-| `/settlements` | `GET` | `SettlementController.ListSettlementLedger` | `SettlementLedgerFilterRequest` | `ISettlementService.GetLedgerAsync` | Joined read: `reconciliation_records`, `orders`, `order_fee_snapshots` |
-| `/settlements/summary` | `GET` | `SettlementController.GetSettlementSummary` | `fromDate`, `toDate` | `ISettlementService.GetSummaryAsync` | Aggregated query over `reconciliation_records` |
-| `/settlements/{orderId}/reconcile` | `POST` | `SettlementController.ReconcileSettlement` | `ReconcileSettlementCommand` | `ISettlementService.ReconcileAsync`<br/>`IReconciliationRepository.UpdateAsync`<br/>`IDiscrepancyRepository.AddAsync` (if discrepancy) | Update `reconciliation_records` (`ActualSettlement`, `VarianceAmount`, `Status`, `ReconciledAt`, `ReconciledBy`)<br/>If variance != 0: Insert `discrepancy_audits` |
+| `/settlements` | `GET` | `SettlementController.GetSettlementLedger` | `SettlementLedgerFilterRequest` | `ISettlementService.GetLedgerAsync` | Joined read: `reconciliation_records`, `orders`, `order_fee_snapshots` |
+| `/settlements/summary` | `GET` | `SettlementController.GetSettlementSummary` | `fromDate`, `toDate` | `ISettlementService.GetSummaryAsync` | Aggregated status count query over `reconciliation_records` |
+| `/settlements/{orderId}/reconcile` | `POST` | `SettlementController.ReconcileSettlement` | `ReconcileSettlementCommand` | `ISettlementService.ReconcileAsync`<br/>`IUnitOfWork.ExecuteTransactionAsync` | Atomic transaction: Update `reconciliation_records` (`ActualSettlement`, `VarianceAmount`, `Status`, `ReconciledAt`, `ReconciledBy`).<br/>If variance != 0: Insert `discrepancy_audits` |
 | `/discrepancies` | `GET` | `DiscrepanciesController.ListDiscrepancies` | `DiscrepancyFilterRequest` | `IDiscrepancyService.ListDiscrepanciesAsync` | Joined read: `discrepancy_audits`, `reconciliation_records`, `orders` |
 | `/discrepancies/{id}` | `GET` | `DiscrepanciesController.GetDiscrepancyById` | `Guid id` | `IDiscrepancyService.GetByIdAsync` | Read `discrepancy_audits` with parent `reconciliation_records` & `orders` |
 | `/discrepancies/{id}/resolve` | `PATCH` | `DiscrepanciesController.ResolveDiscrepancy` | `ResolveDiscrepancyCommand` | `IDiscrepancyService.ResolveDiscrepancyAsync` | Update `discrepancy_audits` (`ResolutionNotes`, `ResolvedBy`, `ResolvedAt`) |

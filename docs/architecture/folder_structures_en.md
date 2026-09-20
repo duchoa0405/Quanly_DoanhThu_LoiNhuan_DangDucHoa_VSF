@@ -178,13 +178,18 @@ backend/
 │   │   │   └── ResolveDiscrepancyCommand.cs     # Command to resolve discrepancy audit
 │   │   │
 │   │   ├── Results/                             # Typed Application Query & Computation Results (decoupled from API DTOs)
+│   │   │   ├── OrderListResult.cs               # Paged order list representation
+│   │   │   ├── OrderDetailResult.cs             # Complete order view with items, history, snapshot
+│   │   │   ├── OrderSummaryResult.cs            # Operational order counters & recognized gross revenue
+│   │   │   ├── FeeBreakdownResult.cs            # Calculated platform fee breakdown values
+│   │   │   ├── SettlementLedgerResult.cs        # Ledger records with frozen fee breakdowns
+│   │   │   ├── SettlementSummaryResult.cs       # Reconciliation status counters (pending, reconciled, discrepancy)
+│   │   │   ├── DiscrepancyDetailResult.cs       # Audit record with joined order details
 │   │   │   ├── FinancialKpiResult.cs            # 5 Core Financial KPIs & margin %
 │   │   │   ├── FinancialTrendPointResult.cs     # Daily time-series metrics point
 │   │   │   ├── ChannelBreakdownResult.cs        # Multi-channel revenue/profit distribution
 │   │   │   ├── TopSkuResult.cs                  # Top SKU contribution profit derivation result
-│   │   │   ├── DrilldownOrderResult.cs          # Itemized delivered order backing KPIs
-│   │   │   ├── SettlementLedgerResult.cs        # Ledger records with frozen fee breakdowns
-│   │   │   └── OrderSummaryResult.cs            # Operational order counters & recognized gross revenue
+│   │   │   └── DrilldownOrderResult.cs          # Itemized delivered order backing KPIs
 │   │   │
 │   │   ├── Interfaces/                          # Ports & Contracts for Inversion of Control
 │   │   │   ├── Services/                        # Application Service contracts

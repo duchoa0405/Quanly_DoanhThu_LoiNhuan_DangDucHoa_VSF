@@ -255,9 +255,7 @@ classDiagram
         +decimal ServiceFeeRate
         +decimal? ServiceFeeCap
         +decimal FixedFeePerOrder
-        +DateTime EffectiveFrom
-        +DateTime? EffectiveTo
-        +bool IsActive
+        +DateOnly EffectiveFrom
     }
 
     class FeeScheduleResponse {
@@ -270,8 +268,8 @@ classDiagram
         +decimal ServiceFeeRate
         +decimal? ServiceFeeCap
         +decimal FixedFeePerOrder
-        +DateTime EffectiveFrom
-        +DateTime? EffectiveTo
+        +DateOnly EffectiveFrom
+        +DateOnly? EffectiveTo
         +bool IsActive
         +DateTime CreatedAt
         +DateTime UpdatedAt
@@ -287,6 +285,7 @@ classDiagram
     class FeeScheduleService {
         <<Business Service>>
         -IFeeScheduleRepository _feeScheduleRepository
+        -IUnitOfWork _unitOfWork
         +GetActiveSchedulesAsync(ChannelType? channel, PaymentMethod? paymentMethod, CancellationToken ct) Task~IEnumerable~FeeSchedule~~
         +CreateScheduleVersionAsync(CreateFeeScheduleCommand cmd, CancellationToken ct) Task~FeeSchedule~
     }
@@ -300,10 +299,8 @@ classDiagram
         +decimal ServiceFeeRate
         +decimal? ServiceFeeCap
         +decimal FixedFeePerOrder
-        +DateTime EffectiveFrom
-        +DateTime? EffectiveTo
-        +bool IsActive
-        +string ActorId
+        +DateOnly EffectiveFrom
+        +string ActorIdentity
     }
 
     class FeeSchedule {
@@ -316,12 +313,12 @@ classDiagram
         +decimal ServiceFeeRate
         +decimal? ServiceFeeCap
         +decimal FixedFeePerOrder
-        +DateTime EffectiveFrom
-        +DateTime? EffectiveTo
+        +DateOnly EffectiveFrom
+        +DateOnly? EffectiveTo
         +bool IsActive
         +DateTime CreatedAt
         +DateTime UpdatedAt
-        +Deactivate(DateTime effectiveTo) void
+        +Deactivate(DateOnly effectiveTo) void
     }
 
     class ChannelType {
@@ -343,6 +340,12 @@ classDiagram
         +GetActiveScheduleAsync(ChannelType channel, PaymentMethod paymentMethod, CancellationToken ct) Task~FeeSchedule?~
         +GetAllActiveSchedulesAsync(ChannelType? channel, PaymentMethod? paymentMethod, CancellationToken ct) Task~IEnumerable~FeeSchedule~~
         +InsertScheduleVersionAsync(FeeSchedule newSchedule, FeeSchedule? priorSchedule, CancellationToken ct) Task
+    }
+
+    class IUnitOfWork {
+        <<Repository Port>>
+        +ExecuteTransactionAsync(Func~Task~ action) Task
+        +SaveChangesAsync() Task~int~
     }
 
     %% Data Tier
@@ -368,6 +371,7 @@ classDiagram
 
     IFeeScheduleService <|.. FeeScheduleService : implements
     FeeScheduleService --> IFeeScheduleRepository : persists / queries
+    FeeScheduleService --> IUnitOfWork : atomic versioning transaction
     IFeeScheduleRepository <|.. FeeScheduleRepository : implements
     FeeScheduleRepository --> AppDbContext : executes EF Core
 

@@ -1,7 +1,7 @@
 # Class Diagram: Orders Lifecycle & Dynamic Fee Engine
 
 > **Target Stack:** ASP.NET Core 8 (.NET 8 3-Tier Architecture) + PostgreSQL 16  
-> **Source of Truth Hierarchy:** Requirements $\rightarrow$ Component Backend $\rightarrow$ Database $\rightarrow$ OpenAPI (5 Orders Operations) $\rightarrow$ Folder Structure $\rightarrow$ Class Diagram  
+> **Source of Truth Hierarchy:** Requirements $\rightarrow$ Component Backend $\rightarrow$ Database $\rightarrow$ OpenAPI (7 Orders & Fee Preview Operations) $\rightarrow$ Folder Structure $\rightarrow$ Class Diagram  
 
 ---
 
@@ -11,7 +11,7 @@
 |---|---|
 | **Use Cases** | `UC01` (Create Order & Baseline Cost Freezing)<br/>`UC02` (Real-Time Platform Fee Estimation & Preview)<br/>`UC03` (Order Status Progression & Fee Snapshot Freezing on Delivery)<br/>`UC04` (Cancel Order Lifecycle Boundary) |
 | **OpenAPI Operations** | `POST /orders` (`createOrder`)<br/>`POST /orders/preview-fee` (`previewOrderFees`)<br/>`GET /orders` (`listOrders`)<br/>`GET /orders/summary` (`getOrderSummary`)<br/>`GET /orders/{id}` (`getOrderById`)<br/>`PATCH /orders/{id}/status` (`updateOrderStatus`)<br/>`POST /orders/{id}/cancel` (`cancelOrder`) |
-| **Source Files** | `FashionWeb.Api/Controllers/OrdersController.cs`<br/>`FashionWeb.Api/Contracts/Orders/*`<br/>`FashionWeb.Business/Commands/CreateOrderCommand.cs`, `UpdateOrderStatusCommand.cs`, `CancelOrderCommand.cs`<br/>`FashionWeb.Business/Results/OrderListResult.cs`, `OrderDetailResult.cs`, `FeeBreakdownResult.cs`<br/>`FashionWeb.Business/Interfaces/Services/IOrderService.cs`, `IDynamicFeeEngine.cs`<br/>`FashionWeb.Business/Services/OrderService.cs`, `DynamicFeeEngine.cs`<br/>`FashionWeb.Business/Strategies/FeeStrategyFactory.cs`, `IPlatformFeeStrategy.cs`, `TikTokShopFeeStrategy.cs`, `ShopeeFeeStrategy.cs`, `PosFeeStrategy.cs`<br/>`FashionWeb.Business/Interfaces/Repositories/IOrderRepository.cs`, `IProductRepository.cs`, `IFeeScheduleRepository.cs`, `IReconciliationRepository.cs`, `IUnitOfWork.cs`<br/>`FashionWeb.Business/Domain/Entities/Order.cs`, `OrderItem.cs`, `OrderStatusHistory.cs`, `OrderFeeSnapshot.cs`, `FeeSchedule.cs`<br/>`FashionWeb.Business/Domain/Enums/SalesChannel.cs`, `PaymentMethod.cs`, `OrderStatus.cs`<br/>`FashionWeb.Business/Domain/ValueObjects/FeeBreakdown.cs`<br/>`FashionWeb.Data/Repositories/OrderRepository.cs`, `FeeScheduleRepository.cs`, `UnitOfWork.cs` |
+| **Source Files** | `FashionWeb.Api/Controllers/OrdersController.cs`<br/>`FashionWeb.Api/Contracts/Orders/*`<br/>`FashionWeb.Business/Commands/CreateOrderCommand.cs`, `UpdateOrderStatusCommand.cs`, `CancelOrderCommand.cs`<br/>`FashionWeb.Business/Results/OrderListResult.cs`, `OrderDetailResult.cs`, `OrderSummaryResult.cs`, `FeeBreakdownResult.cs`<br/>`FashionWeb.Business/Interfaces/Services/IOrderService.cs`, `IDynamicFeeEngine.cs`<br/>`FashionWeb.Business/Services/OrderService.cs`, `DynamicFeeEngine.cs`<br/>`FashionWeb.Business/Strategies/FeeStrategyFactory.cs`, `IPlatformFeeStrategy.cs`, `TikTokShopFeeStrategy.cs`, `ShopeeFeeStrategy.cs`, `PosFeeStrategy.cs`<br/>`FashionWeb.Business/Interfaces/Repositories/IOrderRepository.cs`, `IProductRepository.cs`, `IFeeScheduleRepository.cs`, `IReconciliationRepository.cs`, `IUnitOfWork.cs`<br/>`FashionWeb.Business/Domain/Entities/Order.cs`, `OrderItem.cs`, `OrderStatusHistory.cs`, `OrderFeeSnapshot.cs`, `FeeSchedule.cs`<br/>`FashionWeb.Business/Domain/Enums/ChannelType.cs`, `PaymentMethod.cs`, `OrderStatus.cs`, `OrderProgressStatus.cs`<br/>`FashionWeb.Business/Domain/ValueObjects/FeeBreakdown.cs`<br/>`FashionWeb.Data/Repositories/OrderRepository.cs`, `FeeScheduleRepository.cs`, `UnitOfWork.cs` |
 | **Target Database Tables** | `orders`, `order_items`, `order_status_history`, `order_fee_snapshots`, `fee_schedules`, `reconciliation_records` |
 | **Actors & RBAC Permissions** | `Sales & Ops Staff` (Create order, preview fees, query orders, update status to SHIPPED/DELIVERED, cancel order)<br/>`Finance Manager` (Query orders, view audit trail and fee snapshots)<br/>`Shop Owner` (Full access across all order operations) |
 
@@ -23,9 +23,9 @@ This subsystem coordinates order creation, cost freeze, status transitions, fee 
 
 ### Architectural Rules
 1. **Dependency Inversion:** `OrdersController` depends strictly on abstractions (`IOrderService`, `IDynamicFeeEngine`). Concrete services depend on repository ports (`IOrderRepository`, `IProductRepository`, `IFeeScheduleRepository`, `IUnitOfWork`), never on `AppDbContext`.
-2. **DTO & Command Separation:** Client JSON requests map to Request DTOs in `FashionWeb.Api`. The Controller extracts the authenticated user identity (`ActorId`) from JWT claims and builds a typed `Command` passed to `IOrderService`.
+2. **DTO & Command Separation:** Client JSON requests map to Request DTOs in `FashionWeb.Api`. The Controller extracts the authenticated user identity (`ActorIdentity`) as a string from JWT claims and builds a typed `Command` passed to `IOrderService`.
 3. **Business Results:** `OrderService` returns typed Domain Entities or `Result` models from `FashionWeb.Business.Results`. The Controller maps these into OpenAPI Response DTOs.
-4. **Transaction Abstraction (`IUnitOfWork`):** On order delivery, updating order status, inserting status history, freezing the fee snapshot, and initializing the settlement reconciliation record occur atomically within `IUnitOfWork.ExecuteTransactionAsync()`.
+4. **Transaction Abstraction (`IUnitOfWork`):** On order creation, delivery progression, or cancellation, multi-table persistence operations occur atomically within `IUnitOfWork.ExecuteTransactionAsync()`.
 
 ```mermaid
 classDiagram
@@ -47,9 +47,11 @@ classDiagram
 
     class CreateOrderRequest {
         <<Request DTO>>
-        +SalesChannel Channel
+        +string ExternalOrderId
+        +ChannelType Channel
         +PaymentMethod PaymentMethod
-        +string? ExternalOrderCode
+        +string? CustomerName
+        +string? CustomerPhone
         +decimal ShopVoucher
         +List~CreateOrderItemRequest~ Items
     }
@@ -63,7 +65,7 @@ classDiagram
 
     class FeePreviewRequest {
         <<Request DTO>>
-        +SalesChannel Channel
+        +ChannelType Channel
         +PaymentMethod PaymentMethod
         +decimal Subtotal
         +decimal ShopVoucher
@@ -71,18 +73,23 @@ classDiagram
 
     class UpdateOrderStatusRequest {
         <<Request DTO>>
-        +OrderStatus TargetStatus
-        +string? ChangeReason
+        +OrderProgressStatus ToStatus
+    }
+
+    class CancelOrderRequest {
+        <<Request DTO>>
+        +string CancellationReason
     }
 
     class OrderDetailResponse {
         <<Response DTO>>
         +Guid Id
-        +string OrderCode
-        +string? ExternalOrderCode
-        +SalesChannel Channel
+        +string ExternalOrderId
+        +ChannelType Channel
         +PaymentMethod PaymentMethod
         +OrderStatus Status
+        +string? CustomerName
+        +string? CustomerPhone
         +decimal Subtotal
         +decimal ShopVoucher
         +decimal GrossRevenue
@@ -108,27 +115,28 @@ classDiagram
     %% Application / Business Commands & Results
     class CreateOrderCommand {
         <<Command>>
-        +SalesChannel Channel
+        +string ExternalOrderId
+        +ChannelType Channel
         +PaymentMethod PaymentMethod
-        +string? ExternalOrderCode
+        +string? CustomerName
+        +string? CustomerPhone
         +decimal ShopVoucher
         +List~CreateOrderItemCommandItem~ Items
-        +Guid ActorId
+        +string ActorIdentity
     }
 
     class UpdateOrderStatusCommand {
         <<Command>>
         +Guid OrderId
-        +OrderStatus TargetStatus
-        +string? ChangeReason
-        +Guid ActorId
+        +OrderProgressStatus ToStatus
+        +string ActorIdentity
     }
 
     class CancelOrderCommand {
         <<Command>>
         +Guid OrderId
-        +string? CancelReason
-        +Guid ActorId
+        +string CancellationReason
+        +string ActorIdentity
     }
 
     class FeeBreakdownResult {
@@ -150,13 +158,14 @@ classDiagram
         +CreateOrderAsync(CreateOrderCommand command) Task~Order~
         +GetOrderByIdAsync(Guid id) Task~Order?~
         +ListOrdersAsync(OrderQueryFilter filter) Task~PagedResult~Order~~
+        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate) Task~OrderSummaryResult~
         +UpdateOrderStatusAsync(UpdateOrderStatusCommand command) Task~Order~
         +CancelOrderAsync(CancelOrderCommand command) Task~Order~
     }
 
     class IDynamicFeeEngine {
         <<Service Interface>>
-        +CalculateFeePreviewAsync(SalesChannel channel, PaymentMethod method, decimal subtotal, decimal voucher) Task~FeeBreakdown~
+        +CalculateFeePreviewAsync(ChannelType channel, PaymentMethod method, decimal subtotal, decimal voucher) Task~FeeBreakdown~
         +CalculateAndFreezeFeeAsync(Order order) Task~OrderFeeSnapshot~
     }
 
@@ -171,6 +180,7 @@ classDiagram
         +CreateOrderAsync(CreateOrderCommand command) Task~Order~
         +GetOrderByIdAsync(Guid id) Task~Order?~
         +ListOrdersAsync(OrderQueryFilter filter) Task~PagedResult~Order~~
+        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate) Task~OrderSummaryResult~
         +UpdateOrderStatusAsync(UpdateOrderStatusCommand command) Task~Order~
         +CancelOrderAsync(CancelOrderCommand command) Task~Order~
     }
@@ -179,8 +189,9 @@ classDiagram
     class IOrderRepository {
         <<Repository Port>>
         +GetByIdAsync(Guid id) Task~Order?~
-        +GetByExternalCodeAsync(SalesChannel channel, string externalCode) Task~Order?~
+        +GetByExternalIdAsync(ChannelType channel, string externalOrderId) Task~Order?~
         +ListAsync(OrderQueryFilter filter) Task~PagedResult~Order~~
+        +GetSummaryAsync(DateTime? fromDate, DateTime? toDate) Task~OrderSummaryResult~
         +AddAsync(Order order) Task
         +UpdateAsync(Order order) Task
         +AddStatusHistoryAsync(OrderStatusHistory history) Task
@@ -221,16 +232,18 @@ classDiagram
     OrdersController ..> CreateOrderRequest : binds
     OrdersController ..> FeePreviewRequest : binds
     OrdersController ..> UpdateOrderStatusRequest : binds
+    OrdersController ..> CancelOrderRequest : binds
     OrdersController ..> OrderDetailResponse : returns
     OrdersController ..> FeeBreakdownResponse : returns
     OrdersController ..> CreateOrderCommand : maps to
     OrdersController ..> UpdateOrderStatusCommand : maps to
+    OrdersController ..> CancelOrderCommand : maps to
 
     IOrderService <|.. OrderService : implements
     OrderService --> IOrderRepository : uses
     OrderService --> IProductRepository : queries baseline cost
     OrderService --> IDynamicFeeEngine : invokes on delivery
-    OrderService --> IUnitOfWork : atomic delivery transaction
+    OrderService --> IUnitOfWork : atomic operations
 
     IOrderRepository <|.. OrderRepository : implements
     IUnitOfWork <|.. UnitOfWork : implements
@@ -256,7 +269,7 @@ classDiagram
 
     class IDynamicFeeEngine {
         <<Service Interface>>
-        +CalculateFeePreviewAsync(SalesChannel channel, PaymentMethod method, decimal subtotal, decimal voucher) Task~FeeBreakdown~
+        +CalculateFeePreviewAsync(ChannelType channel, PaymentMethod method, decimal subtotal, decimal voucher) Task~FeeBreakdown~
         +CalculateAndFreezeFeeAsync(Order order) Task~OrderFeeSnapshot~
     }
 
@@ -264,43 +277,43 @@ classDiagram
         <<Business Service>>
         -IFeeScheduleRepository _scheduleRepo
         -FeeStrategyFactory _strategyFactory
-        +CalculateFeePreviewAsync(SalesChannel channel, PaymentMethod method, decimal subtotal, decimal voucher) Task~FeeBreakdown~
+        +CalculateFeePreviewAsync(ChannelType channel, PaymentMethod method, decimal subtotal, decimal voucher) Task~FeeBreakdown~
         +CalculateAndFreezeFeeAsync(Order order) Task~OrderFeeSnapshot~
     }
 
     class FeeStrategyFactory {
         <<Business Service>>
         -IEnumerable~IPlatformFeeStrategy~ _strategies
-        +GetStrategy(SalesChannel channel) IPlatformFeeStrategy
+        +GetStrategy(ChannelType channel) IPlatformFeeStrategy
     }
 
     class IPlatformFeeStrategy {
         <<Service Interface>>
-        +SalesChannel Channel
+        +ChannelType Channel
         +Calculate(decimal subtotal, decimal voucher, FeeSchedule schedule) FeeBreakdown
     }
 
     class TikTokShopFeeStrategy {
         <<Business Service>>
-        +SalesChannel Channel = TIKTOK_SHOP
+        +ChannelType Channel = TIKTOK
         +Calculate(decimal subtotal, decimal voucher, FeeSchedule schedule) FeeBreakdown
     }
 
     class ShopeeFeeStrategy {
         <<Business Service>>
-        +SalesChannel Channel = SHOPEE
+        +ChannelType Channel = SHOPEE
         +Calculate(decimal subtotal, decimal voucher, FeeSchedule schedule) FeeBreakdown
     }
 
     class PosFeeStrategy {
         <<Business Service>>
-        +SalesChannel Channel = DIRECT_STORE_POS
+        +ChannelType Channel = POS
         +Calculate(decimal subtotal, decimal voucher, FeeSchedule schedule) FeeBreakdown
     }
 
     class IFeeScheduleRepository {
         <<Repository Port>>
-        +GetActiveScheduleAsync(SalesChannel channel, PaymentMethod method, DateTime asOf) Task~FeeSchedule?~
+        +GetActiveScheduleAsync(ChannelType channel, PaymentMethod method, DateOnly asOf) Task~FeeSchedule?~
     }
 
     class FeeBreakdown {
@@ -352,7 +365,7 @@ classDiagram
 | Platform Strategy | Formula Executed Against `FeeSchedule` Parameter |
 |---|---|
 | **TikTokShopFeeStrategy** | $\text{GrossRevenue} = \text{Subtotal} - \text{ShopVoucher}$<br/>$\text{CommissionFee} = \text{Subtotal} \times \text{CommissionRate}$<br/>$\text{PaymentFee} = \text{GrossRevenue} \times \text{PaymentFeeRate}$<br/>$\text{ServiceFee} = 0$<br/>$\text{FixedFee} = \text{FixedFeePerOrder}$<br/>$\text{TotalPlatformFees} = \text{CommissionFee} + \text{PaymentFee} + \text{FixedFee}$<br/>$\text{ProjectedSettlement} = \text{GrossRevenue} - \text{TotalPlatformFees}$ |
-| **ShopeeFeeStrategy** | $\text{GrossRevenue} = \text{Subtotal} - \text{ShopVoucher}$<br/>$\text{CommissionFee} = \text{Subtotal} \times \text{CommissionRate}$<br/>$\text{PaymentFee} = \text{GrossRevenue} \times \text{PaymentFeeRate}$<br/>$\text{UncappedServiceFee} = \text{Subtotal} \times \text{ServiceFeeRate}$<br/>$\text{ServiceFee} = \min(\text{UncappedServiceFee}, \text{ServiceFeeCap} \text{ if capped else } \text{UncappedServiceFee})$<br/>$\text{FixedFee} = \text{FixedFeePerOrder}$<br/>$\text{TotalPlatformFees} = \text{CommissionFee} + \text{PaymentFee} + \text{ServiceFee} + \text{FixedFee}$<br/>$\text{ProjectedSettlement} = \text{GrossRevenue} - \text{TotalPlatformFees}$ |
+| **ShopeeFeeStrategy** | $\text{GrossRevenue} = \text{Subtotal} - \text{ShopVoucher}$<br/>$\text{CommissionFee} = \text{Subtotal} \times \text{CommissionRate}$<br/>$\text{PaymentFee} = \text{GrossRevenue} \times \text{PaymentFeeRate}$<br/>$\text{UncappedServiceFee} = \text{Subtotal} \times \text{ServiceFeeRate}$<br/>$\text{ServiceFee} = \min(\text{UncappedServiceFee}, \text{ServiceFeeCap} \text{ if configured else } \text{UncappedServiceFee})$<br/>$\text{FixedFee} = \text{FixedFeePerOrder}$<br/>$\text{TotalPlatformFees} = \text{CommissionFee} + \text{PaymentFee} + \text{ServiceFee} + \text{FixedFee}$<br/>$\text{ProjectedSettlement} = \text{GrossRevenue} - \text{TotalPlatformFees}$ |
 | **PosFeeStrategy** | $\text{GrossRevenue} = \text{Subtotal} - \text{ShopVoucher}$<br/>$\text{CommissionFee} = 0$<br/>$\text{PaymentFee} = \text{GrossRevenue} \times \text{PaymentFeeRate}$ (if `POS_CARD_QR`, else 0 for `CASH`)<br/>$\text{ServiceFee} = 0, \quad \text{FixedFee} = 0$<br/>$\text{TotalPlatformFees} = \text{PaymentFee}$<br/>$\text{ProjectedSettlement} = \text{GrossRevenue} - \text{TotalPlatformFees}$ |
 
 ---
@@ -369,11 +382,12 @@ classDiagram
     class Order {
         <<Entity>>
         +Guid Id
-        +string OrderCode
-        +string? ExternalOrderCode
-        +SalesChannel Channel
+        +string ExternalOrderId
+        +ChannelType Channel
         +PaymentMethod PaymentMethod
         +OrderStatus Status
+        +string? CustomerName
+        +string? CustomerPhone
         +decimal Subtotal
         +decimal ShopVoucher
         +decimal GrossRevenue
@@ -383,7 +397,7 @@ classDiagram
         +List~OrderItem~ Items
         +List~OrderStatusHistory~ StatusHistory
         +OrderFeeSnapshot? FeeSnapshot
-        +TransitionTo(OrderStatus newStatus, Guid actorId, string? notes)
+        +TransitionTo(OrderStatus newStatus, string actorIdentity, string? notes)
         +SetFeeSnapshot(OrderFeeSnapshot snapshot)
     }
 
@@ -408,8 +422,8 @@ classDiagram
         +Guid OrderId
         +OrderStatus? FromStatus
         +OrderStatus ToStatus
-        +Guid ChangedBy
-        +string? ChangeReason
+        +string ChangedBy
+        +string? Reason
         +DateTime ChangedAt
     }
 
@@ -444,15 +458,15 @@ classDiagram
     class FeeSchedule {
         <<Entity>>
         +Guid Id
-        +SalesChannel Channel
+        +ChannelType Channel
         +PaymentMethod PaymentMethod
         +decimal CommissionRate
         +decimal PaymentFeeRate
         +decimal ServiceFeeRate
         +decimal? ServiceFeeCap
         +decimal FixedFeePerOrder
-        +DateTime EffectiveFrom
-        +DateTime? EffectiveTo
+        +DateOnly EffectiveFrom
+        +DateOnly? EffectiveTo
         +bool IsActive
     }
 
@@ -465,11 +479,17 @@ classDiagram
         CANCELLED
     }
 
-    class SalesChannel {
+    class OrderProgressStatus {
         <<Enumeration>>
-        TIKTOK_SHOP
+        SHIPPED
+        DELIVERED
+    }
+
+    class ChannelType {
+        <<Enumeration>>
+        TIKTOK
         SHOPEE
-        DIRECT_STORE_POS
+        POS
     }
 
     class PaymentMethod {
@@ -488,17 +508,18 @@ classDiagram
     FeeSchedule "1" ..> "0..*" OrderFeeSnapshot : bound to version applied
     
     Order --> OrderStatus : has current
-    Order --> SalesChannel : originating channel
+    Order --> ChannelType : originating channel
     Order --> PaymentMethod : payment mode
     OrderStatusHistory --> OrderStatus : status transitions
 ```
 
 ### Invariant Rules on Order Domain
 1. **P05 Snapshot Rule:** `OrderItem` freezes `SkuCodeSnapshot`, `ProductNameSnapshot`, and `UnitCostSnapshot` immediately upon order creation (`POST /orders`). If a Shop Owner edits baseline product costs in Catalog later (`UC12`), historical order costs and historical COGS remain unchanged.
-2. **Client Request Sanitization:** `CreateOrderRequest` accepts only `productVariantId`, `quantity`, and `unitPrice`. The client **cannot** supply `productName`, `skuCode`, or `costPrice`. These values are read directly from `ProductVariant` in the database.
-3. **Canonical Field Names:** `Order` utilizes `Subtotal`, `ShopVoucher`, `GrossRevenue`, and `OrderDate`. Obsolete non-canonical fields from legacy drafts are strictly banned.
+2. **Client Request Sanitization:** `CreateOrderRequest` accepts `externalOrderId`, `channel`, `paymentMethod`, `customerName`, `customerPhone`, `shopVoucher`, and `items` (`productVariantId`, `quantity`, `unitPrice`). The client **cannot** supply `productName`, `skuCode`, or `costPrice`. These values are read directly from `ProductVariant` in the database.
+3. **Canonical Field Names:** `Order` utilizes `ExternalOrderId`, `Subtotal`, `ShopVoucher`, `GrossRevenue`, and `OrderDate`. Non-existent fields such as legacy internal codes are strictly absent.
 4. **Lifecycle Constraints:** All orders begin in status `PENDING`. Direct transition to `DELIVERED` on order creation is forbidden. Direct store POS orders must transition from `PENDING` $\rightarrow$ `DELIVERED`.
 5. **Fee Snapshot Immutability:** `OrderFeeSnapshot` does not carry a dedicated immutability column in the database; immutability is an architectural invariant enforced because `OrderService` only creates a snapshot once upon reaching `DELIVERED` status and never issues SQL updates against `order_fee_snapshots`.
+6. **Actor Tracking:** `changed_by` in `OrderStatusHistory` stores `string` (max 100 chars), matching the database column type.
 
 ---
 
@@ -506,10 +527,10 @@ classDiagram
 
 | Endpoint | Method | Controller Action | Command / Parameter | Service Invocations | Database Operations |
 |---|---|---|---|---|---|
-| `/orders` | `POST` | `OrdersController.CreateOrder` | `CreateOrderCommand` | `IOrderService.CreateOrderAsync`<br/>`IProductRepository.GetVariantsByIdsAsync` | Look up `product_variants`<br/>Insert `orders`<br/>Insert `order_items`<br/>Insert `order_status_history` (`PENDING`) |
+| `/orders` | `POST` | `OrdersController.CreateOrder` | `CreateOrderCommand` | `IOrderService.CreateOrderAsync`<br/>`IProductRepository.GetVariantsByIdsAsync`<br/>`IUnitOfWork.ExecuteTransactionAsync` | Check unique `(channel, external_order_id)`<br/>Look up `product_variants`<br/>Atomic commit: Insert `orders`, `order_items`, `order_status_history` (`PENDING`) |
 | `/orders/preview-fee` | `POST` | `OrdersController.PreviewFee` | `FeePreviewRequest` | `IDynamicFeeEngine.CalculateFeePreviewAsync`<br/>`IFeeScheduleRepository.GetActiveScheduleAsync` | Read `fee_schedules`<br/>**Zero database writes** |
 | `/orders` | `GET` | `OrdersController.ListOrders` | `OrderQueryFilter` | `IOrderService.ListOrdersAsync`<br/>`IOrderRepository.ListAsync` | Read `orders`, `order_items`, `order_fee_snapshots` |
 | `/orders/summary` | `GET` | `OrdersController.GetOrderSummary` | `fromDate`, `toDate` | `IOrderService.GetSummaryAsync`<br/>`IOrderRepository.GetSummaryAsync` | Read aggregated count/status metrics on `orders` |
 | `/orders/{id}` | `GET` | `OrdersController.GetOrderById` | `Guid id` | `IOrderService.GetOrderByIdAsync`<br/>`IOrderRepository.GetByIdAsync` | Read `orders` + joins on `order_items`, `order_status_history`, `order_fee_snapshots` |
 | `/orders/{id}/status` | `PATCH` | `OrdersController.UpdateOrderStatus` | `UpdateOrderStatusCommand` | `IOrderService.UpdateOrderStatusAsync`<br/>`IDynamicFeeEngine.CalculateAndFreezeFeeAsync`<br/>`IUnitOfWork.ExecuteTransactionAsync` | Update `orders.status`<br/>Insert `order_status_history`<br/>If `DELIVERED`: Insert `order_fee_snapshots` & Insert `reconciliation_records` (`PENDING_SETTLEMENT`) |
-| `/orders/{id}/cancel` | `POST` | `OrdersController.CancelOrder` | `CancelOrderCommand` | `IOrderService.CancelOrderAsync`<br/>`IOrderRepository.UpdateAsync` | Guard checks: If `DELIVERED` $\rightarrow$ 422. If `PENDING`/`SHIPPED` $\rightarrow$ Update `orders.status = 'CANCELLED'`, Insert `order_status_history` |
+| `/orders/{id}/cancel` | `POST` | `OrdersController.CancelOrder` | `CancelOrderCommand` | `IOrderService.CancelOrderAsync`<br/>`IUnitOfWork.ExecuteTransactionAsync` | Guard checks: If `DELIVERED` $\rightarrow$ 422.<br/>If `PENDING`/`SHIPPED` $\rightarrow$ Atomic commit: Update `orders.status = 'CANCELLED'`, Insert `order_status_history` |

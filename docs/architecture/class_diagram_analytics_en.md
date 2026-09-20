@@ -10,7 +10,7 @@
 | Metadata Attribute | Authoritative Value |
 |---|---|
 | **Use Cases** | `UC08` (Financial KPIs Dashboard & Metric Aggregation)<br/>`UC09` (Revenue & Margin Time-Series Trend Analysis)<br/>`UC10` (Channel Performance & Fee Share Breakdown)<br/>`UC11` (Top SKU Profitability & Voucher Allocation) |
-| **OpenAPI Operations** | `GET /analytics/kpis` (`getFinancialKpis`)<br/>`GET /analytics/trend` (`getFinancialTrend`)<br/>`GET /analytics/channel-breakdown` (`getChannelBreakdown`)<br/>`GET /analytics/top-skus` (`getTopSkus`)<br/>`GET /analytics/drilldown` (`getOrderDrilldown`)<br/>`GET /analytics/export-csv` (`exportFinancialDataCsv`) |
+| **OpenAPI Operations** | `GET /analytics/kpis` (`getFinancialKpis`)<br/>`GET /analytics/trend` (`getFinancialTrend`)<br/>`GET /analytics/channel-breakdown` (`getChannelBreakdown`)<br/>`GET /analytics/top-skus` (`getTopSkus`)<br/>`GET /analytics/drilldown` (`getDrilldownOrders`)<br/>`GET /analytics/export-csv` (`exportReconciliationCsv`) |
 | **Source Files** | `FashionWeb.Api/Controllers/AnalyticsController.cs`<br/>`FashionWeb.Api/Contracts/Analytics/*`<br/>`FashionWeb.Business/Results/FinancialKpiResult.cs`, `FinancialTrendPointResult.cs`, `ChannelBreakdownResult.cs`, `TopSkuResult.cs`, `DrilldownOrderResult.cs`<br/>`FashionWeb.Business/Interfaces/Services/IAnalyticsService.cs`<br/>`FashionWeb.Business/Services/AnalyticsService.cs`<br/>`FashionWeb.Business/Interfaces/Repositories/IAnalyticsRepository.cs`<br/>`FashionWeb.Data/Repositories/AnalyticsRepository.cs` |
 | **Database Tables** | Read-only aggregation over `orders`, `order_items`, `order_fee_snapshots` (Filtered strictly by `orders.status = 'DELIVERED'`) |
 | **Actors & RBAC Permissions** | `Sales & Ops Staff` (No Access)<br/>`Finance Manager` (Full view & CSV export)<br/>`Shop Owner` (Full view & CSV export) |
@@ -30,7 +30,7 @@ The Analytics subsystem acts as an analytical query engine over operational data
    - **COGS:** $\sum (\text{order\_items.quantity} \times \text{order\_items.unit\_cost\_snapshot})$
    - **Contribution Profit:** $\text{ProjectedSettlement} - \text{COGS}$
    *(Contribution Margin Percentage $\text{MarginPct} = \frac{\text{ContributionProfit}}{\text{GrossRevenue}} \times 100$ is a derived supplementary ratio).*
-3. **DTO / Result Decoupling:** `FashionWeb.Business.Results` hosts domain analytical representations (`FinancialKpiResult`, etc.). `FashionWeb.Api.Contracts.Analytics` contains API contract representations (`FinancialKpiResponse`, etc.). The controller handles transformation.
+3. **DTO / Result Decoupling:** `FashionWeb.Business.Results` hosts domain analytical representations (`FinancialKpiResult`, `TopSkuResult` with internal allocation numbers). `FashionWeb.Api.Contracts.Analytics` contains API contract representations (`FinancialKpiResponse`, `TopSkuResponse` matching P06). The controller handles transformation.
 
 ```mermaid
 classDiagram
@@ -41,10 +41,10 @@ classDiagram
         <<Controller>>
         -IAnalyticsService _analyticsService
         +GetKpis(AnalyticsFilterRequest filter) Task~ActionResult~FinancialKpiResponse~~
-        +GetTrend(TrendFilterRequest filter) Task~ActionResult~List~FinancialTrendPointResponse~~~
+        +GetTrend(TrendFilterRequest filter) Task~ActionResult~FinancialTrendResponse~~
         +GetChannelBreakdown(AnalyticsFilterRequest filter) Task~ActionResult~List~ChannelBreakdownResponse~~~
         +GetTopSkus(TopSkuFilterRequest filter) Task~ActionResult~List~TopSkuResponse~~~
-        +GetDrilldown(DrilldownFilterRequest filter) Task~ActionResult~PagedDrilldownResponse~~
+        +GetDrilldown(DrilldownFilterRequest filter) Task~ActionResult~PagedDrilldownOrderResponse~~
         +ExportCsv(AnalyticsFilterRequest filter) Task~IActionResult~
     }
 
@@ -59,54 +59,57 @@ classDiagram
         +int DeliveredOrderCount
     }
 
-    class FinancialTrendPointResponse {
+    class FinancialTrendResponse {
         <<Response DTO>>
-        +DateTime Date
+        +List~FinancialTrendPoint~ Points
+    }
+
+    class FinancialTrendPoint {
+        <<Response DTO>>
+        +DateOnly Date
+        +decimal GrossRevenue
+        +decimal ContributionProfit
+    }
+
+    class ChannelBreakdownResponse {
+        <<Response DTO>>
+        +ChannelType Channel
+        +int DeliveredOrders
         +decimal GrossRevenue
         +decimal TotalPlatformFees
-        +decimal ProjectedSettlement
+        +decimal ContributionProfit
+        +decimal ContributionMarginPct
+    }
+
+    class TopSkuResponse {
+        <<Response DTO>>
+        +string SkuCode
+        +string ProductName
+        +int DeliveredUnits
+        +decimal GrossRevenue
         +decimal Cogs
         +decimal ContributionProfit
         +decimal ContributionMarginPct
     }
 
-    class ChannelBreakdownResponse {
+    class PagedDrilldownOrderResponse {
         <<Response DTO>>
-        +SalesChannel Channel
+        +List~DrilldownOrderItem~ Items
+        +int Page
+        +int PageSize
+        +int TotalCount
+    }
+
+    class DrilldownOrderItem {
+        <<Response DTO>>
+        +Guid Id
+        +string ExternalOrderId
+        +ChannelType Channel
+        +DateTime DeliveredAt
         +decimal GrossRevenue
         +decimal TotalPlatformFees
         +decimal ProjectedSettlement
-        +decimal ContributionProfit
-        +decimal ContributionMarginPct
-        +decimal FeeSharePct
-        +int OrderCount
-    }
-
-    class TopSkuResponse {
-        <<Response DTO>>
-        +Guid ProductVariantId
-        +string SkuCode
-        +string ProductName
-        +int UnitsSold
-        +decimal LineSubtotal
-        +decimal AllocatedVoucher
-        +decimal LineGrossRevenue
-        +decimal LineCogs
-        +decimal AllocatedPlatformFees
-        +decimal LineContributionProfit
-        +decimal ContributionMarginPct
-    }
-
-    class DrilldownOrderResponse {
-        <<Response DTO>>
-        +Guid OrderId
-        +string OrderCode
-        +DateTime OrderDate
-        +SalesChannel Channel
-        +decimal GrossRevenue
-        +decimal TotalPlatformFees
-        +decimal ProjectedSettlement
-        +decimal OrderCogs
+        +decimal Cogs
         +decimal ContributionProfit
     }
 
@@ -124,25 +127,19 @@ classDiagram
 
     class FinancialTrendPointResult {
         <<Result>>
-        +DateTime Date
+        +DateOnly Date
         +decimal GrossRevenue
-        +decimal TotalPlatformFees
-        +decimal ProjectedSettlement
-        +decimal Cogs
         +decimal ContributionProfit
-        +decimal ContributionMarginPct
     }
 
     class ChannelBreakdownResult {
         <<Result>>
-        +SalesChannel Channel
+        +ChannelType Channel
+        +int DeliveredOrders
         +decimal GrossRevenue
         +decimal TotalPlatformFees
-        +decimal ProjectedSettlement
         +decimal ContributionProfit
         +decimal ContributionMarginPct
-        +decimal FeeSharePct
-        +int OrderCount
     }
 
     class TopSkuResult {
@@ -150,7 +147,7 @@ classDiagram
         +Guid ProductVariantId
         +string SkuCode
         +string ProductName
-        +int UnitsSold
+        +int DeliveredUnits
         +decimal LineSubtotal
         +decimal AllocatedVoucher
         +decimal LineGrossRevenue
@@ -162,15 +159,22 @@ classDiagram
 
     class DrilldownOrderResult {
         <<Result>>
-        +Guid OrderId
-        +string OrderCode
-        +DateTime OrderDate
-        +SalesChannel Channel
+        +Guid Id
+        +string ExternalOrderId
+        +ChannelType Channel
+        +DateTime DeliveredAt
         +decimal GrossRevenue
         +decimal TotalPlatformFees
         +decimal ProjectedSettlement
-        +decimal OrderCogs
+        +decimal Cogs
         +decimal ContributionProfit
+    }
+
+    class ChannelType {
+        <<Enumeration>>
+        TIKTOK
+        SHOPEE
+        POS
     }
 
     %% Service Contracts
@@ -219,10 +223,12 @@ classDiagram
     %% Relationships
     AnalyticsController ..> IAnalyticsService : invokes
     AnalyticsController ..> FinancialKpiResponse : returns
-    AnalyticsController ..> FinancialTrendPointResponse : returns
+    AnalyticsController ..> FinancialTrendResponse : returns
+    FinancialTrendResponse *-- FinancialTrendPoint : aggregates
     AnalyticsController ..> ChannelBreakdownResponse : returns
     AnalyticsController ..> TopSkuResponse : returns
-    AnalyticsController ..> DrilldownOrderResponse : returns
+    AnalyticsController ..> PagedDrilldownOrderResponse : returns
+    PagedDrilldownOrderResponse *-- DrilldownOrderItem : aggregates
 
     IAnalyticsService <|.. AnalyticsService : implements
     AnalyticsService --> IAnalyticsRepository : queries analytical data
@@ -263,9 +269,9 @@ When orders contain multiple items with discounts and fees applied at the order 
 
 | Endpoint | Method | Controller Action | Parameters | Service Invocations | Database Query Behavior |
 |---|---|---|---|---|---|
-| `/analytics/kpis` | `GET` | `AnalyticsController.GetKpis` | `fromDate`, `toDate`, `channel` | `IAnalyticsService.GetKpisAsync` | Aggregates `orders`, `order_items`, `order_fee_snapshots` where `status = 'DELIVERED'` |
-| `/analytics/trend` | `GET` | `AnalyticsController.GetTrend` | `fromDate`, `toDate`, `interval`, `channel` | `IAnalyticsService.GetTrendAsync` | Groups delivered orders by day/week/month intervals |
-| `/analytics/channel-breakdown` | `GET` | `AnalyticsController.GetChannelBreakdown` | `fromDate`, `toDate` | `IAnalyticsService.GetChannelBreakdownAsync` | Groups delivered orders by `channel` to compare fees and margins |
-| `/analytics/top-skus` | `GET` | `AnalyticsController.GetTopSkus` | `fromDate`, `toDate`, `channel`, `limit`, `sortBy` | `IAnalyticsService.GetTopSkusAsync` | Evaluates line-item proportional allocation for delivered orders |
-| `/analytics/drilldown` | `GET` | `AnalyticsController.GetDrilldown` | `fromDate`, `toDate`, `channel`, `page`, `pageSize` | `IAnalyticsService.GetDrilldownAsync` | Paged listing of individual delivered orders with profit breakdowns |
-| `/analytics/export-csv` | `GET` | `AnalyticsController.ExportCsv` | `fromDate`, `toDate`, `channel` | `IAnalyticsService.ExportCsvAsync` | Generates standard CSV payload with header `text/csv` |
+| `/analytics/kpis` | `GET` | `AnalyticsController.GetKpis` | `from`, `to`, `channel` | `IAnalyticsService.GetKpisAsync` | Aggregates `orders`, `order_items`, `order_fee_snapshots` where `status = 'DELIVERED'` |
+| `/analytics/trend` | `GET` | `AnalyticsController.GetTrend` | `from`, `to`, `interval`, `channel` | `IAnalyticsService.GetTrendAsync` | Groups delivered orders by day/week/month intervals |
+| `/analytics/channel-breakdown` | `GET` | `AnalyticsController.GetChannelBreakdown` | `from`, `to` | `IAnalyticsService.GetChannelBreakdownAsync` | Groups delivered orders by `channel` to compare fees and margins |
+| `/analytics/top-skus` | `GET` | `AnalyticsController.GetTopSkus` | `from`, `to`, `channel`, `limit`, `sortBy` | `IAnalyticsService.GetTopSkusAsync` | Evaluates line-item proportional allocation for delivered orders |
+| `/analytics/drilldown` | `GET` | `AnalyticsController.GetDrilldown` | `from`, `to`, `channel`, `page`, `pageSize` | `IAnalyticsService.GetDrilldownAsync` | Paged listing of individual delivered orders (`external_order_id`) with profit breakdowns |
+| `/analytics/export-csv` | `GET` | `AnalyticsController.ExportCsv` | `from`, `to`, `channel` | `IAnalyticsService.ExportCsvAsync` | Generates standard CSV payload with header `text/csv` |
