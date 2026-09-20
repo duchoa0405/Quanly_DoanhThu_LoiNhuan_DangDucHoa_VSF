@@ -1,130 +1,165 @@
-# 06 — State Diagrams: Financial Lifecycle State Machines
+# State Diagrams: Order Lifecycle & Financial Audit State Machines
+
+> **Target Stack:** ASP.NET Core 8 Web API + PostgreSQL 16  
+> **Source of Truth Hierarchy:** Requirements / Use Cases $\rightarrow$ Component Backend $\rightarrow$ Database $\rightarrow$ OpenAPI (27 Operations) $\rightarrow$ Folder Structure $\rightarrow$ State Diagrams  
 
 ---
 
 ## 1. Scope & State Machine Overview
 
-Financial rigor requires determinism. In FASHION-WEB, money never moves without explicit state machine transitions governed by 2 core state models:
-1. **State Machine 1 — Order Lifecycle State Machine:** Governs order progression across fulfillment stages and guarantees that revenue is recognized if and only if an order reaches `DELIVERED`.
-2. **State Machine 2 — Settlement & Discrepancy Audit State Machine:** Governs wallet payout reconciliation against bank statements, variance isolation, and executive dispute sign-off.
+Financial accuracy requires deterministic lifecycle management. In FASHION-WEB, financial recognition and state progression are governed by 3 distinct state machines:
+1. **State Machine 1 — Order Lifecycle State Machine:** Governs operational order fulfillment across all channels and guarantees zero phantom revenue by recognizing revenue if and only if an order reaches `DELIVERED`.
+2. **State Machine 2 — Settlement Reconciliation State Machine:** Governs platform payout verification, variance evaluation against frozen projected settlements, and discrepancy isolation.
+3. **State Machine 3 — Discrepancy Audit Resolution State Machine:** Governs the audit investigation lifecycle from open discrepancy to resolution sign-off.
 
 ---
 
 ## 2. State Machine 1: Multi-Channel Order Lifecycle
 
-This state machine implements the **Zero Phantom Revenue** rule:
+> **Use Cases:** `UC01` (Create Order), `UC03` (Order Delivery), `UC04` (Cancel Order)  
+> **P06 Endpoints:** `POST /orders`, `PATCH /orders/{id}/status`  
+> **P07 Source Files:** `FashionWeb.Business/Domain/Entities/Order.cs`, `FashionWeb.Business/Domain/Enums/OrderStatus.cs`, `FashionWeb.Business/Services/OrderService.cs`  
+> **P05 Tables:** `orders`, `order_status_history`, `order_fee_snapshots`, `reconciliation_records`  
+> **Actors:** `Sales & Ops Staff`, `Shop Owner`  
 
 ```mermaid
 stateDiagram-v2
     direction TB
 
-    [*] --> Pending : Ingest via TikTok Shop / Shopee
-    [*] --> Delivered : In-Store POS (Instant Counter Take-Home)
+    [*] --> PENDING : POST /orders (All Channels: TikTok, Shopee, POS)
 
-    Pending --> Shipped : Handover to Shipping Carrier (PATCH status)
-    Pending --> Cancelled : Cancelled before handover (MOD-02)
+    PENDING --> SHIPPED : PATCH /orders/{id}/status (target: SHIPPED)
+    PENDING --> CANCELLED : PATCH /orders/{id}/status (target: CANCELLED)
 
-    Shipped --> Delivered : Customer Delivery Confirmed (PATCH status)
-    Shipped --> Cancelled : Carrier Delivery Failure / Returned (MOD-02)
+    SHIPPED --> DELIVERED : PATCH /orders/{id}/status (target: DELIVERED)
+    SHIPPED --> CANCELLED : PATCH /orders/{id}/status (target: CANCELLED)
 
-    Delivered --> [*] : Ledger Locked (Immutable)
-    Cancelled --> [*] : Excluded from Revenue (0 VND)
+    DELIVERED --> [*] : Terminal State (Revenue & Fees Recognized)
+    CANCELLED --> [*] : Terminal State (Zero Revenue Recognized)
 
-    note right of Pending
-        Recognized Revenue = 0 VND
-        Awaiting carrier fulfillment
+    note right of PENDING
+        Initial state for all channels.
+        Baseline SKU costs frozen in order_items.
+        Recognized revenue = 0 VND.
     end note
 
-    note right of Shipped
-        Recognized Revenue = 0 VND
-        In transit with courier
+    note right of SHIPPED
+        In-transit with courier or awaiting pickup.
+        Recognized revenue = 0 VND.
     end note
 
-    note right of Delivered
-        Official Revenue Recognized!
-        OrderFeeSnapshot frozen (IsImmutable = true)
-        Cancellation strictly BLOCKED (HTTP 422)
+    note right of DELIVERED
+        Revenue recognition point!
+        OrderFeeSnapshot calculated & frozen.
+        ReconciliationRecord created (PENDING_SETTLEMENT).
+        Cancellation strictly BLOCKED (HTTP 422).
     end note
 
-    note left of Cancelled
-        Revenue Contribution = 0 VND
-        Mandatory cancellation_reason recorded
-        Excluded from executive KPIs
+    note left of CANCELLED
+        Order cancelled prior to delivery.
+        Mandatory cancellation reason logged.
+        Zero platform fees, zero revenue recognized.
+        Excluded from executive KPIs.
     end note
 ```
 
-### Transition Guard Conditions:
+### Transition Guards & Business Rules (Order Lifecycle)
 
-| Source State | Target State | Triggering API / Event | Guard Condition / Validation Rule | Architectural Impact |
+| Source State | Target State | Triggering API | Guard Condition / Validation Rule | Architectural & Financial Impact |
 |---|---|---|---|---|
-| `[*] (None)` | `PENDING` | `POST /orders` | Channel is `TIKTOK` or `SHOPEE`. Voucher $\le$ Subtotal. | Order saved with recognized revenue = **0 VND**. |
-| `[*] (None)` | `DELIVERED` | `POST /orders` | Channel is `POS` (Cash or Card/QR Swipe). | Instant counter take-home; revenue recognized immediately. |
-| `PENDING` | `SHIPPED` | `PATCH /orders/{id}/status` | Order must currently be in `PENDING`. | Handover recorded; revenue remains **0 VND**. |
-| `SHIPPED` | `DELIVERED` | `PATCH /orders/{id}/status` | Order must currently be in `SHIPPED`. Transition from `PENDING` directly to `DELIVERED` is blocked with HTTP `409 Conflict`. | **Official Revenue Recognized.** Computes fees via Strategy and creates immutable `OrderFeeSnapshot`. |
-| `PENDING` or `SHIPPED` | `CANCELLED` | `POST /orders/{id}/cancel` | Mandatory non-empty `cancellation_reason`. | Order excluded 100% from financial reports. |
-| `DELIVERED` | `CANCELLED` | *Prohibited* | **Strictly Forbidden:** Finalized delivery cannot be cancelled via standard API. Returns HTTP `422 Unprocessable Entity`. | Preserves audit trail integrity. Requires formal return/refund journal. |
+| `[*] (None)` | `PENDING` | `POST /orders` | Valid items list ($>0$); `ShopVoucher` $\le$ `Subtotal`. | Ingests order for all channels (including Direct Store POS). Copies catalog baseline costs to `order_items.unit_cost_snapshot`. Recognized Revenue = **0 VND**. |
+| `PENDING` | `SHIPPED` | `PATCH /orders/{id}/status` | Target = `SHIPPED`. Current state must be `PENDING`. | Appends record to `order_status_history`. Recognized Revenue = **0 VND**. |
+| `PENDING` | `CANCELLED` | `PATCH /orders/{id}/status` | Target = `CANCELLED`. Mandatory `changeReason` provided. | Appends record to `order_status_history`. Order becomes terminal. Zero revenue recognized. |
+| `SHIPPED` | `DELIVERED` | `PATCH /orders/{id}/status` | Target = `DELIVERED`. Current state must be `SHIPPED`. | **Revenue Recognition Point**: Executes `IDynamicFeeEngine`, freezes `OrderFeeSnapshot`, creates `ReconciliationRecord` (`PENDING_SETTLEMENT`) in an atomic transaction (`IUnitOfWork`). |
+| `SHIPPED` | `CANCELLED` | `PATCH /orders/{id}/status` | Target = `CANCELLED`. Courier return or pre-delivery failure. | Order terminated prior to settlement initiation. No fees evaluated. |
+| `DELIVERED` | `CANCELLED` | `PATCH /orders/{id}/status` | **BLOCKED** | Returns **HTTP 422 Unprocessable Entity**. Delivered orders cannot be cancelled via the standard order lifecycle (returns/refunds out-of-scope). |
 
 ---
 
-## 3. State Machine 2: Wallet Settlement & Discrepancy Auditing
+## 3. State Machine 2: Settlement Reconciliation State Machine
 
-This state machine governs payout reconciliation, variance detection, and executive resolution (#DIS-002):
+> **Use Cases:** `UC05` (Settlement Ledger), `UC06` (Manual Settlement Reconciliation)  
+> **P06 Endpoints:** `GET /settlements`, `POST /settlements/{orderId}/reconcile`  
+> **P07 Source Files:** `FashionWeb.Business/Domain/Entities/ReconciliationRecord.cs`, `FashionWeb.Business/Domain/Enums/ReconciliationStatus.cs`, `FashionWeb.Business/Services/SettlementService.cs`  
+> **P05 Tables:** `reconciliation_records`, `discrepancy_audits`  
+> **Actors:** `Finance Manager`, `Shop Owner`  
 
 ```mermaid
 stateDiagram-v2
     direction TB
 
-    [*] --> PendingSettlement : Order Delivered (Awaiting Statement)
+    [*] --> PENDING_SETTLEMENT : Order reaches DELIVERED status
 
-    PendingSettlement --> Reconciled : Statement matched & Variance == 0
-    PendingSettlement --> Discrepancy : Statement matched & Variance != 0
+    PENDING_SETTLEMENT --> RECONCILED : Reconcile (Variance == 0)
+    PENDING_SETTLEMENT --> DISCREPANCY : Reconcile (Variance != 0)
 
-    Discrepancy --> PendingApproval : Finance files justification claim (MOD-02)
+    DISCREPANCY --> RECONCILED : Corrected Payout Entered (Variance == 0)
+    DISCREPANCY --> DISCREPANCY : Adjusted Payout Re-entered (Variance != 0)
 
-    PendingApproval --> Approved : Shop Owner approves dispute (PATCH approve)
-    PendingApproval --> Rejected : Shop Owner rejects justification (PATCH approve)
-
-    Rejected --> Discrepancy : Re-opened for carrier escalation
-
-    Reconciled --> [*] : Financial Period Closed (100% Match)
-    Approved --> [*] : Financial Period Closed (Audit Justified)
-
-    note right of PendingSettlement
-        ExpectedNetPayout frozen in snapshot
-        Awaiting Excel statement upload
+    note right of PENDING_SETTLEMENT
+        ProjectedSettlement frozen from order_fee_snapshots.
+        Awaiting manual entry of actual settlement payout.
     end note
 
-    note right of Reconciled
-        Green Tag (100% Match)
-        Actual payout == Expected payout
+    note right of RECONCILED
+        VarianceAmount = ProjectedSettlement - ActualSettlement == 0.
+        Exact match confirmed; financial payout settled.
     end note
 
-    note left of Discrepancy
-        Red Tag (Variance != 0)
-        Cash shortfall flagged
-        Mandates DIS-002 justification
-    end note
-
-    note left of PendingApproval
-        Yellow Tag (DIS-002 Case)
-        Evidence URL attached
-        Awaiting Executive review
-    end note
-
-    note right of Approved
-        Owner / Executive Sign-off
-        Accepted carrier surcharge
-        Settlement ledger finalized
+    note left of DISCREPANCY
+        VarianceAmount != 0 (Underpayment or Overpayment).
+        Requires mandatory explanation note.
+        Automatically spawns DiscrepancyAudit record.
     end note
 ```
 
-### Reconciliation State Matrix:
+### Transition Guards & Business Rules (Settlement Reconciliation)
 
-| Status Code | Badge Color | Triggering Event | Mathematical Invariant | Actor Authority | Next Permitted Action |
-|---|:---:|---|---|:---:|---|
-| `PendingSettlement` | Grey | Order transitions to `DELIVERED`. | $\text{ActualSettledAmount} = \text{null}$ | System Automated | Upload bank/wallet statement via `MOD-03`. |
-| `Reconciled` | Green | Statement row matched with external order ID. | $\text{VarianceAmount} = \text{Actual} - \text{Expected} = \mathbf{0 \text{ VND}}$ | System Automated | Ledger row locked; period closed. |
-| `Discrepancy` | Red | Statement row matched with non-zero variance. | $\text{VarianceAmount} \neq \mathbf{0 \text{ VND}}$ (e.g. $-25,000 \text{ VND}$) | System Automated | Finance manager must file `#DIS-002` audit case. |
-| `PendingApproval` | Yellow | Finance manager submits dispute claim with evidence. | `#DIS-XXXX` generated with Root Cause and Evidence URL. | Finance Manager | Awaiting Shop Owner review. |
-| `Approved` | Green | Shop Owner reviews and signs off on variance. | Surcharge formally accepted as legitimate business expense. | **Shop Owner Only (RBAC)** | Settlement period locked and archived. |
-| `Rejected` | Red | Shop Owner rejects justification note. | Dispute remanded for carrier re-investigation or clawback. | **Shop Owner Only (RBAC)** | Finance manager must re-negotiate with logistics carrier. |
+| Source State | Target State | Triggering API | Guard Condition / Validation Rule | Architectural & Financial Impact |
+|---|---|---|---|---|
+| `[*] (None)` | `PENDING_SETTLEMENT` | Atomic trigger on order delivery | `Order.Status` transitions to `DELIVERED`. | Inserts `reconciliation_records` row with `projected_settlement = OrderFeeSnapshot.ProjectedSettlement`, `actual_settlement = NULL`, `variance_amount = NULL`. |
+| `PENDING_SETTLEMENT` | `RECONCILED` | `POST /settlements/{orderId}/reconcile` | `ProjectedSettlement - ActualSettlement == 0`. | Updates `actual_settlement`, sets `variance_amount = 0`, sets `reconciled_at = NOW()`, sets `reconciled_by = ActorId`. |
+| `PENDING_SETTLEMENT` | `DISCREPANCY` | `POST /settlements/{orderId}/reconcile` | `ProjectedSettlement - ActualSettlement != 0`. `explanationNote` must be provided. | Sets `status = 'DISCREPANCY'`. Calculates `variance_amount`. Automatically inserts a child row in `discrepancy_audits`. Order status remains `DELIVERED`. |
+| `PENDING_SETTLEMENT` | `PENDING_SETTLEMENT` | `POST /settlements/{orderId}/reconcile` | `variance != 0` AND `explanationNote` is missing. | **BLOCKED**: Returns **HTTP 422 Unprocessable Entity**. State does not advance. |
+| `DISCREPANCY` | `RECONCILED` | `POST /settlements/{orderId}/reconcile` | Corrected actual payout entered such that `variance == 0`. | Payout correction overrides previous discrepancy. State transitions to `RECONCILED`. |
+| `DISCREPANCY` | `DISCREPANCY` | `POST /settlements/{orderId}/reconcile` | Re-entered payout still results in `variance != 0`. | Updates `actual_settlement` and `variance_amount`. Adds or updates discrepancy audit trail. |
+
+---
+
+## 4. State Machine 3: Discrepancy Audit Investigation & Resolution State Machine
+
+> **Use Case:** `UC07` (Discrepancy Audit Investigation & Resolution)  
+> **P06 Endpoints:** `GET /discrepancies`, `GET /discrepancies/{id}`, `PATCH /discrepancies/{id}/resolve`  
+> **P07 Source Files:** `FashionWeb.Business/Domain/Entities/DiscrepancyAudit.cs`, `FashionWeb.Business/Domain/Enums/DiscrepancyType.cs`, `FashionWeb.Business/Services/DiscrepancyService.cs`  
+> **P05 Tables:** `discrepancy_audits`  
+> **Actors:** `Finance Manager`, `Shop Owner`  
+
+```mermaid
+stateDiagram-v2
+    direction LR
+
+    [*] --> OPEN : Spawned by Discrepancy Reconciliation
+
+    OPEN --> RESOLVED : PATCH /discrepancies/{id}/resolve (Resolution Notes Provided)
+    RESOLVED --> [*] : Audit Investigation Closed
+
+    note top of OPEN
+        Derived State:
+        ResolvedAt IS NULL
+        Requires investigation by Finance Manager or Shop Owner
+    end note
+
+    note top of RESOLVED
+        Derived State:
+        ResolvedAt IS NOT NULL
+        Resolution notes and resolver identity recorded
+    end note
+```
+
+### Transition Guards & Business Rules (Discrepancy Audit)
+
+| Source State | Target State | Triggering API | Guard Condition / Validation Rule | Architectural & Financial Impact |
+|---|---|---|---|---|
+| `[*] (None)` | `OPEN` | Child creation on discrepancy | Spawned automatically when `ReconciliationRecord` status transitions to `DISCREPANCY`. | Row inserted into `discrepancy_audits` with `reconciliation_record_id`, `discrepancy_type`, `explanation_note`, `created_at = NOW()`, `resolved_at = NULL`. |
+| `OPEN` | `RESOLVED` | `PATCH /discrepancies/{id}/resolve` | `resolutionNotes` must not be empty. Actor must possess `FinanceManager` or `ShopOwner` role. | Updates `resolution_notes = @notes`, `resolved_by = ActorId`, `resolved_at = NOW()`. Dynamic property `IsResolved` evaluates to `true`. |
+| `RESOLVED` | Any | `PATCH /discrepancies/{id}/resolve` | Already resolved audit record. | Idempotent or returns **HTTP 400 Bad Request** ("Discrepancy audit is already resolved"). |

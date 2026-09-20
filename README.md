@@ -250,6 +250,13 @@ The system follows a strict, decoupled three-tier architecture:
 | **User Stories & BDD** | [`docs/requirements_invest.md`](docs/requirements_invest.md) | INVEST user stories and Gherkin acceptance criteria |
 | **Use Cases & RBAC** | [`docs/usecase.md`](docs/usecase.md) | Actor specifications, UML use cases, and role-based access matrix |
 | **UI/UX Specifications** | [`docs/uiux_specifications.md`](docs/uiux_specifications.md) | Design tokens, color rules, layout grid, and screen hierarchy |
+| **Folder Structures (P07)**| [`docs/architecture/folder_structures_en.md`](docs/architecture/folder_structures_en.md) | Standard source tree, layering rules, and project dependencies *(LOCKED)* |
+| **Class: Catalog & Fees (P08)** | [`docs/architecture/class_diagram_catalog_fee_schedules_en.md`](docs/architecture/class_diagram_catalog_fee_schedules_en.md) | Catalog maintenance, variant pricing, baseline cost, and fee schedules *(LOCKED)* |
+| **Class: Orders & Fee Engine (P08)** | [`docs/architecture/class_diagram_orders_fee_engine_en.md`](docs/architecture/class_diagram_orders_fee_engine_en.md) | Orders lifecycle, dynamic fee engine facade, strategy pattern, and snapshots *(LOCKED)* |
+| **Class: Settlement (P08)**| [`docs/architecture/class_diagram_settlement_discrepancy_en.md`](docs/architecture/class_diagram_settlement_discrepancy_en.md) | Manual settlement reconciliation ledger and discrepancy audit investigations *(LOCKED)* |
+| **Class: Analytics (P08)** | [`docs/architecture/class_diagram_analytics_en.md`](docs/architecture/class_diagram_analytics_en.md) | 5-KPI executive analytics engine, proportional allocation, and CSV export *(LOCKED)* |
+| **Sequence Diagrams (P08)**| [`docs/architecture/sequence_diagrams_en.md`](docs/architecture/sequence_diagrams_en.md) | 10 end-to-end operational execution lifelines across React UI and API tiers *(LOCKED)* |
+| **State Diagrams (P08)**   | [`docs/architecture/state_diagrams_en.md`](docs/architecture/state_diagrams_en.md) | Deterministic state machines for Orders, Reconciliation, and Discrepancy Audits *(LOCKED)* |
 
 ---
 

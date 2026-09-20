@@ -177,6 +177,15 @@ backend/
 │   │   │   ├── ReconcileSettlementCommand.cs    # Command to record actual payout
 │   │   │   └── ResolveDiscrepancyCommand.cs     # Command to resolve discrepancy audit
 │   │   │
+│   │   ├── Results/                             # Typed Application Query & Computation Results (decoupled from API DTOs)
+│   │   │   ├── FinancialKpiResult.cs            # 5 Core Financial KPIs & margin %
+│   │   │   ├── FinancialTrendPointResult.cs     # Daily time-series metrics point
+│   │   │   ├── ChannelBreakdownResult.cs        # Multi-channel revenue/profit distribution
+│   │   │   ├── TopSkuResult.cs                  # Top SKU contribution profit derivation result
+│   │   │   ├── DrilldownOrderResult.cs          # Itemized delivered order backing KPIs
+│   │   │   ├── SettlementLedgerResult.cs        # Ledger records with frozen fee breakdowns
+│   │   │   └── OrderSummaryResult.cs            # Operational order counters & recognized gross revenue
+│   │   │
 │   │   ├── Interfaces/                          # Ports & Contracts for Inversion of Control
 │   │   │   ├── Services/                        # Application Service contracts
 │   │   │   │   ├── ICatalogService.cs           # Catalog management operations
@@ -192,7 +201,8 @@ backend/
 │   │   │       ├── IFeeScheduleRepository.cs    # Fee Schedule rates persistence port
 │   │   │       ├── IReconciliationRepository.cs # Reconciliation persistence/query port; may read fee snapshots for settlement views
 │   │   │       ├── IDiscrepancyRepository.cs    # Discrepancy Audit persistence port
-│   │   │       └── IAnalyticsRepository.cs      # Financial Aggregations & Query port
+│   │   │       ├── IAnalyticsRepository.cs      # Financial Aggregations & Query port
+│   │   │       └── IUnitOfWork.cs               # Transaction boundary port for multi-entity atomic commits (e.g. delivery)
 │   │   │
 │   │   ├── Services/                            # Concrete Application Domain Services
 │   │   │   ├── CatalogService.cs                # [Target] Manages product catalog & cost maintenance
@@ -233,13 +243,14 @@ backend/
 │       │   ├── FeeScheduleRepository.cs         # Implements IFeeScheduleRepository
 │       │   ├── ReconciliationRepository.cs      # Implements IReconciliationRepository; reconciliation records and settlement query joins
 │       │   ├── DiscrepancyRepository.cs         # Implements IDiscrepancyRepository
-│       │   └── AnalyticsRepository.cs           # [Target] Implements IAnalyticsRepository
+│       │   ├── AnalyticsRepository.cs           # [Target] Implements IAnalyticsRepository
+│       │   └── UnitOfWork.cs                    # [Target] Implements IUnitOfWork via EF Core DbContext execution strategy & transaction
 │       │
 │       ├── Migrations/                          # EF Core code-first database migrations
 │       └── FashionWeb.Data.csproj
 │
 └── tests/
-    └── FashionWeb.Business.Tests/               # Automated Unit Tests (xUnit + FluentAssertions + Moq)
+    └── FashionWeb.Business.Tests/               # Automated Unit Tests (xUnit + Moq)
         ├── DynamicFeeEngineTests.cs             # Verifies Strategy Pattern dispatch & fee accuracy
         ├── OrderLifecycleTests.cs               # Verifies PENDING -> SHIPPED -> DELIVERED progression
         ├── RevenueRecognitionTests.cs           # Verifies Zero Phantom Revenue invariant
@@ -718,20 +729,4 @@ The following legacy concepts from previous exploratory iterations have been com
 
 ---
 
-## 8. Definition of Done & Phase Completion
 
-- [x] Explicit canonical API routes declared per controller
-- [x] No premature query library lock in P07 (`package.json` and `App.tsx` cleaned)
-- [x] Fee snapshot persistence ownership assigned to `OrderRepository`; `ReconciliationRepository` joins/reads
-- [x] Canonical `DiscrepancyType` enum values aligned with P05/P06
-- [x] Router file named `AppRouter.tsx` aligned with P04
-- [x] `FeeScheduleService.ts` ownership aligned with Settlement capability
-- [x] Non-canonical UI components removed (detail view and CSV export mapped to existing P04 components)
-- [x] Repository and Service names standardized across all tables and flows
-- [x] 27 P06 operations mapped with 100% coverage
-- [x] 9 P05 entities and tables mapped with 100% coverage
-- [x] Frontend Feature-First & Backend 3-Tier structures strictly decoupled
-- [x] Current Prototype Implementation vs Target Architecture clearly separated
-- [x] All legacy target concepts eliminated (parsers, storage, numeric(18,0), hardcoded 20k cap)
-
-**P07 — FRONTEND & BACKEND FOLDER STRUCTURES ✅ LOCK**
