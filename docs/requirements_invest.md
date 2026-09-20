@@ -439,6 +439,16 @@ Scenario: Top SKU leaderboard displays Revenue and Contribution Profit
   And Each row displays Gross Revenue, COGS, Contribution Profit, and Contribution Margin %
 ```
 
+> [!NOTE]
+> **Top SKU Contribution Profit Proportional Allocation Rule:**  
+> For multi-item orders, order-level vouchers and platform fee deductions are allocated down to individual SKU line items proportionally based on line subtotal share:
+> $$\text{lineShare} = \frac{\text{lineSubtotal}}{\text{orderSubtotal}}$$
+> $$\text{allocatedVoucher} = \text{orderVoucher} \times \text{lineShare}$$
+> $$\text{lineGrossRevenue} = \text{lineSubtotal} - \text{allocatedVoucher}$$
+> $$\text{allocatedPlatformFees} = \text{orderTotalPlatformFees} \times \text{lineShare}$$
+> $$\text{lineContributionProfit} = \text{lineGrossRevenue} - \text{allocatedPlatformFees} - \text{lineCOGS}$$
+> *(Any rounding residual across lines is absorbed into the highest-value order line).*
+
 ---
 
 #### US-DASH-04: Drilldown to Source Orders & Export CSV Audit Log

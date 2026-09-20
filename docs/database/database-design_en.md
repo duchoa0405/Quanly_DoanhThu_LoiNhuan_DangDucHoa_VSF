@@ -451,6 +451,18 @@ Contribution Margin % = (Contribution Profit / Gross Revenue) * 100  (when Gross
   - *"Contribution Profit represents order/channel profitability after marketplace fees and COGS, but before corporate operating expenses and taxes."*
   - Calling Contribution Profit *Net Profit*, *Net Income*, or *Operating Profit* is **strictly prohibited**, as company-wide operating expenses (payroll, rent, warehouse storage, marketing campaigns, corporate tax, depreciation) are not deducted.
 
+### 6.7 Top SKU Contribution Profit Proportional Allocation Model
+When evaluating merchandise-level profitability across multi-item orders, order-level vouchers and platform fee deductions are allocated to individual SKU lines proportionally based on their subtotal contribution:
+```text
+line_share = line_subtotal / order_subtotal
+allocated_voucher = order_voucher * line_share
+line_gross_revenue = line_subtotal - allocated_voucher
+allocated_platform_fees = order_total_platform_fees * line_share
+line_contribution_profit = line_gross_revenue - allocated_platform_fees - line_cogs
+```
+- **Derivation Rule:** This allocation is calculated dynamically at analytical query time; no redundant allocated columns are stored in the database.
+- **Rounding Residual:** Any penny/cent rounding discrepancy across lines is absorbed into the order's highest-value line item.
+
 ---
 
 ## 7. Persisted vs Derived Fields Summary
