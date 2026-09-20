@@ -1,6 +1,5 @@
 # System Folder Structures & Tiered Architecture Specification
 
-
 ---
 
 ## 1. Scope & Architectural Topology
@@ -86,14 +85,14 @@ backend/
 │
 ├── src/
 │   ├── FashionWeb.Api/                          # [TIER 1: PRESENTATION TIER]
-│   │   ├── Controllers/                         # Thin HTTP adapters (6 domain controllers)
-│   │   │   ├── BaseApiController.cs             # Base route /api/v1/[controller], standard response helper
-│   │   │   ├── CatalogController.cs             # [Target] UC12: Products, SKU variants, baseline costs
-│   │   │   ├── OrdersController.cs              # UC01-UC04: Order entry, preview fees, status, cancel
-│   │   │   ├── FeeSchedulesController.cs        # [Target] UC02: Active fee rates, schedule versioning
-│   │   │   ├── SettlementController.cs          # UC05-UC06: Manual settlement ledger, payout reconcile
-│   │   │   ├── DiscrepanciesController.cs       # UC07: Discrepancy audits, resolution notes
-│   │   │   └── AnalyticsController.cs           # UC08-UC11, UC13: 5 KPIs, trends, channel, top SKUs, CSV
+│   │   ├── Controllers/                         # Thin HTTP adapters (6 domain controllers + 1 shared BaseApiController)
+│   │   │   ├── BaseApiController.cs             # Shared controller conventions only; canonical routes are declared explicitly per controller.
+│   │   │   ├── CatalogController.cs             # [Target] Route: /api/v1/catalog (UC12: Products, SKU variants, baseline costs)
+│   │   │   ├── OrdersController.cs              # Route: /api/v1/orders (UC01-UC04: Order entry, preview fees, status, cancel)
+│   │   │   ├── FeeSchedulesController.cs        # [Target] Route: /api/v1/fee-schedules (Supporting configuration for UC02 fee calculation capability)
+│   │   │   ├── SettlementController.cs          # Route: /api/v1/settlements (UC05-UC06: Manual settlement ledger, payout reconcile)
+│   │   │   ├── DiscrepanciesController.cs       # Route: /api/v1/discrepancies (UC07: Discrepancy audits, resolution notes)
+│   │   │   └── AnalyticsController.cs           # Route: /api/v1/analytics (UC08-UC11, UC13: 5 KPIs, trends, channel, top SKUs, CSV)
 │   │   │
 │   │   ├── Contracts/                           # Strongly typed HTTP transport DTOs (API module isolated)
 │   │   │   ├── Catalog/                         # Catalog & SKU contracts
@@ -132,8 +131,7 @@ backend/
 │   │   │   │   ├── TopSkuResponse.cs            # SKU contribution profit ranking
 │   │   │   │   └── DrilldownOrderResponse.cs    # Itemized delivered order backing KPIs
 │   │   │   └── Common/                          # Transport concerns only
-│   │   │       ├── PaginationResponse.cs        # Generic paginated wrapper (page, pageSize, totals)
-│   │   │       └── ProblemDetailsResponse.cs    # RFC 7807 problem details DTO
+│   │   │       └── PaginationResponse.cs        # Generic paginated wrapper (page, pageSize, totals)
 │   │   │
 │   │   ├── Authorization/                       # Role-Based Access Control policies
 │   │   │   ├── Roles.cs                         # SalesOps, FinanceManager, ShopOwner constants
@@ -164,7 +162,7 @@ backend/
 │   │   │   │   ├── PaymentMethod.cs             # CASH, POS_CARD_QR, MARKETPLACE_WALLET
 │   │   │   │   ├── OrderStatus.cs               # PENDING, SHIPPED, DELIVERED, CANCELLED
 │   │   │   │   ├── ReconciliationStatus.cs      # PENDING_SETTLEMENT, RECONCILED, DISCREPANCY
-│   │   │   │   └── DiscrepancyType.cs           # COMMISSION_MISMATCH, PAYMENT_FEE_MISMATCH, etc.
+│   │   │   │   └── DiscrepancyType.cs           # COMMISSION_RATE_MISMATCH, PAYMENT_FEE_MISMATCH, SERVICE_FEE_MISMATCH, UNEXPECTED_PLATFORM_CHARGE, OTHER
 │   │   │   └── ValueObjects/                    # Domain Value Objects
 │   │   │       └── FeeBreakdown.cs              # Immutable calculation result (commission, payment, etc.)
 │   │   │
@@ -175,7 +173,7 @@ backend/
 │   │   │   ├── CreateOrderCommand.cs            # Command to create order & freeze cost snapshot
 │   │   │   ├── UpdateOrderStatusCommand.cs      # Command to progress order lifecycle
 │   │   │   ├── CancelOrderCommand.cs            # Command to cancel active order
-│   │   │   ├── CreateFeeScheduleCommand.cs      # Command to version fee schedule rates
+│   │   │   ├── CreateFeeScheduleCommand.cs      # Supporting administrative command for fee policy configuration
 │   │   │   ├── ReconcileSettlementCommand.cs    # Command to record actual payout
 │   │   │   └── ResolveDiscrepancyCommand.cs     # Command to resolve discrepancy audit
 │   │   │
@@ -190,15 +188,15 @@ backend/
 │   │   │   │   └── IDynamicFeeEngine.cs         # Fee preview & snapshot calculation facade
 │   │   │   └── Repositories/                    # Repository Port interfaces
 │   │   │       ├── IProductRepository.cs        # Products & Variants persistence port
-│   │   │       ├── IOrderRepository.cs          # Orders, Items & Status History persistence port
+│   │   │       ├── IOrderRepository.cs          # Orders, Items, Status History & Delivery Fee Snapshot persistence port
 │   │   │       ├── IFeeScheduleRepository.cs    # Fee Schedule rates persistence port
-│   │   │       ├── IReconciliationRepository.cs # Reconciliation & Snapshot persistence port
+│   │   │       ├── IReconciliationRepository.cs # Reconciliation persistence/query port; may read fee snapshots for settlement views
 │   │   │       ├── IDiscrepancyRepository.cs    # Discrepancy Audit persistence port
 │   │   │       └── IAnalyticsRepository.cs      # Financial Aggregations & Query port
 │   │   │
 │   │   ├── Services/                            # Concrete Application Domain Services
 │   │   │   ├── CatalogService.cs                # [Target] Manages product catalog & cost maintenance
-│   │   │   ├── OrderService.cs                  # Enforces Zero Phantom Revenue, cost freezing, cancel
+│   │   │   ├── OrderService.cs                  # Order creation: freezes unit_cost_snapshot; Delivery: freezes order_fee_snapshot, creates pending reconciliation
 │   │   │   ├── FeeScheduleService.cs            # [Target] Manages rate schedule versioning
 │   │   │   ├── SettlementService.cs             # Computes variance, enforces manual match rules
 │   │   │   ├── DiscrepancyService.cs            # Handles resolution notes & sets resolved_at
@@ -207,7 +205,7 @@ backend/
 │   │   │
 │   │   ├── Strategies/                          # Strategy Pattern: Multi-Channel Platform Fee Calculation
 │   │   │   ├── IPlatformFeeStrategy.cs          # Fee strategy contract
-│   │   │   ├── TikTokShopFeeStrategy.cs         # 4% Subtotal + 3% Gross Revenue + Configured Fixed (3,000 VND)
+│   │   │   ├── TikTokShopFeeStrategy.cs         # 4% Subtotal + 3% Gross Revenue + Configured Fixed (current schedule 3,000 VND)
 │   │   │   ├── ShopeeFeeStrategy.cs             # 4.5% Subtotal + 4% Gross Revenue + Service Fee with Configured Cap
 │   │   │   ├── PosFeeStrategy.cs                # 0 VND Cash / 1% Card/QR fee
 │   │   │   └── FeeStrategyFactory.cs            # Channel-to-Strategy resolver
@@ -231,9 +229,9 @@ backend/
 │       │
 │       ├── Repositories/                        # EF Core Repository Implementations (Persistence Ports)
 │       │   ├── ProductRepository.cs             # [Target] Implements IProductRepository
-│       │   ├── OrderRepository.cs               # Implements IOrderRepository
+│       │   ├── OrderRepository.cs               # Implements IOrderRepository; persists orders, items, status history and delivery fee snapshots
 │       │   ├── FeeScheduleRepository.cs         # Implements IFeeScheduleRepository
-│       │   ├── ReconciliationRepository.cs      # Implements IReconciliationRepository
+│       │   ├── ReconciliationRepository.cs      # Implements IReconciliationRepository; reconciliation records and settlement query joins
 │       │   ├── DiscrepancyRepository.cs         # Implements IDiscrepancyRepository
 │       │   └── AnalyticsRepository.cs           # [Target] Implements IAnalyticsRepository
 │       │
@@ -255,8 +253,9 @@ backend/
 
 #### Tier 1: Presentation Tier (`FashionWeb.Api`)
 - **Role:** Thin HTTP adapter and transport serializer.
+- **Structure:** 6 domain controllers + 1 shared `BaseApiController`.
 - **Responsibilities:**
-  - Route HTTP requests to controller actions (`/api/v1/[controller]`).
+  - Route HTTP requests using explicit canonical paths defined by P06 OpenAPI.
   - Validate HTTP request contracts (`ModelState`, DataAnnotations).
   - Enforce RBAC authorization attributes (`[Authorize(Roles = ...)]`).
   - Map incoming API Request DTOs into strongly typed `FashionWeb.Business.Commands`.
@@ -274,7 +273,8 @@ backend/
 - **Responsibilities:**
   - Enforce the **Zero Phantom Revenue Invariant** (revenue is recognized if and only if order status is `DELIVERED`).
   - Execute multi-channel fee strategies via `DynamicFeeEngine` and the Strategy Pattern.
-  - Freeze baseline unit cost snapshots upon order item recording.
+  - Freeze baseline unit cost snapshots upon order item recording (`unit_cost_snapshot`).
+  - Freeze immutable fee snapshots upon delivery (`order_fee_snapshots`).
   - Derive **Contribution Profit** ($\text{Projected Settlement} - \text{COGS}$) and prohibit Net Profit.
   - Derive settlement variance ($\text{Projected Settlement} - \text{Actual Settlement}$).
   - Enforce status progression state machine rules (`PENDING` $\rightarrow$ `SHIPPED` $\rightarrow$ `DELIVERED`).
@@ -289,6 +289,7 @@ backend/
   - Manage database connection and transactions via `AppDbContext`.
   - Enforce database precision `numeric(15,2)` on all monetary columns via Fluent API configurations.
   - Execute CRUD queries and aggregations implementing `FashionWeb.Business.Interfaces.Repositories`.
+  - Primary write ownership for `order_fee_snapshots` is held by `OrderRepository` upon delivery completion; `ReconciliationRepository` queries/joins snapshots for settlement views.
   - Generate and apply EF Core database migrations.
 - **Strict Prohibitions:**
   - **NEVER** determine business workflows or legal order state transitions.
@@ -303,19 +304,19 @@ backend/
 
 ```text
 frontend/
-├── package.json                                 # React 18, TypeScript, Vite, TanStack Query, Axios
+├── package.json                                 # React 18, TypeScript, Vite, Axios
 ├── tsconfig.json
 ├── index.html
 │
 └── src/
     ├── app/                                     # Global application bootstrap
-    │   ├── App.tsx                              # Root component mounting QueryClient & AppShell
-    │   └── router.tsx                           # BrowserRouter routing: /orders, /settlement, /analytics, /catalog
+    │   ├── App.tsx                              # Root application bootstrap, providers, and AppShell
+    │   └── AppRouter.tsx                        # react-router-dom route definitions for /orders, /settlement, /analytics, /catalog
     │
     ├── layouts/                                 # Shell and structure layouts
     │   ├── AppShell.tsx                         # Master responsive wrapper (Sidebar + Topbar + Content area)
     │   ├── Sidebar.tsx                          # Primary navigation rail (Orders, Settlement, Analytics, Catalog)
-    │   └── Topbar.tsx                           # Header: Global search, active role switcher, system status
+    │   └── Topbar.tsx                           # Header: Global search, current authenticated user and role indicator, system status
     │
     ├── pages/                                   # Route Orchestration Pages (Thin Composers)
     │   ├── orders/
@@ -330,8 +331,8 @@ frontend/
     ├── features/                                # Domain Business Modules (Feature-First)
     │   ├── orders/                              # Feature: Commercial Order Management
     │   │   ├── components/                      # P04 Component implementations
-    │   │   │   ├── OrderTable.tsx               # Orders table displaying OrderListItemResponse (no cost leak)
-    │   │   │   ├── OrderMetrics.tsx             # 5 Summary cards (total, delivered, revenue, inTransit, cancelled)
+    │   │   │   ├── OrderTable.tsx               # Orders table displaying OrderListItemResponse (no cost leak; detail opened via row interaction)
+    │   │   │   ├── OrderMetrics.tsx             # 5 operational order metrics (total, delivered, revenue, inTransit, cancelled)
     │   │   │   ├── OrderFilters.tsx             # Channel pills, status dropdown, date range, search input
     │   │   │   ├── OrderStatusActions.tsx       # Action buttons for Ship, Deliver, Cancel progression
     │   │   │   ├── CreateOrderModal.tsx         # Order entry modal embedding FeePreviewWidget & ProductSelector
@@ -341,7 +342,7 @@ frontend/
     │   │   │   └── useFeePreview.ts             # Debounced real-time fee calculation hook
     │   │   ├── api/                             # Feature API HTTP service
     │   │   │   ├── OrderService.ts              # Calls GET/POST /orders, /orders/summary, /status, /cancel
-    │   │   │   └── FeeService.ts                # Calls POST /orders/preview-fee
+    │   │   │   └── FeeService.ts                # Calls POST /orders/preview-fee (fee preview only)
     │   │   └── types/
     │   │       └── order.types.ts               # Client-side Order contracts & enums
     │   │
@@ -350,11 +351,11 @@ frontend/
     │   │   │   ├── ProductTable.tsx             # Master product and SKU variant matrix
     │   │   │   ├── ProductEditor.tsx            # Add/Edit master product modal
     │   │   │   ├── PricingCostEditor.tsx        # Edit retailPrice and baseline costPrice modal
-    │   │   │   └── ProductSelector.tsx          # Autocomplete SKU dropdown for CreateOrderModal
+    │   │   │   └── ProductSelector.tsx          # Autocomplete SKU dropdown for CreateOrderModal (costPrice stripped)
     │   │   ├── hooks/
     │   │   │   └── useCatalog.ts                # Queries catalog products & selectable variants
     │   │   ├── api/
-    │   │   │   └── CatalogService.cs -> CatalogService.ts # Calls /catalog/products, /variants, /selectable
+    │   │   │   └── CatalogService.ts            # Calls /catalog/products, /variants, /selectable
     │   │   └── types/
     │   │       └── catalog.types.ts             # Product & Variant client interfaces
     │   │
@@ -367,10 +368,10 @@ frontend/
     │   │   │   └── FeeScheduleModal.tsx         # Fee schedule inspection & versioning modal
     │   │   ├── hooks/
     │   │   │   ├── useSettlement.ts             # Queries ledger, summary counters, records actual payout
-    │   │   │   └── useFeeSchedule.ts            # Queries active schedules, submits new schedule version
+    │   │   │   └── useFeeSchedule.ts            # Queries active schedules, submits new schedule version via FeeScheduleService
     │   │   ├── api/
     │   │   │   ├── SettlementService.ts         # Calls GET /settlements, GET /summary, POST /reconcile
-    │   │   │   └── FeeScheduleService.ts        # Calls GET /fee-schedules, POST /fee-schedules
+    │   │   │   └── FeeScheduleService.ts        # Calls GET /fee-schedules, POST /fee-schedules (fee schedule read/versioning only)
     │   │   └── types/
     │   │       └── settlement.types.ts          # Ledger item & Reconciliation client interfaces
     │   │
@@ -392,11 +393,11 @@ frontend/
     │       │   ├── FinancialTrendChart.tsx      # Time-series chart of Gross Revenue vs Contribution Profit
     │       │   ├── ChannelShareChart.tsx        # Multi-channel breakdown distribution (TikTok, Shopee, POS)
     │       │   ├── TopSkuTable.tsx              # Top SKU ranking by Contribution Profit, Revenue, or Units
-    │       │   └── SourceOrderDrilldown.tsx     # Modal listing itemized delivered orders backing KPI totals
+    │       │   └── SourceOrderDrilldown.tsx     # Modal listing itemized delivered orders backing KPI totals & triggering CSV export
     │       ├── hooks/
-    │       │   └── useAnalytics.ts              # Queries KPIs, trends, channel share, top SKUs, triggers CSV
+    │       │   └── useAnalytics.ts              # Queries KPIs, trends, channel share, top SKUs, triggers CSV export
     │       ├── api/
-    │       │   └── AnalyticsService.ts          # Calls 6 /analytics endpoints including export-csv
+    │       │   └── AnalyticsService.ts          # Calls 6 /analytics endpoints (/kpis, /trend, /channel-breakdown, /top-skus, /drilldown, /export-csv)
     │       └── types/
     │           └── analytics.types.ts           # Financial analytics client interfaces
     │
@@ -413,10 +414,10 @@ frontend/
     │   │   └── Input.tsx                        # Text, number, and select input components
     │   │
     │   ├── lib/                                 # Shared Formatting Utilities
-    │   │   └── formatters.ts                    # formatMoney(VND), formatDate(ISO to locale)
+    │   │   └── formatters.ts                    # formatMoney, formatDate only; no financial calculations (commission, COGS, profit, variance)
     │   │
     │   ├── constants/                           # Shared Business Constants
-    │   │   └── channels.ts                      # Channel codes, brand colors, labels
+    │   │   └── channels.ts                      # display labels/colors only; no financial rate logic. Authoritative fee rates originate from backend fee_schedules
     │   │
     │   └── types/                               # Technical Generic Types
     │       └── common.types.ts                  # ApiResponse<T>, PagedResult<T>, ProblemDetails
@@ -438,6 +439,7 @@ pages/ ──► features/ ──► hooks/ ──► api/ ──► shared/api/
 2. **Feature Isolation:** Feature components and hooks live inside their respective feature directory (`features/<name>/`). Cross-feature direct imports are strictly avoided, except for intentional shared composition boundaries:
    - `CreateOrderModal.tsx` in `features/orders/` imports `ProductSelector.tsx` from `features/catalog/`.
    - `SettlementPage.tsx` in `pages/settlement/` composes `SettlementLedger.tsx` (`features/settlements/`) and `DiscrepancyPanel.tsx` (`features/discrepancies/`).
+   - `features/analytics` does **not** import business components directly from `features/settlements` or `features/orders`.
 3. **No Direct Axios Imports:** Components and pages **must NEVER import Axios directly**. All network calls traverse:
    $$\text{Component} \longrightarrow \text{Hook} \longrightarrow \text{Feature Service} \longrightarrow \text{ApiClient} \longrightarrow \text{Backend API}$$
 4. **Pure Shared Directory:** `shared/` must never import from `features/` or `pages/`. Reusable UI components in `shared/ui/` are atomic primitives (`Button`, `Badge`, `Modal`, `Input`); domain tables (`OrderTable`, `SettlementLedger`) belong strictly inside their domain feature directories.
@@ -451,12 +453,12 @@ The repository currently contains early prototype code. The table below delineat
 
 | Area | Current Prototype State | Target Production Architecture (P07) | Status / Refactoring Directive |
 |---|---|---|:---:|
-| **Backend Controllers** | 5 Controllers (`Analytics`, `BaseApi`, `Discrepancies`, `Orders`, `Settlement`). | 6 Controllers: mapped to P06 (`Catalog`, `Orders`, `FeeSchedules`, `Settlement`, `Discrepancies`, `Analytics`). | **Add `CatalogController`, `FeeSchedulesController`** [Target] |
+| **Backend Controllers** | 4 domain controllers + BaseApiController (`Analytics`, `BaseApi`, `Discrepancies`, `Orders`, `Settlement`). | 6 domain controllers + 1 shared BaseApiController (`Catalog`, `Orders`, `FeeSchedules`, `Settlement`, `Discrepancies`, `Analytics`). | **Add `CatalogController`, `FeeSchedulesController`** [Target] |
 | **API Contracts** | 4 Folders (`Analytics`, `Discrepancies`, `Orders`, `Settlement`). | 7 Folders: grouped by API module (`Catalog`, `Orders`, `FeeSchedules`, `Settlements`, `Discrepancies`, `Analytics`, `Common`). | **Reorganize into 7 contract modules** [Target] |
 | **Backend Commands** | No `Commands/` folder; controllers pass DTOs directly into services. | Explicit `FashionWeb.Business/Commands/` decouples API DTOs from application domain services. | **Add `Commands/` directory** [Target] |
 | **Application Services** | Contains legacy `StatementMatchingService.cs`. Missing `CatalogService`, `FeeScheduleService`. | Clean services: `OrderService`, `CatalogService`, `FeeScheduleService`, `SettlementService`, `DiscrepancyService`, `AnalyticsService`, `DynamicFeeEngine`. | **Remove StatementMatchingService; Add CatalogService, FeeScheduleService** |
-| **Data Parsers** | `FashionWeb.Data/Parsers/` (`CsvStatementParser.cs`, `ExcelStatementParser.cs`). | Zero statement file parsers. Manual bank/wallet actual payout entry is the target MVP. | **Purge `Parsers/`** (Legacy / to be removed during implementation refactor) |
-| **File Storage** | `FashionWeb.Data/Storage/FileStorageService.cs`. | Zero local file storage service required for MVP. | **Purge `Storage/`** (Legacy / to be removed during implementation refactor) |
+| **Data Parsers** | `FashionWeb.Data/Parsers/` (`CsvStatementParser.cs`, `ExcelStatementParser.cs`). | Zero statement file parsers. Manual bank/wallet actual payout entry is the target MVP. | **Purge `Parsers/` during P09 refactor** |
+| **File Storage** | `FashionWeb.Data/Storage/FileStorageService.cs`. | Zero local file storage service required for MVP. | **Purge `Storage/` during P09 refactor** |
 | **EF Configurations** | 5 entity configurations. | 9 complete Fluent API configurations mapping all 9 P05 tables with `numeric(15,2)` precision. | **Add remaining 4 configurations** [Target] |
 | **Data Repositories** | 4 repositories. Missing `ProductRepository`, `AnalyticsRepository`. | 6 repositories implementing domain port interfaces. | **Add `ProductRepository`, `AnalyticsRepository`** [Target] |
 | **Frontend Root** | `OrdersPage.tsx`, `SettlementsPage.tsx`, `AnalyticsDashboardPage.tsx`, `DiscrepanciesPage.tsx` inside `features/`. | Clean separation: `pages/` (route orchestration) vs `features/` (business capability UI). | **Create `pages/` and move page composers** |
@@ -518,7 +520,7 @@ Every business flow executes across a strictly defined traversal path connecting
        ▼ (resolves active rates & dispatches to TikTok, Shopee, or POS Strategy)
 [DynamicFeeEngine.cs] (`FashionWeb.Business/Services/`)
        │
-       ▼ (retrieves active schedule)
+       ▼ (IFeeScheduleRepository performs read-only DB lookup; fee calculation itself is in-memory with zero database writes)
 [IFeeScheduleRepository.cs] (`FashionWeb.Business/Interfaces/Repositories/`)
        │
        ▼ (in-memory fee breakdown return — ZERO database write)
@@ -541,14 +543,11 @@ Every business flow executes across a strictly defined traversal path connecting
        ▼
 [OrderService.cs] (`FashionWeb.Business/Services/`)
        │ (evaluates fee strategy, recognizes gross revenue & COGS, creates PENDING_SETTLEMENT record)
-       ▼
-[OrderFeeSnapshot & ReconciliationRecord] (`FashionWeb.Business/Domain/Entities/`)
+       ├─► [IOrderRepository.cs]
+       │    └─► [OrderRepository.cs] ──► orders, order_status_history, order_fee_snapshots (P05 Tables)
        │
-       ▼ (persists immutable snapshot)
-[OrderRepository.cs & ReconciliationRepository.cs] (`FashionWeb.Data/Repositories/`)
-       │
-       ▼
-[orders, order_fee_snapshots, reconciliation_records, order_status_history] (P05 Tables)
+       └─► [IReconciliationRepository.cs]
+            └─► [ReconciliationRepository.cs] ──► reconciliation_records (P05 Table)
 ```
 
 ### Flow 4: Manual Actual Settlement & Reconciliation (`UC05`, `UC06`)
@@ -570,6 +569,9 @@ Every business flow executes across a strictly defined traversal path connecting
        │ (if variance == 0: RECONCILED; if variance != 0: DISCREPANCY, requires explanation)
        ▼
 [IReconciliationRepository.cs & IDiscrepancyRepository.cs]
+       │
+       ▼
+[ReconciliationRepository.cs & DiscrepancyRepository.cs]
        │
        ▼
 [reconciliation_records, discrepancy_audits] (P05 Tables)
@@ -605,7 +607,7 @@ Every business flow executes across a strictly defined traversal path connecting
        ▼ (queries financial analytics for date range & channel)
 [useAnalytics.ts] (`features/analytics/hooks/`)
        │
-       ▼ (dispatches HTTP GET /api/v1/analytics/kpis, /trend, /top-skus, /export-csv)
+       ▼ (dispatches HTTP GET /api/v1/analytics/kpis, /trend, /channel-breakdown, /top-skus, /drilldown, /export-csv)
 [AnalyticsService.ts] (`features/analytics/api/`)
        │
        ▼ (HTTPS REST / JSON)
@@ -660,17 +662,17 @@ Every business flow executes across a strictly defined traversal path connecting
 | **05** | `PATCH /catalog/products/{id}` | `updateProduct` | `CatalogController` | `CatalogService` | `ProductRepository` | `ProductEditor.tsx` / `useCatalog` |
 | **06** | `PATCH /catalog/variants/{id}` | `updateVariant` | `CatalogController` | `CatalogService` | `ProductRepository` | `PricingCostEditor.tsx` / `useCatalog` |
 | **07** | `GET /orders` | `listOrders` | `OrdersController` | `OrderService` | `OrderRepository` | `OrderTable.tsx` / `useOrders` |
-| **08** | `POST /orders` | `createOrder` | `OrdersController` | `OrderService` | `OrderRepository`, `ProductRepo` | `CreateOrderModal.tsx` / `useOrders` |
+| **08** | `POST /orders` | `createOrder` | `OrdersController` | `OrderService` | `OrderRepository`, `ProductRepository` | `CreateOrderModal.tsx` / `useOrders` |
 | **09** | `GET /orders/summary` | `getOrderSummary` | `OrdersController` | `OrderService` | `OrderRepository` | `OrderMetrics.tsx` / `useOrders` |
 | **10** | `POST /orders/preview-fee` | `previewOrderFees` | `OrdersController` | `DynamicFeeEngine` | `FeeScheduleRepository` | `CreateOrderModal.tsx` / `useFeePreview` |
-| **11** | `GET /orders/{id}` | `getOrderById` | `OrdersController` | `OrderService` | `OrderRepository` | `OrderDetailDrawer.tsx` / `useOrders` |
-| **12** | `PATCH /orders/{id}/status` | `updateOrderStatus` | `OrdersController` | `OrderService` | `OrderRepository`, `ReconciliationRepo` | `OrderStatusActions.tsx` / `useOrders` |
+| **11** | `GET /orders/{id}` | `getOrderById` | `OrdersController` | `OrderService` | `OrderRepository` | `OrderTable.tsx` / `useOrders` *(detail opened via table interaction)* |
+| **12** | `PATCH /orders/{id}/status` | `updateOrderStatus` | `OrdersController` | `OrderService` | `OrderRepository`, `ReconciliationRepository` | `OrderStatusActions.tsx` / `useOrders` |
 | **13** | `POST /orders/{id}/cancel` | `cancelOrder` | `OrdersController` | `OrderService` | `OrderRepository` | `CancelOrderModal.tsx` / `useOrders` |
 | **14** | `GET /fee-schedules` | `listFeeSchedules` | `FeeSchedulesController` | `FeeScheduleService` | `FeeScheduleRepository` | `FeeScheduleModal.tsx` / `useFeeSchedule` |
 | **15** | `POST /fee-schedules` | `createFeeSchedule` | `FeeSchedulesController` | `FeeScheduleService` | `FeeScheduleRepository` | `FeeScheduleModal.tsx` / `useFeeSchedule` |
 | **16** | `GET /settlements` | `getSettlementLedger` | `SettlementController` | `SettlementService` | `ReconciliationRepository` | `SettlementLedger.tsx` / `useSettlement` |
 | **17** | `GET /settlements/summary` | `getSettlementSummary` | `SettlementController` | `SettlementService` | `ReconciliationRepository` | `SettlementSummary.tsx` / `useSettlement` |
-| **18** | `POST /settlements/{orderId}/reconcile`| `reconcileSettlement` | `SettlementController` | `SettlementService` | `ReconciliationRepository`, `DiscrepancyRepo` | `RecordSettlementModal.tsx` / `useSettlement` |
+| **18** | `POST /settlements/{orderId}/reconcile`| `reconcileSettlement` | `SettlementController` | `SettlementService` | `ReconciliationRepository`, `DiscrepancyRepository` | `RecordSettlementModal.tsx` / `useSettlement` |
 | **19** | `GET /discrepancies` | `listDiscrepancies` | `DiscrepanciesController` | `DiscrepancyService` | `DiscrepancyRepository` | `DiscrepancyPanel.tsx` / `useDiscrepancies` |
 | **20** | `GET /discrepancies/{id}` | `getDiscrepancyById` | `DiscrepanciesController` | `DiscrepancyService` | `DiscrepancyRepository` | `DiscrepancyDetails.tsx` / `useDiscrepancies` |
 | **21** | `PATCH /discrepancies/{id}/resolve` | `resolveDiscrepancy` | `DiscrepanciesController` | `DiscrepancyService` | `DiscrepancyRepository` | `DiscrepancyReviewAction.tsx` / `useDiscrepancies` |
@@ -679,7 +681,7 @@ Every business flow executes across a strictly defined traversal path connecting
 | **24** | `GET /analytics/channel-breakdown` | `getChannelBreakdown` | `AnalyticsController` | `AnalyticsService` | `AnalyticsRepository` | `ChannelShareChart.tsx` / `useAnalytics` |
 | **25** | `GET /analytics/top-skus` | `getTopSkus` | `AnalyticsController` | `AnalyticsService` | `AnalyticsRepository` | `TopSkuTable.tsx` / `useAnalytics` |
 | **26** | `GET /analytics/drilldown` | `getDrilldownOrders` | `AnalyticsController` | `AnalyticsService` | `AnalyticsRepository` | `SourceOrderDrilldown.tsx` / `useAnalytics` |
-| **27** | `GET /analytics/export-csv` | `exportReconciliationCsv` | `AnalyticsController` | `AnalyticsService` | `AnalyticsRepository` | `ExportCsvButton.tsx` / `useAnalytics` |
+| **27** | `GET /analytics/export-csv` | `exportReconciliationCsv` | `AnalyticsController` | `AnalyticsService` | `AnalyticsRepository` | `SourceOrderDrilldown.tsx` / `useAnalytics` *(CSV export trigger)* |
 
 ---
 
@@ -693,7 +695,7 @@ Every business flow executes across a strictly defined traversal path connecting
 | `order_items` | `OrderItem.cs` | `OrderItemConfiguration.cs` | `IOrderRepository` / `OrderRepository.cs` | Frozen baseline cost snapshot (`unit_cost_snapshot`, `total_cost`). |
 | `order_status_history` | `OrderStatusHistory.cs` | `OrderStatusHistoryConfiguration.cs` | `IOrderRepository` / `OrderRepository.cs` | Immutable state transition audit trail (`PENDING` $\rightarrow$ `SHIPPED` $\rightarrow$ `DELIVERED`). |
 | `fee_schedules` | `FeeSchedule.cs` | `FeeScheduleConfiguration.cs` | `IFeeScheduleRepository` / `FeeScheduleRepository.cs` | Channel fee rates, configured `service_fee_cap`, and rate versioning. |
-| `order_fee_snapshots` | `OrderFeeSnapshot.cs` | `OrderFeeSnapshotConfiguration.cs` | `IReconciliationRepository` / `ReconciliationRepository.cs` | Frozen platform fee deductions upon `DELIVERED` status (business immutability). |
+| `order_fee_snapshots` | `OrderFeeSnapshot.cs` | `OrderFeeSnapshotConfiguration.cs` | `IOrderRepository` / `OrderRepository.cs` | Frozen platform fee deductions upon `DELIVERED` status (business immutability). Settlement queries may join/read through `ReconciliationRepository`. |
 | `reconciliation_records`| `ReconciliationRecord.cs` | `ReconciliationRecordConfiguration.cs` | `IReconciliationRepository` / `ReconciliationRepository.cs` | Actual payout tracking, variance calculation, settlement audit. |
 | `discrepancy_audits` | `DiscrepancyAudit.cs` | `DiscrepancyAuditConfiguration.cs` | `IDiscrepancyRepository` / `DiscrepancyRepository.cs` | Variance investigation trail; `isResolved` derived as `resolved_at != null`. |
 
@@ -716,3 +718,20 @@ The following legacy concepts from previous exploratory iterations have been com
 
 ---
 
+## 8. Definition of Done & Phase Completion
+
+- [x] Explicit canonical API routes declared per controller
+- [x] No premature query library lock in P07 (`package.json` and `App.tsx` cleaned)
+- [x] Fee snapshot persistence ownership assigned to `OrderRepository`; `ReconciliationRepository` joins/reads
+- [x] Canonical `DiscrepancyType` enum values aligned with P05/P06
+- [x] Router file named `AppRouter.tsx` aligned with P04
+- [x] `FeeScheduleService.ts` ownership aligned with Settlement capability
+- [x] Non-canonical UI components removed (detail view and CSV export mapped to existing P04 components)
+- [x] Repository and Service names standardized across all tables and flows
+- [x] 27 P06 operations mapped with 100% coverage
+- [x] 9 P05 entities and tables mapped with 100% coverage
+- [x] Frontend Feature-First & Backend 3-Tier structures strictly decoupled
+- [x] Current Prototype Implementation vs Target Architecture clearly separated
+- [x] All legacy target concepts eliminated (parsers, storage, numeric(18,0), hardcoded 20k cap)
+
+**P07 — FRONTEND & BACKEND FOLDER STRUCTURES ✅ LOCK**
