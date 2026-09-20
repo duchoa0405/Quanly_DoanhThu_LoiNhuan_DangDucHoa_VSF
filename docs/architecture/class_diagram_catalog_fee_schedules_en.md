@@ -44,6 +44,15 @@ classDiagram
         +List~CreateProductVariantRequest~ Variants
     }
 
+    class CreateProductVariantRequest {
+        <<Request DTO>>
+        +string SkuCode
+        +string? Color
+        +string? Size
+        +decimal RetailPrice
+        +decimal CostPrice
+    }
+
     class UpdateProductRequest {
         <<Request DTO>>
         +string? Name
@@ -56,6 +65,15 @@ classDiagram
         +decimal? RetailPrice
         +decimal? CostPrice
         +bool? IsActive
+    }
+
+    class PagedProductListResponse {
+        <<Response DTO>>
+        +List~ProductResponse~ Items
+        +int Page
+        +int PageSize
+        +int TotalItems
+        +int TotalPages
     }
 
     class ProductResponse {
@@ -81,6 +99,11 @@ classDiagram
         +bool IsActive
         +DateTime CreatedAt
         +DateTime UpdatedAt
+    }
+
+    class SelectableVariantListResponse {
+        <<Response DTO>>
+        +List~SelectableVariantResponse~ Variants
     }
 
     class SelectableVariantResponse {
@@ -209,11 +232,16 @@ classDiagram
     CatalogController ..> CreateProductRequest : receives
     CatalogController ..> UpdateProductRequest : receives
     CatalogController ..> UpdateVariantRequest : receives
+    CatalogController ..> SelectableVariantListResponse : returns
+    CatalogController ..> PagedProductListResponse : returns
     CatalogController ..> ProductResponse : returns
-    CatalogController ..> SelectableVariantResponse : returns
     CatalogController ..> CreateProductCommand : maps to
     CatalogController ..> UpdateProductCommand : maps to
     CatalogController ..> UpdateVariantCommand : maps to
+
+    CreateProductRequest *-- CreateProductVariantRequest : items
+    SelectableVariantListResponse *-- SelectableVariantResponse : contains
+    PagedProductListResponse *-- ProductResponse : items
 
     ICatalogService <|.. CatalogService : implements
     CatalogService --> IProductRepository : queries / persists
@@ -256,6 +284,11 @@ classDiagram
         +decimal? ServiceFeeCap
         +decimal FixedFeePerOrder
         +DateOnly EffectiveFrom
+    }
+
+    class FeeScheduleListResponse {
+        <<Response DTO>>
+        +List~FeeScheduleResponse~ Schedules
     }
 
     class FeeScheduleResponse {
@@ -366,8 +399,10 @@ classDiagram
     %% Relationships
     FeeSchedulesController ..> IFeeScheduleService : invokes
     FeeSchedulesController ..> CreateFeeScheduleRequest : receives
+    FeeSchedulesController ..> FeeScheduleListResponse : returns
     FeeSchedulesController ..> FeeScheduleResponse : returns
     FeeSchedulesController ..> CreateFeeScheduleCommand : maps to
+    FeeScheduleListResponse *-- FeeScheduleResponse : schedules
 
     IFeeScheduleService <|.. FeeScheduleService : implements
     FeeScheduleService --> IFeeScheduleRepository : persists / queries

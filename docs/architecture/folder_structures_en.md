@@ -97,11 +97,14 @@ backend/
 │   │   ├── Contracts/                           # Strongly typed HTTP transport DTOs (API module isolated)
 │   │   │   ├── Catalog/                         # Catalog & SKU contracts
 │   │   │   │   ├── CreateProductRequest.cs      # Product creation payload
+│   │   │   │   ├── CreateProductVariantRequest.cs# Child SKU variant creation payload
 │   │   │   │   ├── UpdateProductRequest.cs      # Metadata update (name, category, isActive)
 │   │   │   │   ├── UpdateVariantRequest.cs      # Variant pricing update (retailPrice, costPrice)
 │   │   │   │   ├── ProductResponse.cs           # Master product detail with variants
 │   │   │   │   ├── ProductVariantResponse.cs    # SKU variant detail
-│   │   │   │   └── SelectableVariantResponse.cs # Lightweight SKU selector (costPrice stripped)
+│   │   │   │   ├── SelectableVariantResponse.cs # Lightweight SKU selector (costPrice stripped)
+│   │   │   │   ├── SelectableVariantListResponse.cs# Selectable SKU variant collection wrapper
+│   │   │   │   └── PagedProductListResponse.cs  # Paginated products with variants wrapper
 │   │   │   ├── Orders/                          # Order & Fee Preview contracts
 │   │   │   │   ├── CreateOrderRequest.cs        # Customer, voucher, order lines input
 │   │   │   │   ├── CreateOrderItemRequest.cs    # Order line item input
@@ -109,6 +112,7 @@ backend/
 │   │   │   │   ├── FeeBreakdownResponse.cs      # Estimated fee breakdown
 │   │   │   │   ├── UpdateOrderStatusRequest.cs  # Progression target (SHIPPED, DELIVERED)
 │   │   │   │   ├── CancelOrderRequest.cs        # Cancellation reason
+│   │   │   │   ├── OrderItemSummary.cs          # Lightweight order line summary (SKU, quantity)
 │   │   │   │   ├── OrderListItemResponse.cs     # Lightweight table item (no cost leak)
 │   │   │   │   ├── PagedOrderListResponse.cs    # Paginated orders wrapper
 │   │   │   │   ├── OrderResponse.cs             # Order lifecycle response
@@ -119,7 +123,8 @@ backend/
 │   │   │   │   └── OrderSummaryResponse.cs      # Operational counters & recognized gross revenue
 │   │   │   ├── FeeSchedules/                    # Fee Schedule contracts
 │   │   │   │   ├── CreateFeeScheduleRequest.cs  # Shop Owner rate versioning payload
-│   │   │   │   └── FeeScheduleResponse.cs       # Active schedule rates & caps
+│   │   │   │   ├── FeeScheduleResponse.cs       # Active schedule rates & caps
+│   │   │   │   └── FeeScheduleListResponse.cs   # Active fee schedule collection wrapper
 │   │   │   ├── Settlements/                     # Settlement & Reconciliation contracts
 │   │   │   │   ├── SettlementLedgerItemResponse.cs# Ledger item with 4 frozen fee breakdowns
 │   │   │   │   ├── PagedSettlementLedgerResponse.cs# Paginated settlement ledger wrapper
@@ -136,7 +141,9 @@ backend/
 │   │   │   │   ├── FinancialTrendResponse.cs    # Trend response wrapper with points
 │   │   │   │   ├── FinancialTrendPoint.cs       # Daily time-series data point
 │   │   │   │   ├── ChannelBreakdownResponse.cs  # Multi-channel revenue/profit distribution
+│   │   │   │   ├── ChannelBreakdownListResponse.cs# Multi-channel revenue/profit collection wrapper
 │   │   │   │   ├── TopSkuResponse.cs            # SKU contribution profit ranking
+│   │   │   │   ├── TopSkuListResponse.cs        # SKU contribution profit ranking wrapper
 │   │   │   │   ├── PagedDrilldownOrderResponse.cs# Paginated drilldown orders wrapper
 │   │   │   │   └── DrilldownOrderItem.cs        # Itemized delivered order backing KPIs
 │   │   │   └── Common/                          # Transport concerns only
@@ -170,6 +177,7 @@ backend/
 │   │   │   │   ├── ChannelType.cs               # TIKTOK, SHOPEE, POS
 │   │   │   │   ├── PaymentMethod.cs             # CASH, POS_CARD_QR, MARKETPLACE_WALLET
 │   │   │   │   ├── OrderStatus.cs               # PENDING, SHIPPED, DELIVERED, CANCELLED
+│   │   │   │   ├── OrderProgressStatus.cs       # SHIPPED, DELIVERED (restricted status update transitions)
 │   │   │   │   ├── ReconciliationStatus.cs      # PENDING_SETTLEMENT, RECONCILED, DISCREPANCY
 │   │   │   │   └── DiscrepancyType.cs           # COMMISSION_RATE_MISMATCH, PAYMENT_FEE_MISMATCH, SERVICE_FEE_MISMATCH, UNEXPECTED_PLATFORM_CHARGE, OTHER
 │   │   │   └── ValueObjects/                    # Domain Value Objects
@@ -732,11 +740,11 @@ The following legacy concepts from previous exploratory iterations have been com
 
 | Legacy Concept (Eliminated) | Authoritative Target Standard (P07) | Architectural Rationale |
 |---|---|---|
-| `NUMERIC(18,0)` precision | PostgreSQL `numeric(15,2)`, C# `decimal` | Enforces exact 2-decimal-place monetary precision without rounding distortion. |
+| Zero-decimal currency storage | PostgreSQL `numeric(15,2)`, C# `decimal` | Enforces exact 2-decimal-place monetary precision without rounding distortion. |
 | TikTok fixed fee 2,000 VND | Configured rate schedule (current example 3,000 VND) | Dynamically loaded from `fee_schedules` via Strategy Pattern. |
 | Shopee fee cap hardcoded 20,000 VND | Configured cap (`fee_schedules.service_fee_cap`) | Dynamic database configuration; zero hard-coded fee caps in codebase. |
 | Bank statement spreadsheet upload (`statement_imports`, `statement_lines`, `CsvStatementParser`, `ExcelStatementParser`, `FileStorageService`) | Manual settlement entry (`POST /settlements/{orderId}/reconcile`) | Direct manual bank/wallet payout reconciliation is the official Target MVP scope. |
-| Multi-level approval workflow (`PENDING_APPROVAL`, `APPROVED`, `REJECTED`) | Direct discrepancy resolution (`PATCH /discrepancies/{id}/resolve` capturing `resolutionNotes`) | Lean, audited operational workflow without bureaucratic approval bottlenecks. |
+| Multi-level approval workflow (pending approval / approved / rejected) | Direct discrepancy resolution (`PATCH /discrepancies/{id}/resolve` capturing `resolutionNotes`) | Lean, audited operational workflow without bureaucratic approval bottlenecks. |
 | Auto-assigning discrepancy to `UNEXPECTED_PLATFORM_CHARGE` | Neutral flag: $\text{variance} \ne 0 \longrightarrow \text{DISCREPANCY} \longrightarrow \text{requires explanation}$ | Preserves objective auditing; requires human auditor classification. |
 | "Net Profit" misuse | **Contribution Profit** ($\text{Projected Settlement} - \text{COGS}$) | Transparent e-commerce unit economics; excludes unmodeled corporate OPEX. |
 | 4-KPI dashboard legacy | **5 Core Financial KPIs** (Gross Revenue, Platform Fees, Projected Settlement, COGS, Contribution Profit) | Authoritative executive metrics matching P01, P05, and P06. |

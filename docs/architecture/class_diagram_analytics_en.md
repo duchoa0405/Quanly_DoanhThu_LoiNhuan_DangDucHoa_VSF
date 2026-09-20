@@ -42,8 +42,8 @@ classDiagram
         -IAnalyticsService _analyticsService
         +GetKpis(AnalyticsFilterRequest filter) Task~ActionResult~FinancialKpiResponse~~
         +GetTrend(TrendFilterRequest filter) Task~ActionResult~FinancialTrendResponse~~
-        +GetChannelBreakdown(AnalyticsFilterRequest filter) Task~ActionResult~List~ChannelBreakdownResponse~~~
-        +GetTopSkus(TopSkuFilterRequest filter) Task~ActionResult~List~TopSkuResponse~~~
+        +GetChannelBreakdown(AnalyticsFilterRequest filter) Task~ActionResult~ChannelBreakdownListResponse~~
+        +GetTopSkus(TopSkuFilterRequest filter) Task~ActionResult~TopSkuListResponse~~
         +GetDrilldown(DrilldownFilterRequest filter) Task~ActionResult~PagedDrilldownOrderResponse~~
         +ExportCsv(AnalyticsFilterRequest filter) Task~IActionResult~
     }
@@ -71,6 +71,11 @@ classDiagram
         +decimal ContributionProfit
     }
 
+    class ChannelBreakdownListResponse {
+        <<Response DTO>>
+        +List~ChannelBreakdownResponse~ Channels
+    }
+
     class ChannelBreakdownResponse {
         <<Response DTO>>
         +ChannelType Channel
@@ -79,6 +84,11 @@ classDiagram
         +decimal TotalPlatformFees
         +decimal ContributionProfit
         +decimal ContributionMarginPct
+    }
+
+    class TopSkuListResponse {
+        <<Response DTO>>
+        +List~TopSkuResponse~ Items
     }
 
     class TopSkuResponse {
@@ -226,8 +236,10 @@ classDiagram
     AnalyticsController ..> FinancialKpiResponse : returns
     AnalyticsController ..> FinancialTrendResponse : returns
     FinancialTrendResponse *-- FinancialTrendPoint : aggregates
-    AnalyticsController ..> ChannelBreakdownResponse : returns
-    AnalyticsController ..> TopSkuResponse : returns
+    AnalyticsController ..> ChannelBreakdownListResponse : returns
+    ChannelBreakdownListResponse *-- ChannelBreakdownResponse : contains
+    AnalyticsController ..> TopSkuListResponse : returns
+    TopSkuListResponse *-- TopSkuResponse : contains
     AnalyticsController ..> PagedDrilldownOrderResponse : returns
     PagedDrilldownOrderResponse *-- DrilldownOrderItem : aggregates
 

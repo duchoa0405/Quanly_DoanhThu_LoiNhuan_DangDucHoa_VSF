@@ -81,6 +81,50 @@ classDiagram
         +string CancellationReason
     }
 
+    class OrderItemSummary {
+        <<Response DTO>>
+        +string SkuCode
+        +int Quantity
+    }
+
+    class OrderListItemResponse {
+        <<Response DTO>>
+        +Guid Id
+        +string ExternalOrderId
+        +ChannelType Channel
+        +PaymentMethod PaymentMethod
+        +OrderStatus Status
+        +DateTime OrderDate
+        +string? CustomerName
+        +string? CustomerPhone
+        +decimal Subtotal
+        +decimal ShopVoucher
+        +decimal GrossRevenue
+        +int ItemCount
+        +List~OrderItemSummary~ ItemsSummary
+        +DateTime? DeliveredAt
+        +DateTime? CancelledAt
+        +DateTime CreatedAt
+    }
+
+    class PagedOrderListResponse {
+        <<Response DTO>>
+        +List~OrderListItemResponse~ Items
+        +int Page
+        +int PageSize
+        +int TotalItems
+        +int TotalPages
+    }
+
+    class OrderSummaryResponse {
+        <<Response DTO>>
+        +int TotalOrders
+        +int DeliveredOrders
+        +decimal GrossRevenue
+        +int InTransitOrders
+        +int CancelledOrders
+    }
+
     class OrderResponse {
         <<Response DTO>>
         +Guid Id
@@ -293,6 +337,8 @@ classDiagram
     OrdersController ..> FeePreviewRequest : binds
     OrdersController ..> UpdateOrderStatusRequest : binds
     OrdersController ..> CancelOrderRequest : binds
+    OrdersController ..> PagedOrderListResponse : returns
+    OrdersController ..> OrderSummaryResponse : returns
     OrdersController ..> OrderResponse : returns
     OrdersController ..> OrderDetailResponse : returns
     OrdersController ..> FeeBreakdownResponse : returns
@@ -300,6 +346,9 @@ classDiagram
     OrdersController ..> UpdateOrderStatusCommand : maps to
     OrdersController ..> CancelOrderCommand : maps to
 
+    CreateOrderRequest *-- CreateOrderItemRequest : items
+    PagedOrderListResponse *-- OrderListItemResponse : items
+    OrderListItemResponse *-- OrderItemSummary : itemsSummary
     OrderDetailResponse "1" *-- "1..*" OrderItemResponse : contains
     OrderDetailResponse "1" *-- "0..*" OrderStatusHistoryResponse : contains
     OrderDetailResponse "1" o-- "0..1" FeeSnapshotResponse : contains

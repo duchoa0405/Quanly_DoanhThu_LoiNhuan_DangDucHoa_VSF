@@ -52,6 +52,15 @@ classDiagram
         +DiscrepancyType? DiscrepancyType
     }
 
+    class PagedSettlementLedgerResponse {
+        <<Response DTO>>
+        +List~SettlementLedgerItemResponse~ Items
+        +int Page
+        +int PageSize
+        +int TotalItems
+        +int TotalPages
+    }
+
     class SettlementLedgerItemResponse {
         <<Response DTO>>
         +Guid Id
@@ -186,9 +195,11 @@ classDiagram
     SettlementController ..> ISettlementService : invokes
     SettlementController ..> ReconcileSettlementRequest : binds
     SettlementController ..> ReconcileSettlementCommand : maps to
-    SettlementController ..> SettlementLedgerItemResponse : returns
+    SettlementController ..> PagedSettlementLedgerResponse : returns
     SettlementController ..> SettlementSummaryResponse : returns
     SettlementController ..> ReconciliationResponse : returns
+
+    PagedSettlementLedgerResponse *-- SettlementLedgerItemResponse : items
 
     ISettlementService <|.. SettlementService : implements
     SettlementService --> IReconciliationRepository : persists/reads records

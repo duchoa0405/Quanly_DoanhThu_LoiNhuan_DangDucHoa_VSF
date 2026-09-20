@@ -169,7 +169,7 @@ Features reside in `src/features/` and are organized strictly by **business doma
   - `SourceOrderDrilldown` (MOD-05): Itemized modal listing constituent delivered orders with CSV export trigger.
 - **`catalog` (`src/features/catalog/`):**
   - `ProductTable`: Master data grid displaying products, SKU variants, retail prices, baseline costs (Finance/Owner only), and active/inactive status.
-  - `ProductEditor`: Modal form for creating and editing parent products and child SKU variants (size, color, barcode).
+  - `ProductEditor`: Modal form for creating and editing parent products and child SKU variants (SKU code, size, color, retail price, baseline cost).
   - `PricingCostEditor`: Specialized dialog for Finance Manager and Shop Owner to maintain retail selling prices and baseline unit costs (`cost_price` $\ge 0$).
   - `ProductSelector`: Domain-aware public feature component consumed by `CreateOrderModal`. Displays product title, SKU code, variant attributes, and retail price. Enforces domain security: strictly suppresses baseline unit cost from Sales/Ops personas.
 
