@@ -17,9 +17,9 @@ Financial accuracy requires deterministic lifecycle management. In FASHION-WEB, 
 ## 2. State Machine 1: Multi-Channel Order Lifecycle
 
 > **Use Cases:** `UC01` (Create Order), `UC03` (Order Delivery), `UC04` (Cancel Order)  
-> **P06 Endpoints:** `POST /orders`, `PATCH /orders/{id}/status`  
-> **P07 Source Files:** `FashionWeb.Business/Domain/Entities/Order.cs`, `FashionWeb.Business/Domain/Enums/OrderStatus.cs`, `FashionWeb.Business/Services/OrderService.cs`  
-> **P05 Tables:** `orders`, `order_status_history`, `order_fee_snapshots`, `reconciliation_records`  
+> **Endpoints:** `POST /orders`, `PATCH /orders/{id}/status`, `POST /orders/{id}/cancel`  
+> **Source Files:** `FashionWeb.Business/Domain/Entities/Order.cs`, `FashionWeb.Business/Domain/Enums/OrderStatus.cs`, `FashionWeb.Business/Services/OrderService.cs`  
+> **Tables:** `orders`, `order_status_history`, `order_fee_snapshots`, `reconciliation_records`  
 > **Actors:** `Sales & Ops Staff`, `Shop Owner`  
 
 ```mermaid
@@ -28,11 +28,11 @@ stateDiagram-v2
 
     [*] --> PENDING : POST /orders (All Channels: TikTok, Shopee, POS)
 
-    PENDING --> SHIPPED : PATCH /orders/{id}/status (target: SHIPPED)
-    PENDING --> CANCELLED : PATCH /orders/{id}/status (target: CANCELLED)
+    PENDING --> SHIPPED : PATCH /orders/{id}/status (ToStatus = SHIPPED)
+    PENDING --> CANCELLED : POST /orders/{id}/cancel (UC04)
 
-    SHIPPED --> DELIVERED : PATCH /orders/{id}/status (target: DELIVERED)
-    SHIPPED --> CANCELLED : PATCH /orders/{id}/status (target: CANCELLED)
+    SHIPPED --> DELIVERED : PATCH /orders/{id}/status (ToStatus = DELIVERED)
+    SHIPPED --> CANCELLED : POST /orders/{id}/cancel (UC04)
 
     DELIVERED --> [*] : Terminal State (Revenue & Fees Recognized)
     CANCELLED --> [*] : Terminal State (Zero Revenue Recognized)
@@ -68,20 +68,20 @@ stateDiagram-v2
 | Source State | Target State | Triggering API | Guard Condition / Validation Rule | Architectural & Financial Impact |
 |---|---|---|---|---|
 | `[*] (None)` | `PENDING` | `POST /orders` | Valid items list ($>0$); `ShopVoucher` $\le$ `Subtotal`. | Ingests order for all channels (including Direct Store POS). Copies catalog baseline costs to `order_items.unit_cost_snapshot`. Recognized Revenue = **0 VND**. |
-| `PENDING` | `SHIPPED` | `PATCH /orders/{id}/status` | Target = `SHIPPED`. Current state must be `PENDING`. | Appends record to `order_status_history`. Recognized Revenue = **0 VND**. |
-| `PENDING` | `CANCELLED` | `PATCH /orders/{id}/status` | Target = `CANCELLED`. Mandatory `changeReason` provided. | Appends record to `order_status_history`. Order becomes terminal. Zero revenue recognized. |
-| `SHIPPED` | `DELIVERED` | `PATCH /orders/{id}/status` | Target = `DELIVERED`. Current state must be `SHIPPED`. | **Revenue Recognition Point**: Executes `IDynamicFeeEngine`, freezes `OrderFeeSnapshot`, creates `ReconciliationRecord` (`PENDING_SETTLEMENT`) in an atomic transaction (`IUnitOfWork`). |
-| `SHIPPED` | `CANCELLED` | `PATCH /orders/{id}/status` | Target = `CANCELLED`. Courier return or pre-delivery failure. | Order terminated prior to settlement initiation. No fees evaluated. |
-| `DELIVERED` | `CANCELLED` | `PATCH /orders/{id}/status` | **BLOCKED** | Returns **HTTP 422 Unprocessable Entity**. Delivered orders cannot be cancelled via the standard order lifecycle (returns/refunds out-of-scope). |
+| `PENDING` | `SHIPPED` | `PATCH /orders/{id}/status` | `ToStatus = SHIPPED`. Current state must be `PENDING`. | Appends record to `order_status_history`. Recognized Revenue = **0 VND**. |
+| `PENDING` | `CANCELLED` | `POST /orders/{id}/cancel` | Mandatory `cancellationReason` provided. | Appends record to `order_status_history`. Order becomes terminal. Zero revenue recognized. |
+| `SHIPPED` | `DELIVERED` | `PATCH /orders/{id}/status` | `ToStatus = DELIVERED`. Current state must be `SHIPPED`. | **Revenue Recognition Point**: Executes `IDynamicFeeEngine`, freezes `OrderFeeSnapshot`, creates `ReconciliationRecord` (`PENDING_SETTLEMENT`) in an atomic transaction (`IUnitOfWork`). |
+| `SHIPPED` | `CANCELLED` | `POST /orders/{id}/cancel` | Courier return or pre-delivery failure. Mandatory reason code. | Order terminated prior to settlement initiation. No fees evaluated. |
+| `DELIVERED` | `CANCELLED` | `POST /orders/{id}/cancel` | **BLOCKED** | Returns **HTTP 422 Unprocessable Entity**. Delivered orders cannot be cancelled via the standard order lifecycle (returns/refunds out-of-scope). |
 
 ---
 
 ## 3. State Machine 2: Settlement Reconciliation State Machine
 
 > **Use Cases:** `UC05` (Settlement Ledger), `UC06` (Manual Settlement Reconciliation)  
-> **P06 Endpoints:** `GET /settlements`, `POST /settlements/{orderId}/reconcile`  
-> **P07 Source Files:** `FashionWeb.Business/Domain/Entities/ReconciliationRecord.cs`, `FashionWeb.Business/Domain/Enums/ReconciliationStatus.cs`, `FashionWeb.Business/Services/SettlementService.cs`  
-> **P05 Tables:** `reconciliation_records`, `discrepancy_audits`  
+> **Endpoints:** `GET /settlements`, `POST /settlements/{orderId}/reconcile`  
+> **Source Files:** `FashionWeb.Business/Domain/Entities/ReconciliationRecord.cs`, `FashionWeb.Business/Domain/Enums/ReconciliationStatus.cs`, `FashionWeb.Business/Services/SettlementService.cs`  
+> **Tables:** `reconciliation_records`, `discrepancy_audits`  
 > **Actors:** `Finance Manager`, `Shop Owner`  
 
 ```mermaid
@@ -108,7 +108,7 @@ stateDiagram-v2
 
     note left of DISCREPANCY
         VarianceAmount != 0 (Underpayment or Overpayment).
-        Requires mandatory explanation note.
+        Requires mandatory explanation note and discrepancyType.
         Automatically spawns DiscrepancyAudit record.
     end note
 ```
@@ -118,9 +118,9 @@ stateDiagram-v2
 | Source State | Target State | Triggering API | Guard Condition / Validation Rule | Architectural & Financial Impact |
 |---|---|---|---|---|
 | `[*] (None)` | `PENDING_SETTLEMENT` | Atomic trigger on order delivery | `Order.Status` transitions to `DELIVERED`. | Inserts `reconciliation_records` row with `projected_settlement = OrderFeeSnapshot.ProjectedSettlement`, `actual_settlement = NULL`, `variance_amount = NULL`. |
-| `PENDING_SETTLEMENT` | `RECONCILED` | `POST /settlements/{orderId}/reconcile` | `ProjectedSettlement - ActualSettlement == 0`. | Updates `actual_settlement`, sets `variance_amount = 0`, sets `reconciled_at = NOW()`, sets `reconciled_by = ActorId`. |
-| `PENDING_SETTLEMENT` | `DISCREPANCY` | `POST /settlements/{orderId}/reconcile` | `ProjectedSettlement - ActualSettlement != 0`. `explanationNote` must be provided. | Sets `status = 'DISCREPANCY'`. Calculates `variance_amount`. Automatically inserts a child row in `discrepancy_audits`. Order status remains `DELIVERED`. |
-| `PENDING_SETTLEMENT` | `PENDING_SETTLEMENT` | `POST /settlements/{orderId}/reconcile` | `variance != 0` AND `explanationNote` is missing. | **BLOCKED**: Returns **HTTP 422 Unprocessable Entity**. State does not advance. |
+| `PENDING_SETTLEMENT` | `RECONCILED` | `POST /settlements/{orderId}/reconcile` | `ProjectedSettlement - ActualSettlement == 0`. | Updates `actual_settlement`, sets `variance_amount = 0`, sets `reconciled_at = NOW()`, sets `reconciled_by = @actorIdentity`. |
+| `PENDING_SETTLEMENT` | `DISCREPANCY` | `POST /settlements/{orderId}/reconcile` | `ProjectedSettlement - ActualSettlement != 0`. `notes` and `discrepancyType` must be provided. | Sets `status = 'DISCREPANCY'`. Calculates `variance_amount`. In atomic transaction, automatically inserts a child row in `discrepancy_audits`. Order status remains `DELIVERED`. |
+| `PENDING_SETTLEMENT` | `PENDING_SETTLEMENT` | `POST /settlements/{orderId}/reconcile` | `variance != 0` AND (`notes` missing OR `discrepancyType` missing). | **BLOCKED**: Returns **HTTP 422 Unprocessable Entity**. State does not advance. |
 | `DISCREPANCY` | `RECONCILED` | `POST /settlements/{orderId}/reconcile` | Corrected actual payout entered such that `variance == 0`. | Payout correction overrides previous discrepancy. State transitions to `RECONCILED`. |
 | `DISCREPANCY` | `DISCREPANCY` | `POST /settlements/{orderId}/reconcile` | Re-entered payout still results in `variance != 0`. | Updates `actual_settlement` and `variance_amount`. Adds or updates discrepancy audit trail. |
 
@@ -129,9 +129,9 @@ stateDiagram-v2
 ## 4. State Machine 3: Discrepancy Audit Investigation & Resolution State Machine
 
 > **Use Case:** `UC07` (Discrepancy Audit Investigation & Resolution)  
-> **P06 Endpoints:** `GET /discrepancies`, `GET /discrepancies/{id}`, `PATCH /discrepancies/{id}/resolve`  
-> **P07 Source Files:** `FashionWeb.Business/Domain/Entities/DiscrepancyAudit.cs`, `FashionWeb.Business/Domain/Enums/DiscrepancyType.cs`, `FashionWeb.Business/Services/DiscrepancyService.cs`  
-> **P05 Tables:** `discrepancy_audits`  
+> **Endpoints:** `GET /discrepancies`, `GET /discrepancies/{id}`, `PATCH /discrepancies/{id}/resolve`  
+> **Source Files:** `FashionWeb.Business/Domain/Entities/DiscrepancyAudit.cs`, `FashionWeb.Business/Domain/Enums/DiscrepancyType.cs`, `FashionWeb.Business/Services/DiscrepancyService.cs`  
+> **Tables:** `discrepancy_audits`  
 > **Actors:** `Finance Manager`, `Shop Owner`  
 
 ```mermaid
@@ -160,6 +160,6 @@ stateDiagram-v2
 
 | Source State | Target State | Triggering API | Guard Condition / Validation Rule | Architectural & Financial Impact |
 |---|---|---|---|---|
-| `[*] (None)` | `OPEN` | Child creation on discrepancy | Spawned automatically when `ReconciliationRecord` status transitions to `DISCREPANCY`. | Row inserted into `discrepancy_audits` with `reconciliation_record_id`, `discrepancy_type`, `explanation_note`, `created_at = NOW()`, `resolved_at = NULL`. |
-| `OPEN` | `RESOLVED` | `PATCH /discrepancies/{id}/resolve` | `resolutionNotes` must not be empty. Actor must possess `FinanceManager` or `ShopOwner` role. | Updates `resolution_notes = @notes`, `resolved_by = ActorId`, `resolved_at = NOW()`. Dynamic property `IsResolved` evaluates to `true`. |
-| `RESOLVED` | Any | `PATCH /discrepancies/{id}/resolve` | Already resolved audit record. | Idempotent or returns **HTTP 400 Bad Request** ("Discrepancy audit is already resolved"). |
+| `[*] (None)` | `OPEN` | Child creation on discrepancy | Spawned automatically when `ReconciliationRecord` status transitions to `DISCREPANCY`. | Row inserted into `discrepancy_audits` with `reconciliation_record_id`, `discrepancy_type`, `explanation_note = notes`, `created_at = NOW()`, `resolved_at = NULL`. |
+| `OPEN` | `RESOLVED` | `PATCH /discrepancies/{id}/resolve` | `resolutionNotes` must not be empty. Actor must possess `FinanceManager` or `ShopOwner` role. | Updates `resolution_notes = @notes`, `resolved_by = @actorIdentity`, `resolved_at = NOW()`. Dynamic property `IsResolved` evaluates to `true`. |
+| `RESOLVED` | Any | `PATCH /discrepancies/{id}/resolve` | Already resolved audit record. | RESOLVED is terminal for the target state model. |
