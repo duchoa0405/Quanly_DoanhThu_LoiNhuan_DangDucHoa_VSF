@@ -1,13 +1,16 @@
+using FashionWeb.Business.Domain.Entities;
+
 namespace FashionWeb.Business.Domain.ValueObjects;
 
 public record FeeBreakdown(
     decimal Subtotal,
     decimal ShopVoucher,
-    decimal NetCustomerPayment,
+    decimal GrossRevenue,
     decimal CommissionFee,
     decimal PaymentFee,
-    decimal FixedFee,
     decimal ServiceFee,
-    decimal TotalFees,
-    decimal ExpectedNetPayout
+    decimal FixedFee,
+    decimal TotalPlatformFees,
+    decimal ProjectedSettlement,
+    FeeSchedule? AppliedSchedule = null
 );

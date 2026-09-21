@@ -1,6 +1,9 @@
+using FashionWeb.Business.Commands;
 using FashionWeb.Business.Domain.Entities;
+using FashionWeb.Business.Filters;
 using FashionWeb.Business.Interfaces.Repositories;
 using FashionWeb.Business.Interfaces.Services;
+using FashionWeb.Business.Results;
 
 namespace FashionWeb.Business.Services;
 
@@ -13,32 +16,30 @@ public class DiscrepancyService : IDiscrepancyService
         _discrepancyRepo = discrepancyRepo;
     }
 
-    public async Task<object> GetDiscrepanciesAsync(string? status, int page, int pageSize)
+    public async Task<PagedResult<DiscrepancyAudit>> ListDiscrepanciesAsync(DiscrepancyQueryFilter filter, CancellationToken ct = default)
     {
-        var audits = await _discrepancyRepo.GetAllAsync(status, page, pageSize);
-        return new { items = audits, page, pageSize };
+        return await _discrepancyRepo.ListAsync(filter, ct);
     }
 
-    public async Task<object> CreateAuditAsync(object request)
+    public async Task<DiscrepancyDetailResult?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var audit = new DiscrepancyAudit();
-        await _discrepancyRepo.AddAsync(audit);
-        await _discrepancyRepo.SaveChangesAsync();
-        return audit;
+        return await _discrepancyRepo.GetDetailByIdAsync(id, ct);
     }
 
-    public async Task<object> ApproveAuditAsync(Guid id, string approverId, string resolutionNotes)
+    public async Task<DiscrepancyAudit> ResolveDiscrepancyAsync(ResolveDiscrepancyCommand command, CancellationToken ct = default)
     {
-        var audit = await _discrepancyRepo.GetByIdAsync(id)
-            ?? throw new KeyNotFoundException($"Không tìm thấy hồ sơ khiếu nại ID: {id}");
+        if (string.IsNullOrWhiteSpace(command.ResolutionNotes))
+            throw new ArgumentException("Resolution notes must be provided.", nameof(command));
 
-        audit.Status = "Approved";
-        audit.ApprovedBy = approverId;
-        audit.ResolutionNotes = resolutionNotes;
-        audit.ResolvedAt = DateTime.UtcNow;
+        var audit = await _discrepancyRepo.GetByIdAsync(command.DiscrepancyId, ct);
+        if (audit == null)
+            throw new KeyNotFoundException($"Discrepancy audit with ID '{command.DiscrepancyId}' was not found.");
 
-        await _discrepancyRepo.UpdateAsync(audit);
-        await _discrepancyRepo.SaveChangesAsync();
+        if (audit.IsResolved)
+            throw new InvalidOperationException($"Discrepancy audit '{command.DiscrepancyId}' has already been resolved.");
+
+        audit.Resolve(command.ResolutionNotes.Trim(), command.ActorIdentity);
+        await _discrepancyRepo.UpdateAsync(audit, ct);
         return audit;
     }
 }

@@ -9,11 +9,13 @@ public class AppDbContext : DbContext
     {
     }
 
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
-    public DbSet<OrderFeeSnapshot> OrderFeeSnapshots => Set<OrderFeeSnapshot>();
+    public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
     public DbSet<FeeSchedule> FeeSchedules => Set<FeeSchedule>();
-    public DbSet<StatementImport> StatementImports => Set<StatementImport>();
+    public DbSet<OrderFeeSnapshot> OrderFeeSnapshots => Set<OrderFeeSnapshot>();
     public DbSet<ReconciliationRecord> ReconciliationRecords => Set<ReconciliationRecord>();
     public DbSet<DiscrepancyAudit> DiscrepancyAudits => Set<DiscrepancyAudit>();
 

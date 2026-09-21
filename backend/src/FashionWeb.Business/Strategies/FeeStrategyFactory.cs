@@ -1,3 +1,5 @@
+using FashionWeb.Business.Domain.Enums;
+
 namespace FashionWeb.Business.Strategies;
 
 public class FeeStrategyFactory
@@ -9,11 +11,11 @@ public class FeeStrategyFactory
         _strategies = strategies;
     }
 
-    public IPlatformFeeStrategy GetStrategy(string channelCode)
+    public IPlatformFeeStrategy GetStrategy(ChannelType channel)
     {
-        var strategy = _strategies.FirstOrDefault(s => s.ChannelCode.Equals(channelCode, StringComparison.OrdinalIgnoreCase));
+        var strategy = _strategies.FirstOrDefault(s => s.Channel == channel);
         if (strategy == null)
-            throw new NotSupportedException($"Kênh bán hàng '{channelCode}' chưa được hỗ trợ tính phí.");
+            throw new NotSupportedException($"Platform fee strategy for channel '{channel}' is not supported.");
         return strategy;
     }
 }
