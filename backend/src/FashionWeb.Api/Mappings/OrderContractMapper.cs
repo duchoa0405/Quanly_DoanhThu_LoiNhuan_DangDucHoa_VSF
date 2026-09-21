@@ -6,7 +6,7 @@ namespace FashionWeb.Api.Mappings;
 
 public static class OrderContractMapper
 {
-    public static OrderDetailResponse MapToOrderDetailResponse(OrderDetailResult result)
+    public static OrderDetailResponse MapToOrderDetailResponse(OrderDetailResult result, bool canViewCosts = true)
     {
         return new OrderDetailResponse(
             Id: result.Id,
@@ -25,18 +25,18 @@ public static class OrderContractMapper
             CancellationReason: result.CancellationReason,
             CreatedAt: result.CreatedAt,
             UpdatedAt: result.UpdatedAt,
-            Cogs: result.Cogs,
-            ContributionProfit: result.ContributionProfit,
+            Cogs: canViewCosts ? result.Cogs : null,
+            ContributionProfit: canViewCosts ? result.ContributionProfit : null,
             Items: result.Items.Select(i => new OrderItemResponse(
                 Id: i.Id,
                 ProductVariantId: i.ProductVariantId,
-                SkuCodeSnapshot: i.SkuCodeSnapshot,
-                ProductNameSnapshot: i.ProductNameSnapshot,
+                SkuCode: i.SkuCodeSnapshot,
+                ProductName: i.ProductNameSnapshot,
                 Quantity: i.Quantity,
                 UnitPrice: i.UnitPrice,
-                UnitCostSnapshot: i.UnitCostSnapshot,
                 LineTotal: i.LineTotal,
-                TotalCost: i.TotalCost
+                UnitCostSnapshot: canViewCosts ? i.UnitCostSnapshot : null,
+                TotalCost: canViewCosts ? i.TotalCost : null
             )).ToList(),
             StatusHistory: result.StatusHistory.Select(h => new OrderStatusHistoryResponse(
                 Id: h.Id,
@@ -47,18 +47,13 @@ public static class OrderContractMapper
                 ChangedAt: h.ChangedAt
             )).ToList(),
             FeeSnapshot: result.FeeSnapshot != null ? new FeeSnapshotResponse(
-                Id: result.FeeSnapshot.Id,
-                CommissionRate: result.FeeSnapshot.CommissionRate,
-                CommissionFeeAmount: result.FeeSnapshot.CommissionFeeAmount,
-                PaymentFeeRate: result.FeeSnapshot.PaymentFeeRate,
-                PaymentFeeAmount: result.FeeSnapshot.PaymentFeeAmount,
-                ServiceFeeRate: result.FeeSnapshot.ServiceFeeRate,
-                ServiceFeeAmount: result.FeeSnapshot.ServiceFeeAmount,
-                ServiceFeeCapSnapshot: result.FeeSnapshot.ServiceFeeCapSnapshot,
-                FixedFeeAmount: result.FeeSnapshot.FixedFeeAmount,
+                CommissionFee: result.FeeSnapshot.CommissionFeeAmount,
+                PaymentFee: result.FeeSnapshot.PaymentFeeAmount,
+                ServiceFee: result.FeeSnapshot.ServiceFeeAmount,
+                FixedFee: result.FeeSnapshot.FixedFeeAmount,
                 TotalPlatformFees: result.FeeSnapshot.TotalPlatformFees,
                 ProjectedSettlement: result.FeeSnapshot.ProjectedSettlement,
-                SnapshotAt: result.FeeSnapshot.SnapshotAt
+                SnapshottedAt: result.FeeSnapshot.SnapshotAt
             ) : null
         );
     }

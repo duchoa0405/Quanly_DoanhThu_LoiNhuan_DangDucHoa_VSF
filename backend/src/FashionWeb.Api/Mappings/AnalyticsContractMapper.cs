@@ -33,11 +33,9 @@ public static class AnalyticsContractMapper
     {
         var dtos = channels.Select(c => new ChannelBreakdownResponse(
             Channel: c.Channel,
+            DeliveredOrders: c.DeliveredOrders,
             GrossRevenue: c.GrossRevenue,
-            DeliveredOrderCount: c.DeliveredOrderCount,
             TotalPlatformFees: c.TotalPlatformFees,
-            ProjectedSettlement: c.ProjectedSettlement,
-            Cogs: c.Cogs,
             ContributionProfit: c.ContributionProfit,
             ContributionMarginPct: c.ContributionMarginPct
         )).ToList();
@@ -50,9 +48,8 @@ public static class AnalyticsContractMapper
         var dtos = skus.Select(s => new TopSkuResponse(
             SkuCode: s.SkuCode,
             ProductName: s.ProductName,
-            QuantitySold: s.QuantitySold,
+            DeliveredUnits: s.DeliveredUnits,
             GrossRevenue: s.GrossRevenue,
-            AllocatedPlatformFees: s.AllocatedPlatformFees,
             Cogs: s.Cogs,
             ContributionProfit: s.ContributionProfit,
             ContributionMarginPct: s.ContributionMarginPct
@@ -64,7 +61,7 @@ public static class AnalyticsContractMapper
     public static PagedDrilldownOrderResponse MapToPagedDrilldownResponse(PagedResult<DrilldownOrderResult> paged)
     {
         var items = paged.Items.Select(d => new DrilldownOrderItem(
-            OrderId: d.OrderId,
+            Id: d.Id,
             ExternalOrderId: d.ExternalOrderId,
             Channel: d.Channel,
             DeliveredAt: d.DeliveredAt,
@@ -72,8 +69,7 @@ public static class AnalyticsContractMapper
             TotalPlatformFees: d.TotalPlatformFees,
             ProjectedSettlement: d.ProjectedSettlement,
             Cogs: d.Cogs,
-            ContributionProfit: d.ContributionProfit,
-            ContributionMarginPct: d.ContributionMarginPct
+            ContributionProfit: d.ContributionProfit
         )).ToList();
 
         return new PagedDrilldownOrderResponse(items, paged.Page, paged.PageSize, paged.TotalItems, paged.TotalPages);

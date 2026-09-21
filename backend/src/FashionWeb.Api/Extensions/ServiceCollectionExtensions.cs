@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json.Serialization;
 using FashionWeb.Api.Authorization;
 using FashionWeb.Business.Interfaces.Repositories;
@@ -7,7 +9,9 @@ using FashionWeb.Business.Strategies;
 using FashionWeb.Data;
 using FashionWeb.Data.Context;
 using FashionWeb.Data.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 namespace FashionWeb.Api.Extensions;
@@ -62,7 +66,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddApiInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddApiInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddControllers()
             .AddJsonOptions(options =>
@@ -116,7 +120,33 @@ public static class ServiceCollectionExtensions
             });
         });
 
-        services.AddAuthentication();
+        var jwtSecret = configuration["Jwt:SecretKey"] ?? "VSF_Default_Development_Super_Secret_Key_2026_Minimum_32_Bytes!";
+        var jwtIssuer = configuration["Jwt:Issuer"] ?? "FashionWeb.Api";
+        var jwtAudience = configuration["Jwt:Audience"] ?? "FashionWeb.Client";
+
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.RequireHttpsMetadata = false;
+            options.SaveToken = true;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtIssuer,
+                ValidAudience = jwtAudience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+                RoleClaimType = ClaimTypes.Role,
+                NameClaimType = ClaimTypes.Name
+            };
+        });
+
         services.AddAuthorization(options =>
         {
             options.AddPolicy(Policies.RequireSalesOps, policy =>

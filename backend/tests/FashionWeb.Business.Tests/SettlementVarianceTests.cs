@@ -1,7 +1,9 @@
 using FashionWeb.Business.Commands;
 using FashionWeb.Business.Domain.Entities;
 using FashionWeb.Business.Domain.Enums;
+using FashionWeb.Business.Exceptions;
 using FashionWeb.Business.Interfaces.Repositories;
+using FashionWeb.Business.Interfaces.Services;
 using FashionWeb.Business.Services;
 using Moq;
 using Xunit;
@@ -31,7 +33,8 @@ public class SettlementVarianceTests
             _mockReconRepo.Object,
             _mockDiscrepancyRepo.Object,
             _mockOrderRepo.Object,
-            _mockUnitOfWork.Object
+            _mockUnitOfWork.Object,
+            TimeProvider.System
         );
     }
 
@@ -40,7 +43,7 @@ public class SettlementVarianceTests
     {
         // Arrange: Projected 413,500, Actual 413,500 -> Variance 0
         var orderId = Guid.NewGuid();
-        var order = new Order { Id = orderId, Status = OrderStatus.DELIVERED };
+        var order = Order.CreateTestInstance(id: orderId, status: OrderStatus.DELIVERED);
         var record = new ReconciliationRecord
         {
             Id = Guid.NewGuid(),
@@ -85,7 +88,7 @@ public class SettlementVarianceTests
     {
         // Arrange: Projected 413,500, Actual 390,000 -> Variance = 413,500 - 390,000 = +23,500 (Platform underpaid)
         var orderId = Guid.NewGuid();
-        var order = new Order { Id = orderId, Status = OrderStatus.DELIVERED };
+        var order = Order.CreateTestInstance(id: orderId, status: OrderStatus.DELIVERED);
         var record = new ReconciliationRecord
         {
             Id = Guid.NewGuid(),
@@ -130,11 +133,11 @@ public class SettlementVarianceTests
     }
 
     [Fact]
-    public async Task ReconcileSettlement_VarianceWithoutNotes_ThrowsArgumentException()
+    public async Task ReconcileSettlement_VarianceWithoutNotes_ThrowsValidationException()
     {
         // Arrange: Variance exists but notes are missing
         var orderId = Guid.NewGuid();
-        var order = new Order { Id = orderId, Status = OrderStatus.DELIVERED };
+        var order = Order.CreateTestInstance(id: orderId, status: OrderStatus.DELIVERED);
         var record = new ReconciliationRecord
         {
             Id = Guid.NewGuid(),
@@ -154,7 +157,7 @@ public class SettlementVarianceTests
             ActorIdentity: "accountant@shop.vn"
         );
 
-        await Assert.ThrowsAsync<ArgumentException>(() =>
+        await Assert.ThrowsAsync<ValidationException>(() =>
             _settlementService.ReconcileAsync(cmd)
         );
     }

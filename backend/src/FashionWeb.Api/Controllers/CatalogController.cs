@@ -1,7 +1,9 @@
+using FashionWeb.Api.Authorization;
 using FashionWeb.Api.Contracts.Catalog;
 using FashionWeb.Api.Mappings;
 using FashionWeb.Business.Commands;
 using FashionWeb.Business.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FashionWeb.Api.Controllers;
@@ -17,6 +19,7 @@ public class CatalogController : BaseApiController
     }
 
     [HttpGet("variants/selectable")]
+    [Authorize(Policy = Policies.RequireSalesOps)]
     public async Task<ActionResult<SelectableVariantListResponse>> GetSelectableVariants([FromQuery] string? search, CancellationToken ct)
     {
         var results = await _catalogService.GetSelectableVariantsAsync(search, ct);
@@ -26,6 +29,7 @@ public class CatalogController : BaseApiController
     }
 
     [HttpGet("products")]
+    [Authorize(Policy = Policies.RequireFinanceManager)]
     public async Task<ActionResult<PagedProductListResponse>> ListProducts(
         [FromQuery] string? search,
         [FromQuery] int page = 1,
@@ -45,6 +49,7 @@ public class CatalogController : BaseApiController
     }
 
     [HttpGet("products/{id:guid}")]
+    [Authorize(Policy = Policies.RequireFinanceManager)]
     public async Task<ActionResult<ProductResponse>> GetProductById(Guid id, CancellationToken ct)
     {
         var product = await _catalogService.GetProductByIdAsync(id, ct);
@@ -55,6 +60,7 @@ public class CatalogController : BaseApiController
     }
 
     [HttpPost("products")]
+    [Authorize(Policy = Policies.RequireFinanceManager)]
     public async Task<ActionResult<ProductResponse>> CreateProduct([FromBody] CreateProductRequest request, CancellationToken ct)
     {
         var cmd = new CreateProductCommand(
@@ -75,6 +81,7 @@ public class CatalogController : BaseApiController
     }
 
     [HttpPatch("products/{id:guid}")]
+    [Authorize(Policy = Policies.RequireFinanceManager)]
     public async Task<ActionResult<ProductResponse>> UpdateProduct(Guid id, [FromBody] UpdateProductRequest request, CancellationToken ct)
     {
         var cmd = new UpdateProductCommand(
@@ -90,6 +97,7 @@ public class CatalogController : BaseApiController
     }
 
     [HttpPatch("variants/{id:guid}")]
+    [Authorize(Policy = Policies.RequireFinanceManager)]
     public async Task<ActionResult<ProductVariantResponse>> UpdateVariant(Guid id, [FromBody] UpdateVariantRequest request, CancellationToken ct)
     {
         var cmd = new UpdateVariantCommand(

@@ -17,7 +17,7 @@ public class AnalyticsCsvExporter : IAnalyticsCsvExporter
             var line = string.Format(
                 CultureInfo.InvariantCulture,
                 "{0},{1},{2},{3:yyyy-MM-dd HH:mm:ss},{4:F2},{5:F2},{6:F2},{7:F2},{8:F2},{9:F2}%",
-                EscapeCsv(o.OrderId.ToString()),
+                EscapeCsv(o.Id.ToString()),
                 EscapeCsv(o.ExternalOrderId),
                 EscapeCsv(o.Channel.ToString()),
                 o.DeliveredAt,

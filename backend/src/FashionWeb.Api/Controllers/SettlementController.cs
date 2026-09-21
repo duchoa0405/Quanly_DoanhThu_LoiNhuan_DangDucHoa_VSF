@@ -1,14 +1,17 @@
+using FashionWeb.Api.Authorization;
 using FashionWeb.Api.Contracts.Settlements;
 using FashionWeb.Api.Mappings;
 using FashionWeb.Business.Commands;
 using FashionWeb.Business.Domain.Enums;
 using FashionWeb.Business.Filters;
 using FashionWeb.Business.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FashionWeb.Api.Controllers;
 
 [Route("api/v1/settlements")]
+[Authorize(Policy = Policies.RequireFinanceManager)]
 public class SettlementController : BaseApiController
 {
     private readonly ISettlementService _settlementService;

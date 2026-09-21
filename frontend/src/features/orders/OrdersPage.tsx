@@ -1,18 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { RhythmStrip } from './components/RhythmStrip';
 import { OrderFilterPills } from './components/OrderFilterPills';
+import { OrderTable } from './components/OrderTable';
 import { Button } from '../../shared/ui/Button';
-import { MoneyText } from '../../shared/ui/MoneyText';
-import { Badge } from '../../shared/ui/Badge';
+import { ordersApi } from './api/ordersApi';
+import { OrderResponse, OrderSummaryResponse } from './types/order.types';
 
 export const OrdersPage: React.FC = () => {
-  const [selectedChannel, setSelectedChannel] = useState('ALL');
+  const [selectedChannel, setSelectedChannel] = useState<string>('ALL');
+  const [orders, setOrders] = useState<OrderResponse[]>([]);
+  const [summary, setSummary] = useState<OrderSummaryResponse | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const sampleOrders = [
-    { id: '1', code: 'TTS-882103', channel: 'TikTok', customer: 'Nguyễn Thị Mai', amount: 450000, fee: 33500, net: 416500, status: 'Delivered' },
-    { id: '2', code: 'SHP-992014', channel: 'Shopee', customer: 'Trần Văn Hưng', amount: 620000, fee: 52700, net: 567300, status: 'Delivered' },
-    { id: '3', code: 'POS-100293', channel: 'POS', customer: 'Lê Thanh Thảo', amount: 1250000, fee: 12500, net: 1237500, status: 'Delivered' },
-  ];
+  const fetchOrderData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const channelParam = selectedChannel === 'ALL' ? undefined : selectedChannel;
+      const [orderList, summaryData] = await Promise.all([
+        ordersApi.getOrders({ channel: channelParam }),
+        ordersApi.getOrderSummary({ channel: channelParam }),
+      ]);
+      setOrders(orderList || []);
+      setSummary(summaryData || null);
+    } catch (err: unknown) {
+      console.error('Failed to load orders:', err);
+      setError('Không thể kết nối đến máy chủ API. Vui lòng kiểm tra backend và thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedChannel]);
+
+  useEffect(() => {
+    fetchOrderData();
+  }, [fetchOrderData]);
 
   return (
     <div>
@@ -23,40 +45,40 @@ export const OrdersPage: React.FC = () => {
             Theo dõi tiến trình đơn, bóc tách phí sàn real-time & kiểm soát doanh thu ghi nhận.
           </p>
         </div>
-        <Button variant="primary">+ Tạo Đơn Mới (Live Fee Preview)</Button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button variant="secondary" onClick={fetchOrderData}>
+            Làm mới
+          </Button>
+          <Button variant="primary">
+            + Tạo Đơn Mới (Live Fee Preview)
+          </Button>
+        </div>
       </div>
 
-      <RhythmStrip />
+      <RhythmStrip summary={summary} />
+
       <OrderFilterPills selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel} />
 
-      <div style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid var(--color-border-hairline)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-          <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--color-border-hairline)', color: 'var(--color-text-secondary)' }}>
-              <th style={{ padding: '12px 16px' }}>MÃ ĐƠN HÀNG</th>
-              <th style={{ padding: '12px 16px' }}>KÊNH</th>
-              <th style={{ padding: '12px 16px' }}>KHÁCH HÀNG</th>
-              <th style={{ padding: '12px 16px' }}>DOANH THU GỘP</th>
-              <th style={{ padding: '12px 16px' }}>PHÍ SÀN DỰ KIẾN</th>
-              <th style={{ padding: '12px 16px' }}>THỰC NHẬN</th>
-              <th style={{ padding: '12px 16px' }}>TRẠNG THÁI</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sampleOrders.map((o) => (
-              <tr key={o.id} style={{ borderBottom: '1px solid var(--color-border-hairline)' }}>
-                <td style={{ padding: '12px 16px', fontWeight: 600 }}>{o.code}</td>
-                <td style={{ padding: '12px 16px' }}><Badge label={o.channel} /></td>
-                <td style={{ padding: '12px 16px' }}>{o.customer}</td>
-                <td style={{ padding: '12px 16px' }}><MoneyText amount={o.amount} /></td>
-                <td style={{ padding: '12px 16px', color: 'var(--color-danger)' }}><MoneyText amount={o.fee} /></td>
-                <td style={{ padding: '12px 16px', color: 'var(--color-positive)' }}><MoneyText amount={o.net} /></td>
-                <td style={{ padding: '12px 16px' }}><span style={{ color: 'var(--color-positive)', fontWeight: 600 }}>✓ {o.status}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {error && (
+        <div
+          style={{
+            padding: '12px 16px',
+            marginBottom: '16px',
+            borderRadius: '6px',
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#b91c1c',
+            fontSize: '13px',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      <OrderTable
+        orders={orders}
+        loading={loading}
+      />
     </div>
   );
 };

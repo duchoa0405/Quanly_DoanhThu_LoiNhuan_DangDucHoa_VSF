@@ -1,8 +1,10 @@
+using FashionWeb.Api.Authorization;
 using FashionWeb.Api.Contracts.FeeSchedules;
 using FashionWeb.Business.Commands;
 using FashionWeb.Business.Domain.Entities;
 using FashionWeb.Business.Domain.Enums;
 using FashionWeb.Business.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FashionWeb.Api.Controllers;
@@ -18,6 +20,7 @@ public class FeeSchedulesController : BaseApiController
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireFinanceManager)]
     public async Task<ActionResult<FeeScheduleListResponse>> GetActiveSchedules(
         [FromQuery] ChannelType? channel,
         [FromQuery] PaymentMethod? paymentMethod,
@@ -29,6 +32,7 @@ public class FeeSchedulesController : BaseApiController
     }
 
     [HttpPost]
+    [Authorize(Policy = Policies.RequireShopOwner)]
     public async Task<ActionResult<FeeScheduleResponse>> CreateScheduleVersion(
         [FromBody] CreateFeeScheduleRequest request,
         CancellationToken ct = default)

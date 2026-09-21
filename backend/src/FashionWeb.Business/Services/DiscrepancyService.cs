@@ -16,12 +16,12 @@ public class DiscrepancyService : IDiscrepancyService
 
     public DiscrepancyService(
         IDiscrepancyRepository discrepancyRepository,
-        IUnitOfWork? unitOfWork = null,
-        TimeProvider? timeProvider = null)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
-        _discrepancyRepository = discrepancyRepository;
-        _unitOfWork = unitOfWork!;
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _discrepancyRepository = discrepancyRepository ?? throw new ArgumentNullException(nameof(discrepancyRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<PagedResult<DiscrepancyAudit>> ListDiscrepanciesAsync(DiscrepancyQueryFilter filter, CancellationToken ct = default)

@@ -37,7 +37,6 @@ public record SettlementSummaryResponse(
 
 public record ReconcileSettlementRequest(
     decimal ActualSettlement,
-    Guid? OrderId = null,
     string? Notes = null,
     DiscrepancyType? DiscrepancyType = null
 );
@@ -46,10 +45,10 @@ public record ReconciliationResponse(
     Guid Id,
     Guid OrderId,
     decimal ProjectedSettlement,
-    decimal? ActualSettlement,
-    decimal? VarianceAmount,
+    decimal ActualSettlement,
+    decimal VarianceAmount,
     ReconciliationStatus ReconciliationStatus,
     string? ReconciliationNotes,
-    DateTime? ReconciledAt,
-    string? ReconciledBy
+    DateTime ReconciledAt,
+    string ReconciledBy
 );

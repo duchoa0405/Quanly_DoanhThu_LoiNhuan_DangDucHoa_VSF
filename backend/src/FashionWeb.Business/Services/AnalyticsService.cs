@@ -10,10 +10,10 @@ public class AnalyticsService : IAnalyticsService
     private readonly IAnalyticsRepository _analyticsRepository;
     private readonly IAnalyticsCsvExporter _csvExporter;
 
-    public AnalyticsService(IAnalyticsRepository analyticsRepository, IAnalyticsCsvExporter? csvExporter = null)
+    public AnalyticsService(IAnalyticsRepository analyticsRepository, IAnalyticsCsvExporter csvExporter)
     {
-        _analyticsRepository = analyticsRepository;
-        _csvExporter = csvExporter ?? new AnalyticsCsvExporter();
+        _analyticsRepository = analyticsRepository ?? throw new ArgumentNullException(nameof(analyticsRepository));
+        _csvExporter = csvExporter ?? throw new ArgumentNullException(nameof(csvExporter));
     }
 
     public async Task<FinancialKpiResult> GetKpisAsync(AnalyticsFilter filter, CancellationToken ct = default)

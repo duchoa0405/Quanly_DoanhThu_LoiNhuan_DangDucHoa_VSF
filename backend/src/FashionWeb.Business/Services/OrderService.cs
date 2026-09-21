@@ -25,14 +25,14 @@ public class OrderService : IOrderService
         IReconciliationRepository reconciliationRepository,
         IDynamicFeeEngine feeEngine,
         IUnitOfWork unitOfWork,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
-        _orderRepository = orderRepository;
-        _productRepository = productRepository;
-        _reconciliationRepository = reconciliationRepository;
-        _feeEngine = feeEngine;
-        _unitOfWork = unitOfWork;
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
+        _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
+        _reconciliationRepository = reconciliationRepository ?? throw new ArgumentNullException(nameof(reconciliationRepository));
+        _feeEngine = feeEngine ?? throw new ArgumentNullException(nameof(feeEngine));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Order> CreateOrderAsync(CreateOrderCommand command, CancellationToken ct = default)
@@ -170,7 +170,7 @@ public class OrderService : IOrderService
         if (order == null)
             throw new NotFoundException($"Order with ID '{command.OrderId}' was not found.");
 
-        order.Cancel(command.CancellationReason.Trim(), command.ActorIdentity);
+        order.Cancel(command.CancellationReason.Trim(), command.ActorIdentity, _timeProvider.GetUtcNow().UtcDateTime);
         await _orderRepository.UpdateAsync(order, ct);
         await _unitOfWork.SaveChangesAsync(ct);
 
@@ -179,7 +179,7 @@ public class OrderService : IOrderService
 
     private async Task<Order> ShipOrderAsync(Order order, UpdateOrderStatusCommand command, CancellationToken ct)
     {
-        order.TransitionToShipped(command.ActorIdentity);
+        order.TransitionToShipped(command.ActorIdentity, _timeProvider.GetUtcNow().UtcDateTime);
         await _orderRepository.UpdateAsync(order, ct);
         await _unitOfWork.SaveChangesAsync(ct);
         return order;
@@ -253,7 +253,6 @@ public class OrderService : IOrderService
             ExternalOrderId = command.ExternalOrderId.Trim(),
             Channel = command.Channel,
             PaymentMethod = command.PaymentMethod,
-            Status = OrderStatus.PENDING,
             CustomerName = command.CustomerName?.Trim(),
             CustomerPhone = command.CustomerPhone?.Trim(),
             OrderDate = now,
@@ -282,7 +281,7 @@ public class OrderService : IOrderService
         }
 
         var subtotal = order.Items.Sum(i => i.LineTotal);
-        order.SetFinancials(subtotal, command.ShopVoucher);
+        order.SetFinancials(subtotal, command.ShopVoucher, now);
 
         order.StatusHistory.Add(new OrderStatusHistory
         {

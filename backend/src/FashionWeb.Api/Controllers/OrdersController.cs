@@ -1,14 +1,17 @@
+using FashionWeb.Api.Authorization;
 using FashionWeb.Api.Contracts.Orders;
 using FashionWeb.Api.Mappings;
 using FashionWeb.Business.Commands;
 using FashionWeb.Business.Domain.Enums;
 using FashionWeb.Business.Filters;
 using FashionWeb.Business.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FashionWeb.Api.Controllers;
 
 [Route("api/v1/orders")]
+[Authorize(Policy = Policies.RequireSalesOps)]
 public class OrdersController : BaseApiController
 {
     private readonly IOrderService _orderService;
@@ -70,11 +73,10 @@ public class OrdersController : BaseApiController
         var summary = await _orderService.GetSummaryAsync(from, to, channel, ct);
         return Ok(new OrderSummaryResponse(
             TotalOrders: summary.TotalOrders,
-            PendingOrders: summary.PendingOrders,
-            ShippedOrders: summary.ShippedOrders,
             DeliveredOrders: summary.DeliveredOrders,
-            CancelledOrders: summary.CancelledOrders,
-            RecognizedGrossRevenue: summary.RecognizedGrossRevenue
+            GrossRevenue: summary.GrossRevenue,
+            InTransitOrders: summary.InTransitOrders,
+            CancelledOrders: summary.CancelledOrders
         ));
     }
 
@@ -85,7 +87,7 @@ public class OrdersController : BaseApiController
         if (order == null)
             return NotFound(new ProblemDetails { Title = "Order Not Found", Detail = $"Order with ID '{id}' was not found.", Status = 404 });
 
-        return Ok(OrderContractMapper.MapToOrderDetailResponse(order));
+        return Ok(OrderContractMapper.MapToOrderDetailResponse(order, CanViewCostAndProfit()));
     }
 
     [HttpPost("preview-fee")]
@@ -116,10 +118,9 @@ public class OrdersController : BaseApiController
     public async Task<ActionResult<OrderResponse>> UpdateOrderStatus(Guid id, [FromBody] UpdateOrderStatusRequest request, CancellationToken ct)
     {
         var cmd = new UpdateOrderStatusCommand(
-            OrderId: id,
-            ToStatus: request.Status,
-            Reason: request.Reason,
-            ActorIdentity: GetCurrentUserIdentity()
+            id,
+            request.ToStatus,
+            GetCurrentUserIdentity()
         );
 
         var updated = await _orderService.UpdateOrderStatusAsync(cmd, ct);

@@ -20,6 +20,8 @@ node_modules/
 dist/
 .vs/
 *.user
+scratch/
+*.log
 
 # OS specific
 Thumbs.db

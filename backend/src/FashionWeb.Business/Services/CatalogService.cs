@@ -15,12 +15,12 @@ public class CatalogService : ICatalogService
 
     public CatalogService(
         IProductRepository productRepository,
-        IUnitOfWork? unitOfWork = null,
-        TimeProvider? timeProvider = null)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
-        _productRepository = productRepository;
-        _unitOfWork = unitOfWork!;
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<IEnumerable<SelectableVariantResult>> GetSelectableVariantsAsync(string? search = null, CancellationToken ct = default)

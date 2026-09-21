@@ -11,11 +11,13 @@ public class DynamicFeeEngine : IDynamicFeeEngine
 {
     private readonly IFeeScheduleRepository _scheduleRepo;
     private readonly FeeStrategyFactory _strategyFactory;
+    private readonly TimeProvider _timeProvider;
 
-    public DynamicFeeEngine(IFeeScheduleRepository scheduleRepo, FeeStrategyFactory strategyFactory)
+    public DynamicFeeEngine(IFeeScheduleRepository scheduleRepo, FeeStrategyFactory strategyFactory, TimeProvider timeProvider)
     {
-        _scheduleRepo = scheduleRepo;
-        _strategyFactory = strategyFactory;
+        _scheduleRepo = scheduleRepo ?? throw new ArgumentNullException(nameof(scheduleRepo));
+        _strategyFactory = strategyFactory ?? throw new ArgumentNullException(nameof(strategyFactory));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<FeeBreakdown> CalculateFeePreviewAsync(
@@ -66,7 +68,7 @@ public class DynamicFeeEngine : IDynamicFeeEngine
             FixedFeeAmount = breakdown.FixedFee,
             TotalPlatformFees = breakdown.TotalPlatformFees,
             ProjectedSettlement = breakdown.ProjectedSettlement,
-            SnapshotAt = DateTime.UtcNow
+            SnapshotAt = _timeProvider.GetUtcNow().UtcDateTime
         };
     }
 }

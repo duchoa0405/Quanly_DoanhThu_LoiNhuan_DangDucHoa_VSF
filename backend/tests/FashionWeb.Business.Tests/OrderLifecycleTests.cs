@@ -36,7 +36,8 @@ public class OrderLifecycleTests
             _mockProductRepo.Object,
             _mockReconRepo.Object,
             _mockFeeEngine.Object,
-            _mockUnitOfWork.Object
+            _mockUnitOfWork.Object,
+            TimeProvider.System
         );
     }
 
@@ -45,14 +46,13 @@ public class OrderLifecycleTests
     {
         // Arrange
         var orderId = Guid.NewGuid();
-        var order = new Order
-        {
-            Id = orderId,
-            ExternalOrderId = "ORD-001",
-            Channel = ChannelType.SHOPEE,
-            PaymentMethod = PaymentMethod.MARKETPLACE_WALLET,
-            Status = OrderStatus.PENDING
-        };
+        var order = Order.CreateTestInstance(
+            id: orderId,
+            status: OrderStatus.PENDING,
+            channel: ChannelType.SHOPEE,
+            paymentMethod: PaymentMethod.MARKETPLACE_WALLET,
+            externalOrderId: "ORD-001"
+        );
 
         _mockOrderRepo
             .Setup(r => r.GetOrderDetailByIdAsync(orderId, It.IsAny<CancellationToken>()))
@@ -74,14 +74,13 @@ public class OrderLifecycleTests
     {
         // Arrange
         var orderId = Guid.NewGuid();
-        var order = new Order
-        {
-            Id = orderId,
-            ExternalOrderId = "ORD-002",
-            Channel = ChannelType.TIKTOK,
-            PaymentMethod = PaymentMethod.MARKETPLACE_WALLET,
-            Status = OrderStatus.SHIPPED
-        };
+        var order = Order.CreateTestInstance(
+            id: orderId,
+            status: OrderStatus.SHIPPED,
+            channel: ChannelType.TIKTOK,
+            paymentMethod: PaymentMethod.MARKETPLACE_WALLET,
+            externalOrderId: "ORD-002"
+        );
         order.SetFinancials(500000m, 50000m); // Gross Revenue: 450,000
 
         _mockOrderRepo
@@ -126,11 +125,10 @@ public class OrderLifecycleTests
     {
         // Arrange
         var orderId = Guid.NewGuid();
-        var order = new Order
-        {
-            Id = orderId,
-            Status = OrderStatus.PENDING
-        };
+        var order = Order.CreateTestInstance(
+            id: orderId,
+            status: OrderStatus.PENDING
+        );
 
         _mockOrderRepo
             .Setup(r => r.GetOrderDetailByIdAsync(orderId, It.IsAny<CancellationToken>()))
@@ -149,11 +147,10 @@ public class OrderLifecycleTests
     {
         // Arrange
         var orderId = Guid.NewGuid();
-        var order = new Order
-        {
-            Id = orderId,
-            Status = OrderStatus.PENDING
-        };
+        var order = Order.CreateTestInstance(
+            id: orderId,
+            status: OrderStatus.PENDING
+        );
 
         _mockOrderRepo
             .Setup(r => r.GetOrderDetailByIdAsync(orderId, It.IsAny<CancellationToken>()))
@@ -176,12 +173,10 @@ public class OrderLifecycleTests
     {
         // Arrange
         var orderId = Guid.NewGuid();
-        var order = new Order
-        {
-            Id = orderId,
-            Status = OrderStatus.DELIVERED,
-            DeliveredAt = DateTime.UtcNow
-        };
+        var order = Order.CreateTestInstance(
+            id: orderId,
+            status: OrderStatus.DELIVERED
+        );
 
         _mockOrderRepo
             .Setup(r => r.GetOrderDetailByIdAsync(orderId, It.IsAny<CancellationToken>()))

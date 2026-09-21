@@ -54,7 +54,7 @@ public class AnalyticsServiceTests
         var rawData = new List<DrilldownOrderResult>
         {
             new(
-                OrderId: Guid.NewGuid(),
+                Id: Guid.NewGuid(),
                 ExternalOrderId: "TT-001",
                 Channel: ChannelType.TIKTOK,
                 DeliveredAt: DateTime.UtcNow,

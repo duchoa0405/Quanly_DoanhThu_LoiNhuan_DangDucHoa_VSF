@@ -16,11 +16,11 @@ public class FeeScheduleService : IFeeScheduleService
     public FeeScheduleService(
         IFeeScheduleRepository feeScheduleRepository,
         IUnitOfWork unitOfWork,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
-        _feeScheduleRepository = feeScheduleRepository;
-        _unitOfWork = unitOfWork;
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _feeScheduleRepository = feeScheduleRepository ?? throw new ArgumentNullException(nameof(feeScheduleRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<IEnumerable<FeeSchedule>> GetActiveSchedulesAsync(ChannelType? channel = null, PaymentMethod? paymentMethod = null, CancellationToken ct = default)

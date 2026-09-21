@@ -30,5 +30,5 @@ public record FeeScheduleResponse(
 );
 
 public record FeeScheduleListResponse(
-    List<FeeScheduleResponse> Items
+    List<FeeScheduleResponse> Schedules
 );

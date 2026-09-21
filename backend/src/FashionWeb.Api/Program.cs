@@ -6,7 +6,7 @@ using FashionWeb.Data.Context;
 var builder = WebApplication.CreateBuilder(args);
 
 // Modular DI Registrations
-builder.Services.AddApiInfrastructure();
+builder.Services.AddApiInfrastructure(builder.Configuration);
 builder.Services.AddPersistenceInfrastructure(builder.Configuration);
 builder.Services.AddBusinessServices();
 

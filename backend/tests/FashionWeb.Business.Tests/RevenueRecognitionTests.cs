@@ -69,17 +69,13 @@ public class RevenueRecognitionTests
 
     private static Order CreateOrder(OrderStatus status, decimal subtotal, decimal voucher)
     {
-        var order = new Order
-        {
-            Id = Guid.NewGuid(),
-            ExternalOrderId = $"EXT-{Guid.NewGuid():N}",
-            Channel = ChannelType.SHOPEE,
-            PaymentMethod = PaymentMethod.MARKETPLACE_WALLET,
-            Status = status,
-            OrderDate = DateTime.UtcNow,
-            DeliveredAt = status == OrderStatus.DELIVERED ? DateTime.UtcNow : null,
-            CancelledAt = status == OrderStatus.CANCELLED ? DateTime.UtcNow : null
-        };
+        var order = Order.CreateTestInstance(
+            id: Guid.NewGuid(),
+            status: status,
+            channel: ChannelType.SHOPEE,
+            paymentMethod: PaymentMethod.MARKETPLACE_WALLET,
+            externalOrderId: $"EXT-{Guid.NewGuid():N}"
+        );
         order.SetFinancials(subtotal, voucher);
         return order;
     }

@@ -19,9 +19,13 @@ public class AnalyticsRepository : IAnalyticsRepository
     public async Task<FinancialKpiResult> QueryKpisAsync(AnalyticsFilter filter, CancellationToken ct = default)
     {
         var baseQuery = _context.Orders
-            .Where(o => o.Status == OrderStatus.DELIVERED &&
-                        o.OrderDate >= filter.FromDate &&
-                        o.OrderDate <= filter.ToDate);
+            .Where(o => o.Status == OrderStatus.DELIVERED);
+
+        if (filter.FromDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);
@@ -63,9 +67,13 @@ public class AnalyticsRepository : IAnalyticsRepository
     public async Task<List<FinancialTrendPointResult>> QueryTrendAsync(TrendFilter filter, CancellationToken ct = default)
     {
         var baseQuery = _context.Orders
-            .Where(o => o.Status == OrderStatus.DELIVERED &&
-                        o.OrderDate >= filter.FromDate &&
-                        o.OrderDate <= filter.ToDate);
+            .Where(o => o.Status == OrderStatus.DELIVERED);
+
+        if (filter.FromDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);
@@ -95,8 +103,8 @@ public class AnalyticsRepository : IAnalyticsRepository
                 });
 
         var result = new List<FinancialTrendPointResult>();
-        var start = DateOnly.FromDateTime(filter.FromDate);
-        var end = DateOnly.FromDateTime(filter.ToDate);
+        var start = filter.FromDate.HasValue ? DateOnly.FromDateTime(filter.FromDate.Value) : DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-30));
+        var end = filter.ToDate.HasValue ? DateOnly.FromDateTime(filter.ToDate.Value) : DateOnly.FromDateTime(DateTime.UtcNow);
 
         for (var d = start; d <= end; d = d.AddDays(1))
         {
@@ -116,9 +124,13 @@ public class AnalyticsRepository : IAnalyticsRepository
     public async Task<List<ChannelBreakdownResult>> QueryChannelBreakdownAsync(AnalyticsFilter filter, CancellationToken ct = default)
     {
         var baseQuery = _context.Orders
-            .Where(o => o.Status == OrderStatus.DELIVERED &&
-                        o.OrderDate >= filter.FromDate &&
-                        o.OrderDate <= filter.ToDate);
+            .Where(o => o.Status == OrderStatus.DELIVERED);
+
+        if (filter.FromDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);
@@ -157,11 +169,14 @@ public class AnalyticsRepository : IAnalyticsRepository
 
     public async Task<List<TopSkuResult>> QueryTopSkusAsync(TopSkuFilter filter, CancellationToken ct = default)
     {
-        var baseQuery = from o in _context.Orders
-                        where o.Status == OrderStatus.DELIVERED &&
-                              o.OrderDate >= filter.FromDate &&
-                              o.OrderDate <= filter.ToDate
-                        select o;
+        var baseQuery = _context.Orders
+            .Where(o => o.Status == OrderStatus.DELIVERED);
+
+        if (filter.FromDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);
@@ -183,7 +198,7 @@ public class AnalyticsRepository : IAnalyticsRepository
 
         var rawItems = await itemsQuery.ToListAsync(ct);
 
-        var grouped = rawItems
+        var groupedQuery = rawItems
             .GroupBy(x => new { x.SkuCodeSnapshot, x.ProductNameSnapshot })
             .Select(g =>
             {
@@ -207,20 +222,29 @@ public class AnalyticsRepository : IAnalyticsRepository
                 var marginPct = lineTotal > 0m ? Math.Round((profit / lineTotal) * 100m, 2) : 0.00m;
 
                 return new TopSkuResult(skuCode, productName, deliveredUnits, lineTotal, cogs, profit, marginPct);
-            })
-            .OrderByDescending(x => x.ContributionProfit)
-            .Take(filter.Limit)
-            .ToList();
+            });
 
-        return grouped;
+        var sortBy = filter.SortBy?.Trim().ToUpperInvariant();
+        var orderedQuery = sortBy switch
+        {
+            "GROSS_REVENUE" => groupedQuery.OrderByDescending(x => x.GrossRevenue),
+            "DELIVERED_UNITS" => groupedQuery.OrderByDescending(x => x.DeliveredUnits),
+            _ => groupedQuery.OrderByDescending(x => x.ContributionProfit)
+        };
+
+        return orderedQuery.Take(filter.Limit).ToList();
     }
 
     public async Task<PagedResult<DrilldownOrderResult>> QueryDrilldownAsync(DrilldownFilter filter, CancellationToken ct = default)
     {
         var baseQuery = _context.Orders
-            .Where(o => o.Status == OrderStatus.DELIVERED &&
-                        o.OrderDate >= filter.FromDate &&
-                        o.OrderDate <= filter.ToDate);
+            .Where(o => o.Status == OrderStatus.DELIVERED);
+
+        if (filter.FromDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);
@@ -270,9 +294,13 @@ public class AnalyticsRepository : IAnalyticsRepository
     public async Task<List<DrilldownOrderResult>> QueryRawExportDataAsync(AnalyticsFilter filter, CancellationToken ct = default)
     {
         var baseQuery = _context.Orders
-            .Where(o => o.Status == OrderStatus.DELIVERED &&
-                        o.OrderDate >= filter.FromDate &&
-                        o.OrderDate <= filter.ToDate);
+            .Where(o => o.Status == OrderStatus.DELIVERED);
+
+        if (filter.FromDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);

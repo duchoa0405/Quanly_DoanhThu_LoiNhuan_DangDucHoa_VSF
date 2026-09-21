@@ -19,7 +19,7 @@ public class DiscrepancyServiceTests
     {
         _mockRepository = new Mock<IDiscrepancyRepository>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
-        _service = new DiscrepancyService(_mockRepository.Object, _mockUnitOfWork.Object);
+        _service = new DiscrepancyService(_mockRepository.Object, _mockUnitOfWork.Object, TimeProvider.System);
     }
 
     [Fact]

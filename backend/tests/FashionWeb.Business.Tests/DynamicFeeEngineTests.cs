@@ -26,7 +26,7 @@ public class DynamicFeeEngineTests
         };
 
         _strategyFactory = new FeeStrategyFactory(strategies);
-        _engine = new DynamicFeeEngine(_mockScheduleRepo.Object, _strategyFactory);
+        _engine = new DynamicFeeEngine(_mockScheduleRepo.Object, _strategyFactory, TimeProvider.System);
     }
 
     [Fact]
@@ -225,14 +225,13 @@ public class DynamicFeeEngineTests
             .Setup(r => r.GetActiveScheduleAsync(ChannelType.TIKTOK, PaymentMethod.MARKETPLACE_WALLET, It.IsAny<CancellationToken>()))
             .ReturnsAsync(schedule);
 
-        var order = new Order
-        {
-            Id = Guid.NewGuid(),
-            ExternalOrderId = "TT-12345",
-            Channel = ChannelType.TIKTOK,
-            PaymentMethod = PaymentMethod.MARKETPLACE_WALLET,
-            Status = OrderStatus.SHIPPED
-        };
+        var order = Order.CreateTestInstance(
+            id: Guid.NewGuid(),
+            status: OrderStatus.SHIPPED,
+            channel: ChannelType.TIKTOK,
+            paymentMethod: PaymentMethod.MARKETPLACE_WALLET,
+            externalOrderId: "TT-12345"
+        );
         order.SetFinancials(subtotal: 500000m, shopVoucher: 50000m);
 
         // Act

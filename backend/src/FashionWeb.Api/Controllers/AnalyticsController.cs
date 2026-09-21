@@ -1,13 +1,16 @@
+using FashionWeb.Api.Authorization;
 using FashionWeb.Api.Contracts.Analytics;
 using FashionWeb.Api.Mappings;
 using FashionWeb.Business.Domain.Enums;
 using FashionWeb.Business.Filters;
 using FashionWeb.Business.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FashionWeb.Api.Controllers;
 
 [Route("api/v1/analytics")]
+[Authorize(Policy = Policies.RequireFinanceManager)]
 public class AnalyticsController : BaseApiController
 {
     private readonly IAnalyticsService _analyticsService;
@@ -19,9 +22,9 @@ public class AnalyticsController : BaseApiController
 
     [HttpGet("kpis")]
     public async Task<ActionResult<FinancialKpiResponse>> GetKpis(
-        [FromQuery] DateTime from,
-        [FromQuery] DateTime to,
-        [FromQuery] ChannelType? channel,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] ChannelType? channel = null,
         CancellationToken ct = default)
     {
         var filter = new AnalyticsFilter(from, to, channel);
@@ -32,9 +35,9 @@ public class AnalyticsController : BaseApiController
 
     [HttpGet("trend")]
     public async Task<ActionResult<FinancialTrendResponse>> GetTrend(
-        [FromQuery] DateTime from,
-        [FromQuery] DateTime to,
-        [FromQuery] ChannelType? channel,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] ChannelType? channel = null,
         CancellationToken ct = default)
     {
         var filter = new TrendFilter(from, to, channel);
@@ -45,8 +48,8 @@ public class AnalyticsController : BaseApiController
 
     [HttpGet("channel-breakdown")]
     public async Task<ActionResult<ChannelBreakdownListResponse>> GetChannelBreakdown(
-        [FromQuery] DateTime from,
-        [FromQuery] DateTime to,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
         CancellationToken ct = default)
     {
         var filter = new AnalyticsFilter(from, to);
@@ -57,10 +60,10 @@ public class AnalyticsController : BaseApiController
 
     [HttpGet("top-skus")]
     public async Task<ActionResult<TopSkuListResponse>> GetTopSkus(
-        [FromQuery] DateTime from,
-        [FromQuery] DateTime to,
-        [FromQuery] ChannelType? channel,
-        [FromQuery] string? sortBy,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] ChannelType? channel = null,
+        [FromQuery] string? sortBy = null,
         [FromQuery] int limit = 10,
         CancellationToken ct = default)
     {
@@ -72,9 +75,9 @@ public class AnalyticsController : BaseApiController
 
     [HttpGet("drilldown")]
     public async Task<ActionResult<PagedDrilldownOrderResponse>> GetDrilldown(
-        [FromQuery] DateTime from,
-        [FromQuery] DateTime to,
-        [FromQuery] ChannelType? channel,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] ChannelType? channel = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
@@ -87,9 +90,9 @@ public class AnalyticsController : BaseApiController
 
     [HttpGet("export-csv")]
     public async Task<IActionResult> ExportCsv(
-        [FromQuery] DateTime from,
-        [FromQuery] DateTime to,
-        [FromQuery] ChannelType? channel,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] ChannelType? channel = null,
         CancellationToken ct = default)
     {
         var filter = new AnalyticsFilter(from, to, channel);

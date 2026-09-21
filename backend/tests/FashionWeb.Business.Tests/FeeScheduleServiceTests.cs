@@ -25,7 +25,7 @@ public class FeeScheduleServiceTests
             .Setup(u => u.ExecuteTransactionAsync(It.IsAny<Func<Task>>(), It.IsAny<CancellationToken>()))
             .Returns<Func<Task>, CancellationToken>((action, _) => action());
 
-        _service = new FeeScheduleService(_mockRepository.Object, _mockUnitOfWork.Object);
+        _service = new FeeScheduleService(_mockRepository.Object, _mockUnitOfWork.Object, TimeProvider.System);
     }
 
     [Fact]

@@ -111,11 +111,10 @@ public class OrderRepository : IOrderRepository
 
         return new OrderSummaryResult(
             TotalOrders: totalOrders,
-            PendingOrders: pendingOrders,
-            ShippedOrders: shippedOrders,
             DeliveredOrders: deliveredOrders,
-            CancelledOrders: cancelledOrders,
-            RecognizedGrossRevenue: recognizedGrossRevenue
+            GrossRevenue: recognizedGrossRevenue,
+            InTransitOrders: shippedOrders,
+            CancelledOrders: cancelledOrders
         );
     }
 

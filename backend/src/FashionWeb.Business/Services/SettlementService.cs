@@ -22,13 +22,13 @@ public class SettlementService : ISettlementService
         IDiscrepancyRepository discrepancyRepository,
         IOrderRepository orderRepository,
         IUnitOfWork unitOfWork,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
-        _reconciliationRepository = reconciliationRepository;
-        _discrepancyRepository = discrepancyRepository;
-        _orderRepository = orderRepository;
-        _unitOfWork = unitOfWork;
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _reconciliationRepository = reconciliationRepository ?? throw new ArgumentNullException(nameof(reconciliationRepository));
+        _discrepancyRepository = discrepancyRepository ?? throw new ArgumentNullException(nameof(discrepancyRepository));
+        _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<PagedResult<SettlementLedgerResult>> GetLedgerAsync(SettlementQueryFilter filter, CancellationToken ct = default)

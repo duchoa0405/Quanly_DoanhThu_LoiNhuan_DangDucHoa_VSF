@@ -32,7 +32,7 @@ public record ChannelBreakdownResponse(
 );
 
 public record ChannelBreakdownListResponse(
-    List<ChannelBreakdownResponse> Items
+    List<ChannelBreakdownResponse> Channels
 );
 
 public record TopSkuResponse(
@@ -58,8 +58,7 @@ public record DrilldownOrderItem(
     decimal TotalPlatformFees,
     decimal ProjectedSettlement,
     decimal Cogs,
-    decimal ContributionProfit,
-    decimal ContributionMarginPct
+    decimal ContributionProfit
 );
 
 public record PagedDrilldownOrderResponse(

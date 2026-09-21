@@ -6,7 +6,7 @@ namespace FashionWeb.Api.Mappings;
 
 public static class SettlementContractMapper
 {
-    public static SettlementLedgerItemResponse MapToLedgerItemResponse(SettlementLedgerItemResult x)
+    public static SettlementLedgerItemResponse MapToLedgerItemResponse(SettlementLedgerResult x)
     {
         return new SettlementLedgerItemResponse(
             Id: x.Id,
@@ -34,12 +34,12 @@ public static class SettlementContractMapper
             Id: record.Id,
             OrderId: record.OrderId,
             ProjectedSettlement: record.ProjectedSettlement,
-            ActualSettlement: record.ActualSettlement,
-            VarianceAmount: record.VarianceAmount,
+            ActualSettlement: record.ActualSettlement ?? 0m,
+            VarianceAmount: record.VarianceAmount ?? 0m,
             ReconciliationStatus: record.Status,
             ReconciliationNotes: record.ReconciliationNotes,
-            ReconciledAt: record.ReconciledAt,
-            ReconciledBy: record.ReconciledBy
+            ReconciledAt: record.ReconciledAt ?? DateTime.UtcNow,
+            ReconciledBy: record.ReconciledBy ?? "system"
         );
     }
 }

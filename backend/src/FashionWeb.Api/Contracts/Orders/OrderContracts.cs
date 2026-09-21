@@ -80,13 +80,13 @@ public record PagedOrderListResponse(
 public record OrderItemResponse(
     Guid Id,
     Guid ProductVariantId,
-    string SkuCodeSnapshot,
-    string ProductNameSnapshot,
+    string SkuCode,
+    string ProductName,
     int Quantity,
     decimal UnitPrice,
-    decimal UnitCostSnapshot,
     decimal LineTotal,
-    decimal TotalCost
+    decimal? UnitCostSnapshot = null,
+    decimal? TotalCost = null
 );
 
 public record OrderStatusHistoryResponse(
@@ -99,18 +99,13 @@ public record OrderStatusHistoryResponse(
 );
 
 public record FeeSnapshotResponse(
-    Guid Id,
-    decimal CommissionRate,
-    decimal CommissionFeeAmount,
-    decimal PaymentFeeRate,
-    decimal PaymentFeeAmount,
-    decimal ServiceFeeRate,
-    decimal ServiceFeeAmount,
-    decimal? ServiceFeeCapSnapshot,
-    decimal FixedFeeAmount,
+    decimal CommissionFee,
+    decimal PaymentFee,
+    decimal ServiceFee,
+    decimal FixedFee,
     decimal TotalPlatformFees,
     decimal ProjectedSettlement,
-    DateTime SnapshotAt
+    DateTime SnapshottedAt
 );
 
 public record OrderResponse(
@@ -158,9 +153,8 @@ public record OrderDetailResponse(
 
 public record OrderSummaryResponse(
     int TotalOrders,
-    int PendingOrders,
-    int ShippedOrders,
     int DeliveredOrders,
-    int CancelledOrders,
-    decimal RecognizedGrossRevenue
+    decimal GrossRevenue,
+    int InTransitOrders,
+    int CancelledOrders
 );

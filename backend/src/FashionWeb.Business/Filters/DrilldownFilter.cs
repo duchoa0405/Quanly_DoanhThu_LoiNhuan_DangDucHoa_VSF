@@ -3,8 +3,8 @@ using FashionWeb.Business.Domain.Enums;
 namespace FashionWeb.Business.Filters;
 
 public record DrilldownFilter(
-    DateTime FromDate,
-    DateTime ToDate,
+    DateTime? FromDate = null,
+    DateTime? ToDate = null,
     ChannelType? Channel = null,
     int Page = 1,
     int PageSize = 20
