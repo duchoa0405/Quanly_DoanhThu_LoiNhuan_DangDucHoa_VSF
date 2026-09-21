@@ -1,68 +1,78 @@
+using System.Globalization;
 using System.Text;
+using FashionWeb.Business.Filters;
+using FashionWeb.Business.Interfaces.Repositories;
 using FashionWeb.Business.Interfaces.Services;
+using FashionWeb.Business.Results;
 
 namespace FashionWeb.Business.Services;
 
 public class AnalyticsService : IAnalyticsService
 {
-    public Task<object> GetKpisAsync(DateTime? fromDate, DateTime? toDate)
+    private readonly IAnalyticsRepository _analyticsRepo;
+
+    public AnalyticsService(IAnalyticsRepository analyticsRepo)
     {
-        // Enforces strict DELIVERED rule
-        return Task.FromResult<object>(new
-        {
-            grossDeliveredRevenue = 184500000m,
-            totalPlatformFees = 17500000m,
-            netCashReceived = 167000000m,
-            deliveredOrdersCount = 1240,
-            marginPercentage = 90.5m
-        });
+        _analyticsRepo = analyticsRepo;
     }
 
-    public Task<object> GetDailyCashflowTrendAsync(int days)
+    public async Task<FinancialKpiResult> GetKpisAsync(AnalyticsFilter filter, CancellationToken ct = default)
     {
-        var trend = new[]
-        {
-            new { date = "T2", grossRevenue = 25000000m, netCashflow = 22700000m, platformFees = 2300000m },
-            new { date = "T3", grossRevenue = 32000000m, netCashflow = 28900000m, platformFees = 3100000m },
-            new { date = "T4", grossRevenue = 28000000m, netCashflow = 25400000m, platformFees = 2600000m },
-            new { date = "T5", grossRevenue = 35000000m, netCashflow = 31600000m, platformFees = 3400000m },
-            new { date = "T6", grossRevenue = 42000000m, netCashflow = 38000000m, platformFees = 4000000m },
-            new { date = "T7", grossRevenue = 50000000m, netCashflow = 45200000m, platformFees = 4800000m },
-            new { date = "CN", grossRevenue = 38000000m, netCashflow = 34300000m, platformFees = 3700000m },
-        };
-        return Task.FromResult<object>(trend);
+        return await _analyticsRepo.QueryKpisAsync(filter, ct);
     }
 
-    public Task<object> GetChannelShareAsync()
+    public async Task<List<FinancialTrendPointResult>> GetTrendAsync(TrendFilter filter, CancellationToken ct = default)
     {
-        var share = new[]
-        {
-            new { channel = "TikTok Shop", percentage = 55.0, amount = 101475000m, color = "#000000" },
-            new { channel = "Shopee", percentage = 30.0, amount = 55350000m, color = "#ee4d2d" },
-            new { channel = "In-Store POS", percentage = 15.0, amount = 27675000m, color = "#0284c7" }
-        };
-        return Task.FromResult<object>(share);
+        return await _analyticsRepo.QueryTrendAsync(filter, ct);
     }
 
-    public Task<object> GetTopSkusAsync(int limit)
+    public async Task<List<ChannelBreakdownResult>> GetChannelBreakdownAsync(AnalyticsFilter filter, CancellationToken ct = default)
     {
-        var skus = new[]
-        {
-            new { rank = 1, sku = "DRS-MAXI-01", name = "Đầm lụa Maxi hoa nhí VSF", sold = 320, revenue = 48000000m },
-            new { rank = 2, sku = "SHT-LINEN-02", name = "Áo sơ mi Linen dáng suông", sold = 280, revenue = 33600000m },
-            new { rank = 3, sku = "PNT-CULOT-03", name = "Quần suông Culottes cạp cao", sold = 210, revenue = 29400000m },
-            new { rank = 4, sku = "TSH-COTTON-04", name = "Áo thun Cotton Organic basic", sold = 190, revenue = 17100000m },
-            new { rank = 5, sku = "BLZ-OVRSD-05", name = "Áo khoác Blazer form rộng", sold = 140, revenue = 28000000m }
-        };
-        return Task.FromResult<object>(skus);
+        return await _analyticsRepo.QueryChannelBreakdownAsync(filter, ct);
     }
 
-    public Task<byte[]> ExportReconciliationCsvAsync()
+    public async Task<List<TopSkuResult>> GetTopSkusAsync(TopSkuFilter filter, CancellationToken ct = default)
     {
-        var csv = "OrderCode,Channel,CustomerPaid,PlatformFees,NetReceived,ReconciliationStatus\n" +
-                  "TTS-882103,TikTok,450000,33500,416500,Reconciled\n" +
-                  "SHP-992014,Shopee,620000,52700,567300,Reconciled\n" +
-                  "POS-100293,POS,1250000,12500,1237500,Reconciled\n";
-        return Task.FromResult(Encoding.UTF8.GetBytes(csv));
+        return await _analyticsRepo.QueryTopSkusAsync(filter, ct);
+    }
+
+    public async Task<PagedResult<DrilldownOrderResult>> GetDrilldownAsync(DrilldownFilter filter, CancellationToken ct = default)
+    {
+        return await _analyticsRepo.QueryDrilldownAsync(filter, ct);
+    }
+
+    public async Task<byte[]> ExportCsvAsync(AnalyticsFilter filter, CancellationToken ct = default)
+    {
+        var orders = await _analyticsRepo.QueryRawExportDataAsync(filter, ct);
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Order Id,External Order Id,Channel,Delivered At,Gross Revenue,Total Platform Fees,Projected Settlement,COGS,Contribution Profit,Contribution Margin Pct");
+
+        foreach (var o in orders)
+        {
+            var line = string.Format(
+                CultureInfo.InvariantCulture,
+                "\"{0}\",\"{1}\",\"{2}\",\"{3:yyyy-MM-dd HH:mm:ss}\",{4:F2},{5:F2},{6:F2},{7:F2},{8:F2},{9:F2}%",
+                o.Id,
+                o.ExternalOrderId,
+                o.Channel,
+                o.DeliveredAt,
+                o.GrossRevenue,
+                o.TotalPlatformFees,
+                o.ProjectedSettlement,
+                o.Cogs,
+                o.ContributionProfit,
+                o.ContributionMarginPct
+            );
+            sb.AppendLine(line);
+        }
+
+        var preamble = Encoding.UTF8.GetPreamble();
+        var contentBytes = Encoding.UTF8.GetBytes(sb.ToString());
+        var result = new byte[preamble.Length + contentBytes.Length];
+        Buffer.BlockCopy(preamble, 0, result, 0, preamble.Length);
+        Buffer.BlockCopy(contentBytes, 0, result, preamble.Length, contentBytes.Length);
+
+        return result;
     }
 }
