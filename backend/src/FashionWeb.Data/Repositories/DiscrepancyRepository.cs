@@ -106,12 +106,11 @@ public class DiscrepancyRepository : IDiscrepancyRepository
     public async Task AddAsync(DiscrepancyAudit audit, CancellationToken ct = default)
     {
         await _context.DiscrepancyAudits.AddAsync(audit, ct);
-        await _context.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateAsync(DiscrepancyAudit audit, CancellationToken ct = default)
+    public Task UpdateAsync(DiscrepancyAudit audit, CancellationToken ct = default)
     {
         _context.DiscrepancyAudits.Update(audit);
-        await _context.SaveChangesAsync(ct);
+        return Task.CompletedTask;
     }
 }

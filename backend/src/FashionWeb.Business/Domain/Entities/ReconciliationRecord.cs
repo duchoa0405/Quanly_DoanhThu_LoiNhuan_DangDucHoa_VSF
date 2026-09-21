@@ -19,14 +19,15 @@ public class ReconciliationRecord
     public Order? Order { get; set; }
     public List<DiscrepancyAudit> Audits { get; set; } = new();
 
-    public DiscrepancyAudit? Reconcile(decimal actualSettlement, string? notes, DiscrepancyType? discrepancyType, string actorIdentity)
+    public DiscrepancyAudit? Reconcile(decimal actualSettlement, string? notes, DiscrepancyType? discrepancyType, string actorIdentity, DateTime? now = null)
     {
+        var timestamp = now ?? DateTime.UtcNow;
         ActualSettlement = actualSettlement;
-        VarianceAmount = ProjectedSettlement - actualSettlement;
-        ReconciledAt = DateTime.UtcNow;
+        VarianceAmount = FashionWeb.Business.Common.MoneyMath.Round(ProjectedSettlement - actualSettlement);
+        ReconciledAt = timestamp;
         ReconciledBy = actorIdentity;
         ReconciliationNotes = notes;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = timestamp;
 
         if (VarianceAmount.Value == 0m)
         {
@@ -36,9 +37,9 @@ public class ReconciliationRecord
         else
         {
             if (string.IsNullOrWhiteSpace(notes))
-                throw new ArgumentException("Reconciliation notes are mandatory when variance is detected.", nameof(notes));
+                throw new Exceptions.ValidationException("Reconciliation notes are mandatory when variance is detected.");
             if (!discrepancyType.HasValue)
-                throw new ArgumentException("Discrepancy type classification is mandatory when variance is detected.", nameof(discrepancyType));
+                throw new Exceptions.ValidationException("Discrepancy type classification is mandatory when variance is detected.");
 
             Status = ReconciliationStatus.DISCREPANCY;
 
@@ -47,7 +48,7 @@ public class ReconciliationRecord
                 ReconciliationId = Id,
                 DiscrepancyType = discrepancyType.Value,
                 ExplanationNote = notes,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = timestamp
             };
 
             Audits.Add(audit);

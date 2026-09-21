@@ -1,3 +1,4 @@
+using FashionWeb.Business.Common;
 using FashionWeb.Business.Domain.Entities;
 using FashionWeb.Business.Domain.Enums;
 using FashionWeb.Business.Domain.ValueObjects;
@@ -10,13 +11,13 @@ public class TikTokShopFeeStrategy : IPlatformFeeStrategy
 
     public FeeBreakdown Calculate(decimal subtotal, decimal voucher, FeeSchedule schedule)
     {
-        var grossRevenue = subtotal - voucher;
-        var commissionFee = Math.Round(subtotal * schedule.CommissionRate, 2, MidpointRounding.AwayFromZero);
-        var paymentFee = Math.Round(grossRevenue * schedule.PaymentFeeRate, 2, MidpointRounding.AwayFromZero);
+        var grossRevenue = MoneyMath.CalculateGrossRevenue(subtotal, voucher);
+        var commissionFee = MoneyMath.CalculateRateFee(subtotal, schedule.CommissionRate);
+        var paymentFee = MoneyMath.CalculateRateFee(grossRevenue, schedule.PaymentFeeRate);
         var serviceFee = 0.00m;
         var fixedFee = schedule.FixedFeePerOrder;
-        var totalFees = commissionFee + paymentFee + serviceFee + fixedFee;
-        var projectedSettlement = grossRevenue - totalFees;
+        var totalFees = MoneyMath.Round(commissionFee + paymentFee + serviceFee + fixedFee);
+        var projectedSettlement = MoneyMath.Round(grossRevenue - totalFees);
 
         return new FeeBreakdown(
             Subtotal: subtotal,

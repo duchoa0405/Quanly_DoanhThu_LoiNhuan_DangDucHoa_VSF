@@ -1,4 +1,5 @@
 using FashionWeb.Api.Contracts.Settlements;
+using FashionWeb.Api.Mappings;
 using FashionWeb.Business.Commands;
 using FashionWeb.Business.Domain.Enums;
 using FashionWeb.Business.Filters;
@@ -31,25 +32,7 @@ public class SettlementController : BaseApiController
         var filter = new SettlementQueryFilter(channel, status, from, to, search, page, pageSize);
         var paged = await _settlementService.GetLedgerAsync(filter, ct);
 
-        var items = paged.Items.Select(x => new SettlementLedgerItemResponse(
-            Id: x.Id,
-            OrderId: x.OrderId,
-            ExternalOrderId: x.ExternalOrderId,
-            Channel: x.Channel,
-            GrossRevenue: x.GrossRevenue,
-            CommissionFee: x.CommissionFee,
-            PaymentFee: x.PaymentFee,
-            ServiceFee: x.ServiceFee,
-            FixedFee: x.FixedFee,
-            TotalPlatformFees: x.TotalPlatformFees,
-            ProjectedSettlement: x.ProjectedSettlement,
-            ActualSettlement: x.ActualSettlement,
-            VarianceAmount: x.VarianceAmount,
-            ReconciliationStatus: x.Status,
-            DeliveredAt: x.DeliveredAt,
-            ReconciledAt: x.ReconciledAt
-        )).ToList();
-
+        var items = paged.Items.Select(SettlementContractMapper.MapToLedgerItemResponse).ToList();
         return Ok(new PagedSettlementLedgerResponse(items, paged.Page, paged.PageSize, paged.TotalItems, paged.TotalPages));
     }
 
@@ -69,18 +52,13 @@ public class SettlementController : BaseApiController
     }
 
     [HttpPost("{orderId:guid}/reconcile")]
-    [HttpPost("reconcile")]
     public async Task<ActionResult<ReconciliationResponse>> ReconcileSettlement(
-        [FromRoute] Guid? orderId,
+        [FromRoute] Guid orderId,
         [FromBody] ReconcileSettlementRequest request,
         CancellationToken ct = default)
     {
-        var targetOrderId = orderId ?? request.OrderId;
-        if (!targetOrderId.HasValue || targetOrderId == Guid.Empty)
-            throw new ArgumentException("OrderId is required for settlement reconciliation.", nameof(orderId));
-
         var cmd = new ReconcileSettlementCommand(
-            OrderId: targetOrderId.Value,
+            OrderId: orderId,
             ActualSettlement: request.ActualSettlement,
             Notes: request.Notes,
             DiscrepancyType: request.DiscrepancyType,
@@ -88,17 +66,6 @@ public class SettlementController : BaseApiController
         );
 
         var record = await _settlementService.ReconcileAsync(cmd, ct);
-
-        return Ok(new ReconciliationResponse(
-            Id: record.Id,
-            OrderId: record.OrderId,
-            ProjectedSettlement: record.ProjectedSettlement,
-            ActualSettlement: record.ActualSettlement,
-            VarianceAmount: record.VarianceAmount,
-            ReconciliationStatus: record.Status,
-            ReconciliationNotes: record.ReconciliationNotes,
-            ReconciledAt: record.ReconciledAt,
-            ReconciledBy: record.ReconciledBy
-        ));
+        return Ok(SettlementContractMapper.MapToReconciliationResponse(record));
     }
 }

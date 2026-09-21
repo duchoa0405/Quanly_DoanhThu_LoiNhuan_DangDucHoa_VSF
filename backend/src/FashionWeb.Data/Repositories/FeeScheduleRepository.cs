@@ -47,18 +47,16 @@ public class FeeScheduleRepository : IFeeScheduleRepository
         }
 
         await _context.FeeSchedules.AddAsync(newSchedule, ct);
-        await _context.SaveChangesAsync(ct);
     }
 
     public async Task AddAsync(FeeSchedule schedule, CancellationToken ct = default)
     {
         await _context.FeeSchedules.AddAsync(schedule, ct);
-        await _context.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateAsync(FeeSchedule schedule, CancellationToken ct = default)
+    public Task UpdateAsync(FeeSchedule schedule, CancellationToken ct = default)
     {
         _context.FeeSchedules.Update(schedule);
-        await _context.SaveChangesAsync(ct);
+        return Task.CompletedTask;
     }
 }

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using FashionWeb.Business.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FashionWeb.Api.Middleware;
@@ -23,22 +24,26 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception occurred while processing request {Path}: {Message}", 
-                context.Request.Path, ex.Message);
+            _logger.LogError(ex, "Unhandled exception on request {Method} {Path} [TraceId: {TraceId}]: {Message}", 
+                context.Request.Method, context.Request.Path, context.TraceIdentifier, ex.Message);
             await HandleExceptionAsync(context, ex);
         }
     }
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        var (statusCode, title) = exception switch
+        var (statusCode, title, detail) = exception switch
         {
-            KeyNotFoundException => (HttpStatusCode.NotFound, "Resource Not Found"),
-            ArgumentNullException => (HttpStatusCode.BadRequest, "Invalid Argument"),
-            ArgumentException => (HttpStatusCode.BadRequest, "Bad Request"),
-            InvalidOperationException => (HttpStatusCode.Conflict, "Business Rule Conflict"),
-            UnauthorizedAccessException => (HttpStatusCode.Forbidden, "Access Denied"),
-            _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
+            ValidationException ve => (HttpStatusCode.BadRequest, "Validation Error", ve.Message),
+            NotFoundException nfe => (HttpStatusCode.NotFound, "Resource Not Found", nfe.Message),
+            ConflictException ce => (HttpStatusCode.Conflict, "Conflict Violation", ce.Message),
+            BusinessRuleException bre => (HttpStatusCode.UnprocessableEntity, "Business Rule Violation", bre.Message),
+            KeyNotFoundException knf => (HttpStatusCode.NotFound, "Resource Not Found", knf.Message),
+            ArgumentNullException ane => (HttpStatusCode.BadRequest, "Invalid Argument", ane.Message),
+            ArgumentException ae => (HttpStatusCode.BadRequest, "Bad Request", ae.Message),
+            InvalidOperationException ioe => (HttpStatusCode.Conflict, "Conflict", ioe.Message),
+            UnauthorizedAccessException uae => (HttpStatusCode.Forbidden, "Access Forbidden", uae.Message),
+            _ => (HttpStatusCode.InternalServerError, "Internal Server Error", "An unexpected error occurred.")
         };
 
         context.Response.ContentType = "application/problem+json";
@@ -48,7 +53,7 @@ public class ExceptionHandlingMiddleware
         {
             Status = (int)statusCode,
             Title = title,
-            Detail = exception.Message,
+            Detail = detail,
             Instance = context.Request.Path
         };
 

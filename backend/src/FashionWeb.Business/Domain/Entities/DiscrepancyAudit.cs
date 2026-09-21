@@ -17,13 +17,13 @@ public class DiscrepancyAudit
 
     public bool IsResolved => ResolvedAt != null;
 
-    public void Resolve(string resolutionNotes, string actorIdentity)
+    public void Resolve(string resolutionNotes, string actorIdentity, DateTime? now = null)
     {
         if (string.IsNullOrWhiteSpace(resolutionNotes))
-            throw new ArgumentException("Resolution notes cannot be empty.", nameof(resolutionNotes));
+            throw new Exceptions.ValidationException("Resolution notes cannot be empty.");
 
         ResolutionNotes = resolutionNotes;
         ResolvedBy = actorIdentity;
-        ResolvedAt = DateTime.UtcNow;
+        ResolvedAt = now ?? DateTime.UtcNow;
     }
 }

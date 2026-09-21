@@ -87,18 +87,17 @@ public class ProductRepository : IProductRepository
     public async Task AddProductAsync(Product product, CancellationToken ct = default)
     {
         await _context.Products.AddAsync(product, ct);
-        await _context.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateProductAsync(Product product, CancellationToken ct = default)
+    public Task UpdateProductAsync(Product product, CancellationToken ct = default)
     {
         _context.Products.Update(product);
-        await _context.SaveChangesAsync(ct);
+        return Task.CompletedTask;
     }
 
-    public async Task UpdateVariantAsync(ProductVariant variant, CancellationToken ct = default)
+    public Task UpdateVariantAsync(ProductVariant variant, CancellationToken ct = default)
     {
         _context.ProductVariants.Update(variant);
-        await _context.SaveChangesAsync(ct);
+        return Task.CompletedTask;
     }
 }

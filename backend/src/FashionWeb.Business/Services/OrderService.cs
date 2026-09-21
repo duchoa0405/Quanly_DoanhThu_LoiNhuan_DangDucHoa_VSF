@@ -1,6 +1,8 @@
 using FashionWeb.Business.Commands;
+using FashionWeb.Business.Common;
 using FashionWeb.Business.Domain.Entities;
 using FashionWeb.Business.Domain.Enums;
+using FashionWeb.Business.Exceptions;
 using FashionWeb.Business.Filters;
 using FashionWeb.Business.Interfaces.Repositories;
 using FashionWeb.Business.Interfaces.Services;
@@ -10,46 +12,240 @@ namespace FashionWeb.Business.Services;
 
 public class OrderService : IOrderService
 {
-    private readonly IOrderRepository _orderRepo;
-    private readonly IProductRepository _productRepo;
-    private readonly IReconciliationRepository _reconRepo;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly IReconciliationRepository _reconciliationRepository;
     private readonly IDynamicFeeEngine _feeEngine;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public OrderService(
-        IOrderRepository orderRepo,
-        IProductRepository productRepo,
-        IReconciliationRepository reconRepo,
+        IOrderRepository orderRepository,
+        IProductRepository productRepository,
+        IReconciliationRepository reconciliationRepository,
         IDynamicFeeEngine feeEngine,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider? timeProvider = null)
     {
-        _orderRepo = orderRepo;
-        _productRepo = productRepo;
-        _reconRepo = reconRepo;
+        _orderRepository = orderRepository;
+        _productRepository = productRepository;
+        _reconciliationRepository = reconciliationRepository;
         _feeEngine = feeEngine;
         _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<Order> CreateOrderAsync(CreateOrderCommand command, CancellationToken ct = default)
     {
+        ValidateCreateCommand(command);
+
+        if (await _orderRepository.ExistsExternalOrderIdAsync(command.Channel, command.ExternalOrderId, ct))
+        {
+            throw new ConflictException(
+                $"An order with external ID '{command.ExternalOrderId}' already exists for channel '{command.Channel}'.");
+        }
+
+        var variantMap = await LoadRequiredVariantsAsync(command.Items, ct);
+        var order = BuildOrderAggregate(command, variantMap);
+
+        await _orderRepository.AddAsync(order, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+
+        return order;
+    }
+
+    public async Task<OrderDetailResult?> GetOrderByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var order = await _orderRepository.GetOrderDetailByIdAsync(id, ct);
+        if (order == null)
+            return null;
+
+        decimal? cogs = null;
+        decimal? contributionProfit = null;
+
+        if (order.Status == OrderStatus.DELIVERED)
+        {
+            cogs = order.Items.Sum(i => i.TotalCost);
+            if (order.FeeSnapshot != null && cogs.HasValue)
+            {
+                contributionProfit = MoneyMath.Round(order.FeeSnapshot.ProjectedSettlement - cogs.Value);
+            }
+        }
+
+        var itemResults = order.Items.Select(i => new OrderItemDetailResult(
+            Id: i.Id,
+            ProductVariantId: i.ProductVariantId,
+            SkuCodeSnapshot: i.SkuCodeSnapshot,
+            ProductNameSnapshot: i.ProductNameSnapshot,
+            Quantity: i.Quantity,
+            UnitPrice: i.UnitPrice,
+            UnitCostSnapshot: i.UnitCostSnapshot,
+            LineTotal: i.LineTotal,
+            TotalCost: i.TotalCost
+        )).ToList();
+
+        var historyResults = order.StatusHistory.Select(h => new OrderStatusHistoryResult(
+            Id: h.Id,
+            FromStatus: h.FromStatus,
+            ToStatus: h.ToStatus,
+            Reason: h.Reason,
+            ChangedBy: h.ChangedBy,
+            ChangedAt: h.ChangedAt
+        )).ToList();
+
+        FeeSnapshotResult? feeSnapshotResult = null;
+        if (order.FeeSnapshot != null)
+        {
+            feeSnapshotResult = new FeeSnapshotResult(
+                Id: order.FeeSnapshot.Id,
+                CommissionRate: order.FeeSnapshot.CommissionFeeRate,
+                CommissionFeeAmount: order.FeeSnapshot.CommissionFeeAmount,
+                PaymentFeeRate: order.FeeSnapshot.PaymentFeeRate,
+                PaymentFeeAmount: order.FeeSnapshot.PaymentFeeAmount,
+                ServiceFeeRate: order.FeeSnapshot.ServiceFeeRate,
+                ServiceFeeAmount: order.FeeSnapshot.ServiceFeeAmount,
+                ServiceFeeCapSnapshot: order.FeeSnapshot.ServiceFeeCapSnapshot,
+                FixedFeeAmount: order.FeeSnapshot.FixedFeeAmount,
+                TotalPlatformFees: order.FeeSnapshot.TotalPlatformFees,
+                ProjectedSettlement: order.FeeSnapshot.ProjectedSettlement,
+                SnapshotAt: order.FeeSnapshot.SnapshotAt
+            );
+        }
+
+        return new OrderDetailResult(
+            Id: order.Id,
+            ExternalOrderId: order.ExternalOrderId,
+            Channel: order.Channel,
+            PaymentMethod: order.PaymentMethod,
+            Status: order.Status,
+            Subtotal: order.Subtotal,
+            ShopVoucher: order.ShopVoucher,
+            GrossRevenue: order.GrossRevenue,
+            CustomerName: order.CustomerName,
+            CustomerPhone: order.CustomerPhone,
+            OrderDate: order.OrderDate,
+            DeliveredAt: order.DeliveredAt,
+            CancelledAt: order.CancelledAt,
+            CancellationReason: order.CancellationReason,
+            CreatedAt: order.CreatedAt,
+            UpdatedAt: order.UpdatedAt,
+            Cogs: cogs,
+            ContributionProfit: contributionProfit,
+            Items: itemResults,
+            StatusHistory: historyResults,
+            FeeSnapshot: feeSnapshotResult
+        );
+    }
+
+    public async Task<PagedResult<Order>> ListOrdersAsync(OrderQueryFilter filter, CancellationToken ct = default)
+    {
+        return await _orderRepository.ListAsync(filter, ct);
+    }
+
+    public async Task<OrderSummaryResult> GetSummaryAsync(DateTime? fromDate = null, DateTime? toDate = null, ChannelType? channel = null, CancellationToken ct = default)
+    {
+        return await _orderRepository.GetSummaryAsync(fromDate, toDate, channel, ct);
+    }
+
+    public async Task<Order> UpdateOrderStatusAsync(UpdateOrderStatusCommand command, CancellationToken ct = default)
+    {
+        var order = await _orderRepository.GetOrderDetailByIdAsync(command.OrderId, ct);
+        if (order == null)
+            throw new NotFoundException($"Order with ID '{command.OrderId}' was not found.");
+
+        return command.ToStatus switch
+        {
+            OrderProgressStatus.SHIPPED => await ShipOrderAsync(order, command, ct),
+            OrderProgressStatus.DELIVERED => await DeliverOrderAsync(order, command, ct),
+            _ => throw new ValidationException($"Target order progress status '{command.ToStatus}' is not supported.")
+        };
+    }
+
+    public async Task<Order> CancelOrderAsync(CancelOrderCommand command, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(command.CancellationReason))
+            throw new ValidationException("Cancellation reason must be provided.");
+
+        var order = await _orderRepository.GetOrderDetailByIdAsync(command.OrderId, ct);
+        if (order == null)
+            throw new NotFoundException($"Order with ID '{command.OrderId}' was not found.");
+
+        order.Cancel(command.CancellationReason.Trim(), command.ActorIdentity);
+        await _orderRepository.UpdateAsync(order, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+
+        return order;
+    }
+
+    private async Task<Order> ShipOrderAsync(Order order, UpdateOrderStatusCommand command, CancellationToken ct)
+    {
+        order.TransitionToShipped(command.ActorIdentity);
+        await _orderRepository.UpdateAsync(order, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return order;
+    }
+
+    private async Task<Order> DeliverOrderAsync(Order order, UpdateOrderStatusCommand command, CancellationToken ct)
+    {
+        OrderFeeSnapshot feeSnapshot = null!;
+        ReconciliationRecord reconRecord = null!;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        await _unitOfWork.ExecuteTransactionAsync(async () =>
+        {
+            order.TransitionToDelivered(command.ActorIdentity);
+            feeSnapshot = await _feeEngine.CalculateAndFreezeFeeAsync(order, ct);
+
+            reconRecord = new ReconciliationRecord
+            {
+                Id = Guid.NewGuid(),
+                OrderId = order.Id,
+                ProjectedSettlement = feeSnapshot.ProjectedSettlement,
+                Status = ReconciliationStatus.PENDING_SETTLEMENT,
+                CreatedAt = now
+            };
+
+            await _orderRepository.UpdateAsync(order, ct);
+            await _orderRepository.AddFeeSnapshotAsync(feeSnapshot, ct);
+            await _reconciliationRepository.AddAsync(reconRecord, ct);
+        }, ct);
+
+        order.FeeSnapshot = feeSnapshot;
+        order.ReconciliationRecord = reconRecord;
+        return order;
+    }
+
+    private static void ValidateCreateCommand(CreateOrderCommand command)
+    {
         if (string.IsNullOrWhiteSpace(command.ExternalOrderId))
-            throw new ArgumentException("External order ID cannot be empty.", nameof(command));
+            throw new ValidationException("External order ID cannot be empty.");
 
         if (command.Items == null || command.Items.Count == 0)
-            throw new ArgumentException("An order must contain at least one order item.", nameof(command));
+            throw new ValidationException("An order must contain at least one order item.");
 
-        if (await _orderRepo.ExistsExternalOrderIdAsync(command.Channel, command.ExternalOrderId, ct))
-            throw new InvalidOperationException($"An order with external ID '{command.ExternalOrderId}' already exists for channel '{command.Channel}'.");
+        if (command.ShopVoucher < 0m)
+            throw new ValidationException("Shop voucher cannot be negative.");
+    }
 
-        var variantIds = command.Items.Select(i => i.ProductVariantId).Distinct().ToList();
-        var variants = await _productRepo.GetVariantsByIdsAsync(variantIds, ct);
+    private async Task<Dictionary<Guid, ProductVariant>> LoadRequiredVariantsAsync(
+        List<CreateOrderItemCommand> items, CancellationToken ct)
+    {
+        var variantIds = items.Select(i => i.ProductVariantId).Distinct().ToList();
+        var variants = await _productRepository.GetVariantsByIdsAsync(variantIds, ct);
         var variantMap = variants.ToDictionary(v => v.Id);
 
         foreach (var id in variantIds)
         {
             if (!variantMap.ContainsKey(id))
-                throw new KeyNotFoundException($"Product variant with ID '{id}' was not found in catalog.");
+                throw new NotFoundException($"Product variant with ID '{id}' was not found in catalog.");
         }
+
+        return variantMap;
+    }
+
+    private Order BuildOrderAggregate(CreateOrderCommand command, Dictionary<Guid, ProductVariant> variantMap)
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
 
         var order = new Order
         {
@@ -60,8 +256,8 @@ public class OrderService : IOrderService
             Status = OrderStatus.PENDING,
             CustomerName = command.CustomerName?.Trim(),
             CustomerPhone = command.CustomerPhone?.Trim(),
-            OrderDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow
+            OrderDate = now,
+            CreatedAt = now
         };
 
         foreach (var item in command.Items)
@@ -95,84 +291,9 @@ public class OrderService : IOrderService
             FromStatus = null,
             ToStatus = OrderStatus.PENDING,
             ChangedBy = command.ActorIdentity,
-            ChangedAt = DateTime.UtcNow
+            ChangedAt = now
         });
 
-        await _orderRepo.AddAsync(order, ct);
-        return order;
-    }
-
-    public async Task<Order?> GetOrderByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        return await _orderRepo.GetOrderDetailByIdAsync(id, ct);
-    }
-
-    public async Task<PagedResult<Order>> ListOrdersAsync(OrderQueryFilter filter, CancellationToken ct = default)
-    {
-        return await _orderRepo.ListAsync(filter, ct);
-    }
-
-    public async Task<OrderSummaryResult> GetSummaryAsync(DateTime? fromDate = null, DateTime? toDate = null, ChannelType? channel = null, CancellationToken ct = default)
-    {
-        return await _orderRepo.GetSummaryAsync(fromDate, toDate, channel, ct);
-    }
-
-    public async Task<Order> UpdateOrderStatusAsync(UpdateOrderStatusCommand command, CancellationToken ct = default)
-    {
-        var order = await _orderRepo.GetOrderDetailByIdAsync(command.OrderId, ct);
-        if (order == null)
-            throw new KeyNotFoundException($"Order with ID '{command.OrderId}' was not found.");
-
-        if (command.ToStatus == OrderProgressStatus.SHIPPED)
-        {
-            order.TransitionToShipped(command.ActorIdentity);
-            await _orderRepo.UpdateAsync(order, ct);
-            return order;
-        }
-
-        if (command.ToStatus == OrderProgressStatus.DELIVERED)
-        {
-            OrderFeeSnapshot feeSnapshot = null!;
-            ReconciliationRecord reconRecord = null!;
-
-            await _unitOfWork.ExecuteTransactionAsync(async () =>
-            {
-                order.TransitionToDelivered(command.ActorIdentity);
-                feeSnapshot = await _feeEngine.CalculateAndFreezeFeeAsync(order, ct);
-
-                reconRecord = new ReconciliationRecord
-                {
-                    Id = Guid.NewGuid(),
-                    OrderId = order.Id,
-                    ProjectedSettlement = feeSnapshot.ProjectedSettlement,
-                    Status = ReconciliationStatus.PENDING_SETTLEMENT,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                await _orderRepo.UpdateAsync(order, ct);
-                await _orderRepo.AddFeeSnapshotAsync(feeSnapshot, ct);
-                await _reconRepo.AddAsync(reconRecord, ct);
-            }, ct);
-
-            order.FeeSnapshot = feeSnapshot;
-            order.ReconciliationRecord = reconRecord;
-            return order;
-        }
-
-        throw new NotSupportedException($"Target order progress status '{command.ToStatus}' is not supported.");
-    }
-
-    public async Task<Order> CancelOrderAsync(CancelOrderCommand command, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(command.CancellationReason))
-            throw new ArgumentException("Cancellation reason must be provided.", nameof(command));
-
-        var order = await _orderRepo.GetOrderDetailByIdAsync(command.OrderId, ct);
-        if (order == null)
-            throw new KeyNotFoundException($"Order with ID '{command.OrderId}' was not found.");
-
-        order.Cancel(command.CancellationReason.Trim(), command.ActorIdentity);
-        await _orderRepo.UpdateAsync(order, ct);
         return order;
     }
 }

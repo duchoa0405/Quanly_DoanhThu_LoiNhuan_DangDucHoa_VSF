@@ -1,6 +1,6 @@
 using FashionWeb.Api.Contracts.Catalog;
+using FashionWeb.Api.Mappings;
 using FashionWeb.Business.Commands;
-using FashionWeb.Business.Domain.Entities;
 using FashionWeb.Business.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,19 +17,10 @@ public class CatalogController : BaseApiController
     }
 
     [HttpGet("variants/selectable")]
-    [HttpGet("selectable-variants")]
     public async Task<ActionResult<SelectableVariantListResponse>> GetSelectableVariants([FromQuery] string? search, CancellationToken ct)
     {
         var results = await _catalogService.GetSelectableVariantsAsync(search, ct);
-        var dtos = results.Select(v => new SelectableVariantResponse(
-            Id: v.Id,
-            SkuCode: v.SkuCode,
-            ProductName: v.ProductName,
-            Color: v.Color,
-            Size: v.Size,
-            RetailPrice: v.RetailPrice,
-            IsActive: v.IsActive
-        )).ToList();
+        var dtos = results.Select(CatalogContractMapper.MapToSelectableVariantResponse).ToList();
 
         return Ok(new SelectableVariantListResponse(dtos));
     }
@@ -42,7 +33,7 @@ public class CatalogController : BaseApiController
         CancellationToken ct = default)
     {
         var paged = await _catalogService.ListProductsAsync(search, page, pageSize, ct);
-        var productDtos = paged.Items.Select(MapToProductResponse).ToList();
+        var productDtos = paged.Items.Select(CatalogContractMapper.MapToProductResponse).ToList();
 
         return Ok(new PagedProductListResponse(
             Items: productDtos,
@@ -60,7 +51,7 @@ public class CatalogController : BaseApiController
         if (product == null)
             return NotFound(new ProblemDetails { Title = "Product Not Found", Detail = $"Product with ID '{id}' was not found.", Status = 404 });
 
-        return Ok(MapToProductResponse(product));
+        return Ok(CatalogContractMapper.MapToProductResponse(product));
     }
 
     [HttpPost("products")]
@@ -80,11 +71,10 @@ public class CatalogController : BaseApiController
         );
 
         var created = await _catalogService.CreateProductAsync(cmd, ct);
-        return CreatedAtAction(nameof(GetProductById), new { id = created.Id }, MapToProductResponse(created));
+        return CreatedAtAction(nameof(GetProductById), new { id = created.Id }, CatalogContractMapper.MapToProductResponse(created));
     }
 
     [HttpPatch("products/{id:guid}")]
-    [HttpPut("products/{id:guid}")]
     public async Task<ActionResult<ProductResponse>> UpdateProduct(Guid id, [FromBody] UpdateProductRequest request, CancellationToken ct)
     {
         var cmd = new UpdateProductCommand(
@@ -96,11 +86,10 @@ public class CatalogController : BaseApiController
         );
 
         var updated = await _catalogService.UpdateProductAsync(cmd, ct);
-        return Ok(MapToProductResponse(updated));
+        return Ok(CatalogContractMapper.MapToProductResponse(updated));
     }
 
     [HttpPatch("variants/{id:guid}")]
-    [HttpPut("variants/{id:guid}")]
     public async Task<ActionResult<ProductVariantResponse>> UpdateVariant(Guid id, [FromBody] UpdateVariantRequest request, CancellationToken ct)
     {
         var cmd = new UpdateVariantCommand(
@@ -112,31 +101,6 @@ public class CatalogController : BaseApiController
         );
 
         var updated = await _catalogService.UpdateVariantAsync(cmd, ct);
-        return Ok(MapToVariantResponse(updated));
+        return Ok(CatalogContractMapper.MapToVariantResponse(updated));
     }
-
-    private static ProductResponse MapToProductResponse(Product p) =>
-        new(
-            Id: p.Id,
-            Name: p.Name,
-            Category: p.Category,
-            IsActive: p.IsActive,
-            Variants: p.Variants.Select(MapToVariantResponse).ToList(),
-            CreatedAt: p.CreatedAt,
-            UpdatedAt: p.UpdatedAt
-        );
-
-    private static ProductVariantResponse MapToVariantResponse(ProductVariant v) =>
-        new(
-            Id: v.Id,
-            ProductId: v.ProductId,
-            SkuCode: v.SkuCode,
-            Color: v.Color,
-            Size: v.Size,
-            RetailPrice: v.RetailPrice,
-            CostPrice: v.CostPrice,
-            IsActive: v.IsActive,
-            CreatedAt: v.CreatedAt,
-            UpdatedAt: v.UpdatedAt
-        );
 }

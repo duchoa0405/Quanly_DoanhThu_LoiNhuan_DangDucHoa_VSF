@@ -122,24 +122,21 @@ public class OrderRepository : IOrderRepository
     public async Task AddAsync(Order order, CancellationToken ct = default)
     {
         await _context.Orders.AddAsync(order, ct);
-        await _context.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateAsync(Order order, CancellationToken ct = default)
+    public Task UpdateAsync(Order order, CancellationToken ct = default)
     {
         _context.Orders.Update(order);
-        await _context.SaveChangesAsync(ct);
+        return Task.CompletedTask;
     }
 
     public async Task AddStatusHistoryAsync(OrderStatusHistory history, CancellationToken ct = default)
     {
         await _context.OrderStatusHistories.AddAsync(history, ct);
-        await _context.SaveChangesAsync(ct);
     }
 
     public async Task AddFeeSnapshotAsync(OrderFeeSnapshot snapshot, CancellationToken ct = default)
     {
         await _context.OrderFeeSnapshots.AddAsync(snapshot, ct);
-        await _context.SaveChangesAsync(ct);
     }
 }

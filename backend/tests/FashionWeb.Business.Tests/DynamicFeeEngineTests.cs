@@ -247,4 +247,89 @@ public class DynamicFeeEngineTests
         Assert.Equal(36500m, snapshot.TotalPlatformFees);
         Assert.Equal(413500m, snapshot.ProjectedSettlement);
     }
+
+    [Fact]
+    public async Task CalculateFeePreview_ShopeeBelowCap_ChargesCalculatedServiceFee()
+    {
+        // Arrange: Subtotal 500,000 -> 2% service = 10,000 (< 20,000 cap)
+        var schedule = new FeeSchedule
+        {
+            Id = Guid.NewGuid(),
+            Channel = ChannelType.SHOPEE,
+            PaymentMethod = PaymentMethod.MARKETPLACE_WALLET,
+            CommissionRate = 0.0450m,
+            PaymentFeeRate = 0.0400m,
+            ServiceFeeRate = 0.0200m,
+            ServiceFeeCap = 20000m,
+            FixedFeePerOrder = 0m,
+            IsActive = true
+        };
+
+        _mockScheduleRepo
+            .Setup(r => r.GetActiveScheduleAsync(ChannelType.SHOPEE, PaymentMethod.MARKETPLACE_WALLET, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(schedule);
+
+        // Act
+        var result = await _engine.CalculateFeePreviewAsync(
+            ChannelType.SHOPEE,
+            PaymentMethod.MARKETPLACE_WALLET,
+            subtotal: 500000m,
+            voucher: 0m
+        );
+
+        // Assert: 2% of 500k is 10,000
+        Assert.Equal(10000m, result.ServiceFee);
+        Assert.Equal(22500m, result.CommissionFee); // 4.5% of 500k
+        Assert.Equal(20000m, result.PaymentFee);    // 4.0% of 500k
+        Assert.Equal(52500m, result.TotalPlatformFees);
+        Assert.Equal(447500m, result.ProjectedSettlement);
+    }
+
+    [Fact]
+    public async Task CalculateFeePreview_VoucherEqualsSubtotal_YieldsZeroGrossRevenue()
+    {
+        var schedule = new FeeSchedule
+        {
+            Id = Guid.NewGuid(),
+            Channel = ChannelType.TIKTOK,
+            PaymentMethod = PaymentMethod.MARKETPLACE_WALLET,
+            CommissionRate = 0.04m,
+            PaymentFeeRate = 0.03m,
+            FixedFeePerOrder = 3000m,
+            IsActive = true
+        };
+
+        _mockScheduleRepo
+            .Setup(r => r.GetActiveScheduleAsync(ChannelType.TIKTOK, PaymentMethod.MARKETPLACE_WALLET, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(schedule);
+
+        var result = await _engine.CalculateFeePreviewAsync(
+            ChannelType.TIKTOK,
+            PaymentMethod.MARKETPLACE_WALLET,
+            subtotal: 500000m,
+            voucher: 500000m
+        );
+
+        Assert.Equal(0m, result.GrossRevenue);
+        Assert.Equal(20000m, result.CommissionFee); // Commission applies to subtotal
+        Assert.Equal(0m, result.PaymentFee);        // Payment fee applies to gross revenue
+        Assert.Equal(23000m, result.TotalPlatformFees);
+        Assert.Equal(-23000m, result.ProjectedSettlement);
+    }
+
+    [Fact]
+    public async Task CalculateFeePreview_NegativeSubtotal_ThrowsArgumentException()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _engine.CalculateFeePreviewAsync(ChannelType.TIKTOK, PaymentMethod.MARKETPLACE_WALLET, subtotal: -100m, voucher: 0m)
+        );
+    }
+
+    [Fact]
+    public async Task CalculateFeePreview_NegativeVoucher_ThrowsArgumentException()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _engine.CalculateFeePreviewAsync(ChannelType.TIKTOK, PaymentMethod.MARKETPLACE_WALLET, subtotal: 100000m, voucher: -50m)
+        );
+    }
 }

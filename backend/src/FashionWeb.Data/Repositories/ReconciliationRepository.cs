@@ -119,12 +119,11 @@ public class ReconciliationRepository : IReconciliationRepository
     public async Task AddAsync(ReconciliationRecord record, CancellationToken ct = default)
     {
         await _context.ReconciliationRecords.AddAsync(record, ct);
-        await _context.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateAsync(ReconciliationRecord record, CancellationToken ct = default)
+    public Task UpdateAsync(ReconciliationRecord record, CancellationToken ct = default)
     {
         _context.ReconciliationRecords.Update(record);
-        await _context.SaveChangesAsync(ct);
+        return Task.CompletedTask;
     }
 }

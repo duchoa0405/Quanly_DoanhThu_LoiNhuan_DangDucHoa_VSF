@@ -1,6 +1,6 @@
 using FashionWeb.Api.Contracts.Orders;
+using FashionWeb.Api.Mappings;
 using FashionWeb.Business.Commands;
-using FashionWeb.Business.Domain.Entities;
 using FashionWeb.Business.Domain.Enums;
 using FashionWeb.Business.Filters;
 using FashionWeb.Business.Interfaces.Services;
@@ -33,25 +33,7 @@ public class OrdersController : BaseApiController
     {
         var filter = new OrderQueryFilter(channel, status, from, to, search, page, pageSize);
         var paged = await _orderService.ListOrdersAsync(filter, ct);
-
-        var items = paged.Items.Select(o => new OrderListItemResponse(
-            Id: o.Id,
-            ExternalOrderId: o.ExternalOrderId,
-            Channel: o.Channel,
-            PaymentMethod: o.PaymentMethod,
-            Status: o.Status,
-            OrderDate: o.OrderDate,
-            CustomerName: o.CustomerName,
-            CustomerPhone: o.CustomerPhone,
-            Subtotal: o.Subtotal,
-            ShopVoucher: o.ShopVoucher,
-            GrossRevenue: o.GrossRevenue,
-            ItemCount: o.Items.Sum(i => i.Quantity),
-            ItemsSummary: o.Items.Select(i => new OrderItemSummary(i.SkuCodeSnapshot, i.Quantity)).ToList(),
-            DeliveredAt: o.DeliveredAt,
-            CancelledAt: o.CancelledAt,
-            CreatedAt: o.CreatedAt
-        )).ToList();
+        var items = paged.Items.Select(OrderContractMapper.MapToOrderListItemResponse).ToList();
 
         return Ok(new PagedOrderListResponse(items, paged.Page, paged.PageSize, paged.TotalItems, paged.TotalPages));
     }
@@ -75,7 +57,7 @@ public class OrdersController : BaseApiController
         );
 
         var created = await _orderService.CreateOrderAsync(cmd, ct);
-        return CreatedAtAction(nameof(GetOrderById), new { id = created.Id }, MapToOrderResponse(created));
+        return CreatedAtAction(nameof(GetOrderById), new { id = created.Id }, OrderContractMapper.MapToOrderResponse(created));
     }
 
     [HttpGet("summary")]
@@ -103,70 +85,10 @@ public class OrdersController : BaseApiController
         if (order == null)
             return NotFound(new ProblemDetails { Title = "Order Not Found", Detail = $"Order with ID '{id}' was not found.", Status = 404 });
 
-        decimal? cogs = order.Status == OrderStatus.DELIVERED ? order.Items.Sum(i => i.TotalCost) : null;
-        decimal? contributionProfit = (order.Status == OrderStatus.DELIVERED && order.FeeSnapshot != null && cogs.HasValue)
-            ? order.FeeSnapshot.ProjectedSettlement - cogs.Value
-            : null;
-
-        var dto = new OrderDetailResponse(
-            Id: order.Id,
-            ExternalOrderId: order.ExternalOrderId,
-            Channel: order.Channel,
-            PaymentMethod: order.PaymentMethod,
-            Status: order.Status,
-            Subtotal: order.Subtotal,
-            ShopVoucher: order.ShopVoucher,
-            GrossRevenue: order.GrossRevenue,
-            CustomerName: order.CustomerName,
-            CustomerPhone: order.CustomerPhone,
-            OrderDate: order.OrderDate,
-            DeliveredAt: order.DeliveredAt,
-            CancelledAt: order.CancelledAt,
-            CancellationReason: order.CancellationReason,
-            CreatedAt: order.CreatedAt,
-            UpdatedAt: order.UpdatedAt,
-            Cogs: cogs,
-            ContributionProfit: contributionProfit,
-            Items: order.Items.Select(i => new OrderItemResponse(
-                Id: i.Id,
-                ProductVariantId: i.ProductVariantId,
-                SkuCodeSnapshot: i.SkuCodeSnapshot,
-                ProductNameSnapshot: i.ProductNameSnapshot,
-                Quantity: i.Quantity,
-                UnitPrice: i.UnitPrice,
-                UnitCostSnapshot: i.UnitCostSnapshot,
-                LineTotal: i.LineTotal,
-                TotalCost: i.TotalCost
-            )).ToList(),
-            StatusHistory: order.StatusHistory.Select(sh => new OrderStatusHistoryResponse(
-                Id: sh.Id,
-                FromStatus: sh.FromStatus,
-                ToStatus: sh.ToStatus,
-                Reason: sh.Reason,
-                ChangedBy: sh.ChangedBy,
-                ChangedAt: sh.ChangedAt
-            )).ToList(),
-            FeeSnapshot: order.FeeSnapshot != null ? new FeeSnapshotResponse(
-                Id: order.FeeSnapshot.Id,
-                CommissionRate: order.FeeSnapshot.CommissionFeeRate,
-                CommissionFeeAmount: order.FeeSnapshot.CommissionFeeAmount,
-                PaymentFeeRate: order.FeeSnapshot.PaymentFeeRate,
-                PaymentFeeAmount: order.FeeSnapshot.PaymentFeeAmount,
-                ServiceFeeRate: order.FeeSnapshot.ServiceFeeRate,
-                ServiceFeeAmount: order.FeeSnapshot.ServiceFeeAmount,
-                ServiceFeeCapSnapshot: order.FeeSnapshot.ServiceFeeCapSnapshot,
-                FixedFeeAmount: order.FeeSnapshot.FixedFeeAmount,
-                TotalPlatformFees: order.FeeSnapshot.TotalPlatformFees,
-                ProjectedSettlement: order.FeeSnapshot.ProjectedSettlement,
-                SnapshotAt: order.FeeSnapshot.SnapshotAt
-            ) : null
-        );
-
-        return Ok(dto);
+        return Ok(OrderContractMapper.MapToOrderDetailResponse(order));
     }
 
     [HttpPost("preview-fee")]
-    [HttpPost("fee-preview")]
     public async Task<ActionResult<FeeBreakdownResponse>> FeePreview([FromBody] FeePreviewRequest request, CancellationToken ct)
     {
         var preview = await _feeEngine.CalculateFeePreviewAsync(
@@ -191,44 +113,29 @@ public class OrdersController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/status")]
-    public async Task<ActionResult<OrderResponse>> UpdateOrderStatus(
-        Guid id,
-        [FromBody] UpdateOrderStatusRequest request,
-        CancellationToken ct)
+    public async Task<ActionResult<OrderResponse>> UpdateOrderStatus(Guid id, [FromBody] UpdateOrderStatusRequest request, CancellationToken ct)
     {
-        var cmd = new UpdateOrderStatusCommand(id, request.ToStatus, GetCurrentUserIdentity());
+        var cmd = new UpdateOrderStatusCommand(
+            OrderId: id,
+            ToStatus: request.Status,
+            Reason: request.Reason,
+            ActorIdentity: GetCurrentUserIdentity()
+        );
+
         var updated = await _orderService.UpdateOrderStatusAsync(cmd, ct);
-        return Ok(MapToOrderResponse(updated));
+        return Ok(OrderContractMapper.MapToOrderResponse(updated));
     }
 
     [HttpPost("{id:guid}/cancel")]
-    public async Task<ActionResult<OrderResponse>> CancelOrder(
-        Guid id,
-        [FromBody] CancelOrderRequest request,
-        CancellationToken ct)
+    public async Task<ActionResult<OrderResponse>> CancelOrder(Guid id, [FromBody] CancelOrderRequest request, CancellationToken ct)
     {
-        var cmd = new CancelOrderCommand(id, request.CancellationReason, GetCurrentUserIdentity());
-        var cancelled = await _orderService.CancelOrderAsync(cmd, ct);
-        return Ok(MapToOrderResponse(cancelled));
-    }
-
-    private static OrderResponse MapToOrderResponse(Order o) =>
-        new(
-            Id: o.Id,
-            ExternalOrderId: o.ExternalOrderId,
-            Channel: o.Channel,
-            PaymentMethod: o.PaymentMethod,
-            Status: o.Status,
-            Subtotal: o.Subtotal,
-            ShopVoucher: o.ShopVoucher,
-            GrossRevenue: o.GrossRevenue,
-            CustomerName: o.CustomerName,
-            CustomerPhone: o.CustomerPhone,
-            OrderDate: o.OrderDate,
-            DeliveredAt: o.DeliveredAt,
-            CancelledAt: o.CancelledAt,
-            CancellationReason: o.CancellationReason,
-            CreatedAt: o.CreatedAt,
-            UpdatedAt: o.UpdatedAt
+        var cmd = new CancelOrderCommand(
+            OrderId: id,
+            CancellationReason: request.CancellationReason,
+            ActorIdentity: GetCurrentUserIdentity()
         );
+
+        var cancelled = await _orderService.CancelOrderAsync(cmd, ct);
+        return Ok(OrderContractMapper.MapToOrderResponse(cancelled));
+    }
 }

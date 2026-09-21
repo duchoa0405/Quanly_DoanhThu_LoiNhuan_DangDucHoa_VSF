@@ -5,31 +5,37 @@ namespace FashionWeb.Business.Results;
 public record OrderItemDetailResult(
     Guid Id,
     Guid ProductVariantId,
-    string SkuCode,
-    string ProductName,
+    string SkuCodeSnapshot,
+    string ProductNameSnapshot,
     int Quantity,
     decimal UnitPrice,
+    decimal UnitCostSnapshot,
     decimal LineTotal,
-    decimal? UnitCostSnapshot,
-    decimal? TotalCost
+    decimal TotalCost
 );
 
 public record OrderStatusHistoryResult(
     Guid Id,
     OrderStatus? FromStatus,
     OrderStatus ToStatus,
+    string? Reason,
     string ChangedBy,
     DateTime ChangedAt
 );
 
 public record FeeSnapshotResult(
-    decimal CommissionFee,
-    decimal PaymentFee,
-    decimal ServiceFee,
-    decimal FixedFee,
+    Guid Id,
+    decimal CommissionRate,
+    decimal CommissionFeeAmount,
+    decimal PaymentFeeRate,
+    decimal PaymentFeeAmount,
+    decimal ServiceFeeRate,
+    decimal ServiceFeeAmount,
+    decimal? ServiceFeeCapSnapshot,
+    decimal FixedFeeAmount,
     decimal TotalPlatformFees,
     decimal ProjectedSettlement,
-    DateTime SnapshottedAt
+    DateTime SnapshotAt
 );
 
 public record OrderDetailResult(
@@ -38,17 +44,17 @@ public record OrderDetailResult(
     ChannelType Channel,
     PaymentMethod PaymentMethod,
     OrderStatus Status,
-    string? CustomerName,
-    string? CustomerPhone,
     decimal Subtotal,
     decimal ShopVoucher,
     decimal GrossRevenue,
+    string? CustomerName,
+    string? CustomerPhone,
     DateTime OrderDate,
     DateTime? DeliveredAt,
     DateTime? CancelledAt,
     string? CancellationReason,
     DateTime CreatedAt,
-    DateTime UpdatedAt,
+    DateTime? UpdatedAt,
     decimal? Cogs,
     decimal? ContributionProfit,
     List<OrderItemDetailResult> Items,

@@ -1,5 +1,6 @@
 using FashionWeb.Business.Commands;
 using FashionWeb.Business.Domain.Entities;
+using FashionWeb.Business.Exceptions;
 using FashionWeb.Business.Interfaces.Repositories;
 using FashionWeb.Business.Interfaces.Services;
 using FashionWeb.Business.Results;
@@ -9,10 +10,17 @@ namespace FashionWeb.Business.Services;
 public class CatalogService : ICatalogService
 {
     private readonly IProductRepository _productRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public CatalogService(IProductRepository productRepository)
+    public CatalogService(
+        IProductRepository productRepository,
+        IUnitOfWork? unitOfWork = null,
+        TimeProvider? timeProvider = null)
     {
         _productRepository = productRepository;
+        _unitOfWork = unitOfWork!;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<IEnumerable<SelectableVariantResult>> GetSelectableVariantsAsync(string? search = null, CancellationToken ct = default)
@@ -43,24 +51,25 @@ public class CatalogService : ICatalogService
     public async Task<Product> CreateProductAsync(CreateProductCommand cmd, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(cmd.Name))
-            throw new ArgumentException("Product name cannot be empty.", nameof(cmd));
+            throw new ValidationException("Product name cannot be empty.");
 
         if (cmd.Variants == null || cmd.Variants.Count == 0)
-            throw new ArgumentException("At least one product SKU variant must be provided.", nameof(cmd));
+            throw new ValidationException("At least one product SKU variant must be provided.");
 
-        // Check for duplicate SKU codes within the command
         var distinctSkus = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var v in cmd.Variants)
         {
             if (string.IsNullOrWhiteSpace(v.SkuCode))
-                throw new ArgumentException("SKU code cannot be empty.", nameof(cmd));
+                throw new ValidationException("SKU code cannot be empty.");
 
             if (!distinctSkus.Add(v.SkuCode.Trim()))
-                throw new InvalidOperationException($"Duplicate SKU code '{v.SkuCode}' within product variant list.");
+                throw new ConflictException($"Duplicate SKU code '{v.SkuCode}' within product variant list.");
 
             if (await _productRepository.ExistsSkuCodeAsync(v.SkuCode, ct))
-                throw new InvalidOperationException($"SKU code '{v.SkuCode}' already exists in catalog.");
+                throw new ConflictException($"SKU code '{v.SkuCode}' already exists in catalog.");
         }
+
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
 
         var product = new Product
         {
@@ -68,7 +77,7 @@ public class CatalogService : ICatalogService
             Name = cmd.Name.Trim(),
             Category = cmd.Category?.Trim(),
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = now
         };
 
         foreach (var v in cmd.Variants)
@@ -83,12 +92,18 @@ public class CatalogService : ICatalogService
                 RetailPrice = v.RetailPrice,
                 CostPrice = v.CostPrice,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now
             };
             product.Variants.Add(variant);
         }
 
         await _productRepository.AddProductAsync(product, ct);
+
+        if (_unitOfWork != null)
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
+
         return product;
     }
 
@@ -96,7 +111,7 @@ public class CatalogService : ICatalogService
     {
         var product = await _productRepository.GetByIdAsync(cmd.Id, ct);
         if (product == null)
-            throw new KeyNotFoundException($"Product with ID '{cmd.Id}' was not found.");
+            throw new NotFoundException($"Product with ID '{cmd.Id}' was not found.");
 
         var name = !string.IsNullOrWhiteSpace(cmd.Name) ? cmd.Name.Trim() : product.Name;
         var category = cmd.Category != null ? cmd.Category.Trim() : product.Category;
@@ -109,6 +124,12 @@ public class CatalogService : ICatalogService
         }
 
         await _productRepository.UpdateProductAsync(product, ct);
+
+        if (_unitOfWork != null)
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
+
         return product;
     }
 
@@ -116,7 +137,7 @@ public class CatalogService : ICatalogService
     {
         var variant = await _productRepository.GetVariantByIdAsync(cmd.VariantId, ct);
         if (variant == null)
-            throw new KeyNotFoundException($"Product variant with ID '{cmd.VariantId}' was not found.");
+            throw new NotFoundException($"Product variant with ID '{cmd.VariantId}' was not found.");
 
         variant.UpdatePricing(cmd.RetailPrice, cmd.CostPrice);
 
@@ -127,6 +148,12 @@ public class CatalogService : ICatalogService
         }
 
         await _productRepository.UpdateVariantAsync(variant, ct);
+
+        if (_unitOfWork != null)
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
+
         return variant;
     }
 }
