@@ -8,9 +8,9 @@ public class DiscrepancyAudit
     public Guid ReconciliationId { get; set; }
     public DiscrepancyType DiscrepancyType { get; set; }
     public string ExplanationNote { get; set; } = string.Empty;
-    public string? ResolutionNotes { get; set; }
-    public string? ResolvedBy { get; set; }
-    public DateTime? ResolvedAt { get; set; }
+    public string? ResolutionNotes { get; private set; }
+    public string? ResolvedBy { get; private set; }
+    public DateTime? ResolvedAt { get; private set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ReconciliationRecord? ReconciliationRecord { get; set; }

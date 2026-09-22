@@ -58,7 +58,15 @@ To prevent confusing operational staff and auditors, financial metrics must use 
   - `Pending`: Order created, awaiting fulfillment and carrier dispatch.
   - `Shipped`: Package handed over to courier; revenue tagged as *In-Transit*.
   - `Delivered`: Customer received parcel; **revenue, COGS, and Contribution Profit are officially recognized**.
-  - `Cancelled`: Order aborted prior to delivery; 100% excluded from recognized revenue and profit.
+  - `Cancelled`: Order cancelled; zero revenue and zero profit recognized.
+
+### 2.4. UI Language & Bilingual Policy
+The application interface is intentionally designed for Vietnamese retail and accounting personnel operating in Vietnam, combined with standard global e-commerce and financial terminology:
+- **Primary Interface Language:** Vietnamese (`vi-VN`) for page titles, action labels, forms, helper tooltips, modal dialogs, and validation error messages.
+- **Canonical Technical & Financial Terms:** Preserved in standard English / industry acronyms alongside Vietnamese descriptions to guarantee zero ambiguity with marketplace accounting statements:
+  - `SKU`, `POS`, `COGS`, `Gross Revenue` (Doanh thu gộp), `Contribution Profit` (Lợi nhuận đóng góp), `Contribution Margin` (Biên lợi nhuận).
+  - Status labels: `PENDING`, `SHIPPED`, `DELIVERED`, `CANCELLED`, `RECONCILED`, `DISCREPANCY`.
+  - Payment methods: `CASH`, `POS_CARD_QR`, `MARKETPLACE_WALLET`.
 - **Reconciliation Statuses:**
   - `Pending Settlement`: Order delivered, awaiting platform wallet disbursement statement.
   - `Reconciled`: Actual settlement deposit matches projected settlement amount (`Variance = 0 ₫`).

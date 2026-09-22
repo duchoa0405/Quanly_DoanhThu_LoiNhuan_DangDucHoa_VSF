@@ -7,14 +7,14 @@ public class ReconciliationRecord
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid OrderId { get; set; }
     public decimal ProjectedSettlement { get; set; }
-    public decimal? ActualSettlement { get; set; }
-    public decimal? VarianceAmount { get; set; }
-    public ReconciliationStatus Status { get; set; } = ReconciliationStatus.PENDING_SETTLEMENT;
-    public string? ReconciliationNotes { get; set; }
-    public DateTime? ReconciledAt { get; set; }
-    public string? ReconciledBy { get; set; }
+    public decimal? ActualSettlement { get; private set; }
+    public decimal? VarianceAmount { get; private set; }
+    public ReconciliationStatus Status { get; private set; } = ReconciliationStatus.PENDING_SETTLEMENT;
+    public string? ReconciliationNotes { get; private set; }
+    public DateTime? ReconciledAt { get; private set; }
+    public string? ReconciledBy { get; private set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime? UpdatedAt { get; private set; }
 
     public Order? Order { get; set; }
     public List<DiscrepancyAudit> Audits { get; set; } = new();

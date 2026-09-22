@@ -50,11 +50,7 @@ public class DiscrepancyService : IDiscrepancyService
         audit.Resolve(command.ResolutionNotes.Trim(), command.ActorIdentity, now);
 
         await _discrepancyRepository.UpdateAsync(audit, ct);
-
-        if (_unitOfWork != null)
-        {
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return audit;
     }

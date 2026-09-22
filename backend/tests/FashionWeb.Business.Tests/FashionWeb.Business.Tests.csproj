@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\FashionWeb.Api\FashionWeb.Api.csproj" />
     <ProjectReference Include="..\..\src\FashionWeb.Business\FashionWeb.Business.csproj" />
     <ProjectReference Include="..\..\src\FashionWeb.Data\FashionWeb.Data.csproj" />
   </ItemGroup>

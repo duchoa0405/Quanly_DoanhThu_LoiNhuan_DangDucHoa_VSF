@@ -98,11 +98,7 @@ public class CatalogService : ICatalogService
         }
 
         await _productRepository.AddProductAsync(product, ct);
-
-        if (_unitOfWork != null)
-        {
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return product;
     }
@@ -124,11 +120,7 @@ public class CatalogService : ICatalogService
         }
 
         await _productRepository.UpdateProductAsync(product, ct);
-
-        if (_unitOfWork != null)
-        {
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return product;
     }
@@ -148,11 +140,7 @@ public class CatalogService : ICatalogService
         }
 
         await _productRepository.UpdateVariantAsync(variant, ct);
-
-        if (_unitOfWork != null)
-        {
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return variant;
     }
