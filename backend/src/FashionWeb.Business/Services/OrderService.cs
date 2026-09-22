@@ -224,7 +224,7 @@ public class OrderService : IOrderService
 
         await _unitOfWork.ExecuteTransactionAsync(async () =>
         {
-            order.TransitionToDelivered(command.ActorIdentity);
+            order.TransitionToDelivered(command.ActorIdentity, now);
             feeSnapshot = await _feeEngine.CalculateAndFreezeFeeAsync(order, ct);
 
             reconRecord = new ReconciliationRecord

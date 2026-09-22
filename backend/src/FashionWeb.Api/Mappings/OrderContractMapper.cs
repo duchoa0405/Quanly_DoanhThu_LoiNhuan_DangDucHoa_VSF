@@ -6,7 +6,7 @@ namespace FashionWeb.Api.Mappings;
 
 public static class OrderContractMapper
 {
-    public static OrderDetailResponse MapToOrderDetailResponse(OrderDetailResult result, bool canViewCosts = true)
+    public static OrderDetailResponse MapToOrderDetailResponse(OrderDetailResult result, bool canViewCosts = false)
     {
         return new OrderDetailResponse(
             Id: result.Id,

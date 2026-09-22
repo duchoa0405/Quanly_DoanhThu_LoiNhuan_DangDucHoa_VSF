@@ -66,7 +66,10 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddApiInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddApiInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
     {
         services.AddControllers()
             .AddJsonOptions(options =>
@@ -109,18 +112,31 @@ public static class ServiceCollectionExtensions
             });
         });
 
+        var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? new[] { "http://localhost:5173", "http://localhost:3000" };
+
         services.AddCors(options =>
         {
             options.AddPolicy("AllowFrontend", policy =>
             {
-                policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+                policy.WithOrigins(allowedOrigins)
                       .AllowAnyHeader()
                       .AllowAnyMethod()
                       .AllowCredentials();
             });
         });
 
-        var jwtSecret = configuration["Jwt:SecretKey"] ?? "VSF_Default_Development_Super_Secret_Key_2026_Minimum_32_Bytes!";
+        var jwtSecret = configuration["Jwt:SecretKey"];
+        if (string.IsNullOrWhiteSpace(jwtSecret))
+        {
+            if (!environment.IsDevelopment())
+            {
+                throw new InvalidOperationException(
+                    "Critical security error: 'Jwt:SecretKey' is missing. A secure 32+ byte key must be configured in environment variables.");
+            }
+            jwtSecret = "VSF_Dev_Secret_Key_Minimum_32_Bytes_For_Local_Testing_Only!";
+        }
+
         var jwtIssuer = configuration["Jwt:Issuer"] ?? "FashionWeb.Api";
         var jwtAudience = configuration["Jwt:Audience"] ?? "FashionWeb.Client";
 
@@ -131,7 +147,7 @@ public static class ServiceCollectionExtensions
         })
         .AddJwtBearer(options =>
         {
-            options.RequireHttpsMetadata = false;
+            options.RequireHttpsMetadata = !environment.IsDevelopment();
             options.SaveToken = true;
             options.TokenValidationParameters = new TokenValidationParameters
             {
