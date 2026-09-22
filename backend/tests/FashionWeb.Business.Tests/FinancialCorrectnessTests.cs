@@ -20,7 +20,7 @@ public class FinancialCorrectnessTests
             status: OrderStatus.DELIVERED,
             grossRevenue: 500000m,
             channel: ChannelType.TIKTOK,
-            paymentMethod: PaymentMethod.COD,
+            paymentMethod: PaymentMethod.MARKETPLACE_WALLET,
             externalOrderId: "TT-AUG-SEP",
             orderDate: orderDate,
             deliveredAt: deliveredAt,

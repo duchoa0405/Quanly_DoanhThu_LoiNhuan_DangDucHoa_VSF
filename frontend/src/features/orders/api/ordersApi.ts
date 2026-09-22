@@ -1,40 +1,47 @@
 import { httpClient } from '../../../shared/api/httpClient';
 import {
-  OrderResponse,
+  OrderDetailResponse,
   OrderSummaryResponse,
   FeePreviewPayload,
-  FeePreviewResponse,
+  FeeBreakdownResponse,
   CreateOrderPayload,
   OrderFilterParams,
+  PagedOrderListResponse,
+  OrderProgressStatus,
+  SalesChannel,
 } from '../types/order.types';
 
 export const ordersApi = {
-  getOrders: async (params?: OrderFilterParams): Promise<OrderResponse[]> => {
-    const response = await httpClient.get<OrderResponse[]>('/orders', { params });
+  getOrders: async (params?: OrderFilterParams): Promise<PagedOrderListResponse> => {
+    const response = await httpClient.get<PagedOrderListResponse>('/orders', { params });
     return response.data;
   },
 
-  getOrderById: async (id: string): Promise<OrderResponse> => {
-    const response = await httpClient.get<OrderResponse>(`/orders/${id}`);
+  getOrderById: async (id: string): Promise<OrderDetailResponse> => {
+    const response = await httpClient.get<OrderDetailResponse>(`/orders/${id}`);
     return response.data;
   },
 
-  createOrder: async (payload: CreateOrderPayload): Promise<OrderResponse> => {
-    const response = await httpClient.post<OrderResponse>('/orders', payload);
+  createOrder: async (payload: CreateOrderPayload): Promise<OrderDetailResponse> => {
+    const response = await httpClient.post<OrderDetailResponse>('/orders', payload);
     return response.data;
   },
 
-  updateOrderStatus: async (id: string, payload: { toStatus: string; reason?: string }): Promise<void> => {
+  updateOrderStatus: async (id: string, payload: { toStatus: OrderProgressStatus }): Promise<void> => {
     await httpClient.patch(`/orders/${id}/status`, payload);
   },
 
-  getOrderSummary: async (params?: { fromDate?: string; toDate?: string; channel?: string }): Promise<OrderSummaryResponse> => {
+  cancelOrder: async (id: string, payload: { cancellationReason: string }): Promise<void> => {
+    await httpClient.post(`/orders/${id}/cancel`, payload);
+  },
+
+  getOrderSummary: async (params?: { from?: string; to?: string; channel?: SalesChannel }): Promise<OrderSummaryResponse> => {
     const response = await httpClient.get<OrderSummaryResponse>('/orders/summary', { params });
     return response.data;
   },
 
-  previewFee: async (payload: FeePreviewPayload): Promise<FeePreviewResponse> => {
-    const response = await httpClient.post<FeePreviewResponse>('/orders/fee-preview', payload);
+  previewFee: async (payload: FeePreviewPayload): Promise<FeeBreakdownResponse> => {
+    const response = await httpClient.post<FeeBreakdownResponse>('/orders/preview-fee', payload);
     return response.data;
   },
 };

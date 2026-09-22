@@ -8,9 +8,9 @@ interface OrderFilterPillsProps {
 export const OrderFilterPills: React.FC<OrderFilterPillsProps> = ({ selectedChannel, onSelectChannel }) => {
   const pills = [
     { id: 'ALL', label: 'Tất cả kênh' },
-    { id: 'TikTokShop', label: 'TikTok Shop' },
-    { id: 'Shopee', label: 'Shopee' },
-    { id: 'Pos', label: 'In-Store POS' },
+    { id: 'TIKTOK', label: 'TikTok Shop' },
+    { id: 'SHOPEE', label: 'Shopee' },
+    { id: 'POS', label: 'In-Store POS' },
   ];
 
   return (

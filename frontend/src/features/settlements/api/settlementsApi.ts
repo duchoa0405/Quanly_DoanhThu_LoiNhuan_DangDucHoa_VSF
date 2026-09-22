@@ -1,9 +1,21 @@
 import { httpClient } from '../../../shared/api/httpClient';
-import { PagedSettlementLedgerResponse, ReconcileSettlementPayload, SettlementSummaryResponse } from '../types/settlement.types';
+import { SalesChannel } from '../../orders/types/order.types';
+import {
+  PagedSettlementLedgerResponse,
+  ReconcileSettlementPayload,
+  ReconciliationResponse,
+  ReconciliationStatus,
+  SettlementSummaryResponse,
+} from '../types/settlement.types';
 
 export const settlementsApi = {
-  getLedger: async (params?: { channel?: string; status?: string; page?: number; pageSize?: number }): Promise<PagedSettlementLedgerResponse> => {
-    const res = await httpClient.get<PagedSettlementLedgerResponse>('/settlements/ledger', { params });
+  getLedger: async (params?: {
+    channel?: SalesChannel;
+    status?: ReconciliationStatus;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PagedSettlementLedgerResponse> => {
+    const res = await httpClient.get<PagedSettlementLedgerResponse>('/settlements', { params });
     return res.data;
   },
 
@@ -12,7 +24,8 @@ export const settlementsApi = {
     return res.data;
   },
 
-  reconcileOrder: async (orderId: string, payload: ReconcileSettlementPayload): Promise<void> => {
-    await httpClient.post(`/settlements/orders/${orderId}/reconcile`, payload);
+  reconcileOrder: async (orderId: string, payload: ReconcileSettlementPayload): Promise<ReconciliationResponse> => {
+    const res = await httpClient.post<ReconciliationResponse>(`/settlements/${orderId}/reconcile`, payload);
+    return res.data;
   },
 };

@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="xunit" Version="2.6.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.4" />
@@ -17,5 +18,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FashionWeb.Business\FashionWeb.Business.csproj" />
+    <ProjectReference Include="..\..\src\FashionWeb.Data\FashionWeb.Data.csproj" />
   </ItemGroup>
 </Project>

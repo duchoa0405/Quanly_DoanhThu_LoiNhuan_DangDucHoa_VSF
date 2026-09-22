@@ -26,7 +26,8 @@ Financial accuracy requires deterministic lifecycle management. In FASHION-WEB, 
 stateDiagram-v2
     direction TB
 
-    [*] --> PENDING : POST /orders (All Channels: TikTok, Shopee, POS)
+    [*] --> PENDING : POST /orders (Online Channels: TIKTOK, SHOPEE)
+    [*] --> DELIVERED : POST /orders (In-Store POS Direct Checkout)
 
     PENDING --> SHIPPED : PATCH /orders/{id}/status (ToStatus = SHIPPED)
     PENDING --> CANCELLED : POST /orders/{id}/cancel (UC04)
@@ -38,19 +39,21 @@ stateDiagram-v2
     CANCELLED --> [*] : Terminal State (Zero Revenue Recognized)
 
     note right of PENDING
-        Initial state for all channels.
+        Initial state for Online channels (TIKTOK, SHOPEE).
         Baseline SKU costs frozen in order_items.
         Recognized revenue = 0 VND.
     end note
 
     note right of SHIPPED
-        In-transit with courier or awaiting pickup.
+        In-transit with courier.
         Recognized revenue = 0 VND.
     end note
 
     note right of DELIVERED
         Revenue recognition point!
-        OrderFeeSnapshot calculated & frozen.
+        Created directly for In-Store POS counter checkouts.
+        Reached via SHIPPED for Online channels.
+        OrderFeeSnapshot calculated & frozen immediately.
         ReconciliationRecord created (PENDING_SETTLEMENT).
         Cancellation strictly BLOCKED (HTTP 422).
     end note
@@ -67,7 +70,8 @@ stateDiagram-v2
 
 | Source State | Target State | Triggering API | Guard Condition / Validation Rule | Architectural & Financial Impact |
 |---|---|---|---|---|
-| `[*] (None)` | `PENDING` | `POST /orders` | Valid items list ($>0$); `ShopVoucher` $\le$ `Subtotal`. | Ingests order for all channels (including Direct Store POS). Copies catalog baseline costs to `order_items.unit_cost_snapshot`. Recognized Revenue = **0 VND**. |
+| `[*] (None)` | `PENDING` | `POST /orders` | Channel $\in$ `{TIKTOK, SHOPEE}`; Valid items list ($>0$); `ShopVoucher` $\le$ `Subtotal`. | Ingests online marketplace order. Copies catalog baseline costs to `order_items.unit_cost_snapshot`. Recognized Revenue = **0 VND**. |
+| `[*] (None)` | `DELIVERED` | `POST /orders` | Channel = `POS`; PaymentMethod $\in$ `{CASH, POS_CARD_QR}`; Valid items list ($>0$); `ShopVoucher` $\le$ `Subtotal`. | **Immediate POS Fulfillment**: Customer pays and receives goods at counter. Copies baseline costs, computes/freezes `OrderFeeSnapshot`, creates `ReconciliationRecord` (`PENDING_SETTLEMENT`). Recognized Revenue immediately recognized. |
 | `PENDING` | `SHIPPED` | `PATCH /orders/{id}/status` | `ToStatus = SHIPPED`. Current state must be `PENDING`. | Appends record to `order_status_history`. Recognized Revenue = **0 VND**. |
 | `PENDING` | `CANCELLED` | `POST /orders/{id}/cancel` | Mandatory `cancellationReason` provided. | Appends record to `order_status_history`. Order becomes terminal. Zero revenue recognized. |
 | `SHIPPED` | `DELIVERED` | `PATCH /orders/{id}/status` | `ToStatus = DELIVERED`. Current state must be `SHIPPED`. | **Revenue Recognition Point**: Executes `IDynamicFeeEngine`, freezes `OrderFeeSnapshot`, creates `ReconciliationRecord` (`PENDING_SETTLEMENT`) in an atomic transaction (`IUnitOfWork`). |

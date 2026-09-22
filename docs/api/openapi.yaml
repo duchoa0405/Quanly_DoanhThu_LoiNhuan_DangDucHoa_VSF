@@ -322,7 +322,9 @@ paths:
         - Orders & Fee Preview
       summary: Create Multi-Channel Order (UC01)
       description: >
-        Records a new commercial order in PENDING status. Client sends customer and line item inputs.
+        Records a new commercial order. For online marketplace channels (TIKTOK, SHOPEE), the order is created
+        in PENDING status. For in-store counter checkouts (POS), the order is created directly in DELIVERED status,
+        immediately computing & freezing the OrderFeeSnapshot and creating a ReconciliationRecord.
         Backend authoritatively queries product_variants.cost_price to freeze unit_cost_snapshot into order_items.
         Client cannot submit cost, fee snapshot, or profit figures. Server generates orderDate upon recording.
       operationId: createOrder
@@ -334,7 +336,7 @@ paths:
               $ref: '#/components/schemas/CreateOrderRequest'
       responses:
         '201':
-          description: Order successfully created in PENDING status.
+          description: Order successfully created (PENDING for Online channels, DELIVERED for In-Store POS).
           content:
             application/json:
               schema:

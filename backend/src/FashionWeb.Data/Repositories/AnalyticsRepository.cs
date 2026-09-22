@@ -1,5 +1,6 @@
 using FashionWeb.Business.Common;
 using FashionWeb.Business.Domain.Enums;
+using FashionWeb.Business.Exceptions;
 using FashionWeb.Business.Filters;
 using FashionWeb.Business.Interfaces.Repositories;
 using FashionWeb.Business.Results;
@@ -43,14 +44,21 @@ public class AnalyticsRepository : IAnalyticsRepository
                           from fs in feeSnapshots.DefaultIfEmpty()
                           select new
                           {
+                              OrderId = o.Id,
                               GrossRevenue = o.GrossRevenue,
-                              TotalPlatformFees = fs != null ? fs.TotalPlatformFees : 0.00m,
-                              HasFeeSnapshot = fs != null,
+                              Snapshot = fs,
                               Cogs = o.Items.Sum(i => i.TotalCost)
                           }).ToListAsync(ct);
 
+        var missing = data.FirstOrDefault(x => x.Snapshot == null);
+        if (missing != null)
+        {
+            throw new BusinessRuleException(
+                $"Data integrity violation: DELIVERED order '{missing.OrderId}' is missing an OrderFeeSnapshot. Financial reports cannot be generated with missing fee deductions.");
+        }
+
         var grossRevenue = data.Sum(x => x.GrossRevenue);
-        var totalPlatformFees = data.Sum(x => x.TotalPlatformFees);
+        var totalPlatformFees = data.Sum(x => x.Snapshot!.TotalPlatformFees);
         var projectedSettlement = grossRevenue - totalPlatformFees;
         var cogs = data.Sum(x => x.Cogs);
         var contributionProfit = FinancialCalculator.CalculateOrderProfit(grossRevenue, totalPlatformFees, cogs);
@@ -86,11 +94,19 @@ public class AnalyticsRepository : IAnalyticsRepository
                                from fs in feeSnapshots.DefaultIfEmpty()
                                select new
                                {
+                                   OrderId = o.Id,
                                    Date = DateOnly.FromDateTime(o.DeliveredAt!.Value),
                                    GrossRevenue = o.GrossRevenue,
-                                   TotalPlatformFees = fs != null ? fs.TotalPlatformFees : 0.00m,
+                                   Snapshot = fs,
                                    Cogs = o.Items.Sum(i => i.TotalCost)
                                }).ToListAsync(ct);
+
+        var missing = orderData.FirstOrDefault(x => x.Snapshot == null);
+        if (missing != null)
+        {
+            throw new BusinessRuleException(
+                $"Data integrity violation: DELIVERED order '{missing.OrderId}' is missing an OrderFeeSnapshot. Trend reports cannot be generated with missing fee deductions.");
+        }
 
         var grouped = orderData
             .GroupBy(x => x.Date)
@@ -99,7 +115,7 @@ public class AnalyticsRepository : IAnalyticsRepository
                 g =>
                 {
                     var gross = g.Sum(x => x.GrossRevenue);
-                    var fees = g.Sum(x => x.TotalPlatformFees);
+                    var fees = g.Sum(x => x.Snapshot!.TotalPlatformFees);
                     var cogs = g.Sum(x => x.Cogs);
                     var profit = FinancialCalculator.CalculateOrderProfit(gross, fees, cogs);
                     return (Gross: gross, Profit: profit);
@@ -143,11 +159,19 @@ public class AnalyticsRepository : IAnalyticsRepository
                                from fs in feeSnapshots.DefaultIfEmpty()
                                select new
                                {
+                                   OrderId = o.Id,
                                    Channel = o.Channel,
                                    GrossRevenue = o.GrossRevenue,
-                                   TotalPlatformFees = fs != null ? fs.TotalPlatformFees : 0.00m,
+                                   Snapshot = fs,
                                    Cogs = o.Items.Sum(i => i.TotalCost)
                                }).ToListAsync(ct);
+
+        var missing = orderData.FirstOrDefault(x => x.Snapshot == null);
+        if (missing != null)
+        {
+            throw new BusinessRuleException(
+                $"Data integrity violation: DELIVERED order '{missing.OrderId}' is missing an OrderFeeSnapshot. Channel breakdown reports cannot be generated with missing fee deductions.");
+        }
 
         var channels = filter.Channel.HasValue
             ? new[] { filter.Channel.Value }
@@ -159,7 +183,7 @@ public class AnalyticsRepository : IAnalyticsRepository
             var items = orderData.Where(x => x.Channel == ch).ToList();
             var count = items.Count;
             var gross = items.Sum(x => x.GrossRevenue);
-            var fees = items.Sum(x => x.TotalPlatformFees);
+            var fees = items.Sum(x => x.Snapshot!.TotalPlatformFees);
             var cogs = items.Sum(x => x.Cogs);
             var profit = FinancialCalculator.CalculateOrderProfit(gross, fees, cogs);
             var marginPct = FinancialCalculator.CalculateContributionMargin(profit, gross);
@@ -190,6 +214,7 @@ public class AnalyticsRepository : IAnalyticsRepository
                          from fs in feeSnapshots.DefaultIfEmpty()
                          select new
                          {
+                             OrderId = o.Id,
                              i.SkuCodeSnapshot,
                              i.ProductNameSnapshot,
                              i.Quantity,
@@ -197,10 +222,17 @@ public class AnalyticsRepository : IAnalyticsRepository
                              i.TotalCost,
                              OrderSubtotal = o.Subtotal,
                              ShopVoucher = o.ShopVoucher,
-                             OrderFees = fs != null ? fs.TotalPlatformFees : 0.00m
+                             Snapshot = fs
                          };
 
         var rawItems = await itemsQuery.ToListAsync(ct);
+
+        var missing = rawItems.FirstOrDefault(x => x.Snapshot == null);
+        if (missing != null)
+        {
+            throw new BusinessRuleException(
+                $"Data integrity violation: DELIVERED order '{missing.OrderId}' is missing an OrderFeeSnapshot. Top SKU reports cannot be generated with missing fee deductions.");
+        }
 
         var groupedQuery = rawItems
             .GroupBy(x => new { x.SkuCodeSnapshot, x.ProductNameSnapshot })
@@ -220,7 +252,7 @@ public class AnalyticsRepository : IAnalyticsRepository
                     var lineGrossRevenue = FinancialCalculator.CalculateSkuGrossRevenue(item.LineTotal, allocatedVoucher);
                     skuGrossRevenue += lineGrossRevenue;
 
-                    var itemAllocatedFee = FinancialCalculator.AllocateFees(item.OrderFees, item.LineTotal, item.OrderSubtotal);
+                    var itemAllocatedFee = FinancialCalculator.AllocateFees(item.Snapshot!.TotalPlatformFees, item.LineTotal, item.OrderSubtotal);
                     allocatedFees += itemAllocatedFee;
                 }
 
@@ -268,17 +300,25 @@ public class AnalyticsRepository : IAnalyticsRepository
                                      o.Channel,
                                      DeliveredAt = o.DeliveredAt!.Value,
                                      o.GrossRevenue,
-                                     TotalPlatformFees = fs != null ? fs.TotalPlatformFees : 0.00m,
-                                     ProjectedSettlement = fs != null ? fs.ProjectedSettlement : o.GrossRevenue,
+                                     Snapshot = fs,
                                      Cogs = o.Items.Sum(i => i.TotalCost)
                                  })
                                  .Skip((filter.Page - 1) * filter.PageSize)
                                  .Take(filter.PageSize)
                                  .ToListAsync(ct);
 
+        var missing = pagedOrders.FirstOrDefault(x => x.Snapshot == null);
+        if (missing != null)
+        {
+            throw new BusinessRuleException(
+                $"Data integrity violation: DELIVERED order '{missing.Id}' is missing an OrderFeeSnapshot. Drilldown reports cannot be generated with missing fee deductions.");
+        }
+
         var items = pagedOrders.Select(x =>
         {
-            var profit = FinancialCalculator.CalculateOrderProfit(x.GrossRevenue, x.TotalPlatformFees, x.Cogs);
+            var fees = x.Snapshot!.TotalPlatformFees;
+            var projected = x.Snapshot!.ProjectedSettlement;
+            var profit = FinancialCalculator.CalculateOrderProfit(x.GrossRevenue, fees, x.Cogs);
             var marginPct = FinancialCalculator.CalculateContributionMargin(profit, x.GrossRevenue);
             return new DrilldownOrderResult(
                 Id: x.Id,
@@ -286,8 +326,8 @@ public class AnalyticsRepository : IAnalyticsRepository
                 Channel: x.Channel,
                 DeliveredAt: x.DeliveredAt,
                 GrossRevenue: x.GrossRevenue,
-                TotalPlatformFees: x.TotalPlatformFees,
-                ProjectedSettlement: x.ProjectedSettlement,
+                TotalPlatformFees: fees,
+                ProjectedSettlement: projected,
                 Cogs: x.Cogs,
                 ContributionProfit: profit,
                 ContributionMarginPct: marginPct
@@ -322,14 +362,22 @@ public class AnalyticsRepository : IAnalyticsRepository
                                 o.Channel,
                                 DeliveredAt = o.DeliveredAt!.Value,
                                 o.GrossRevenue,
-                                TotalPlatformFees = fs != null ? fs.TotalPlatformFees : 0.00m,
-                                ProjectedSettlement = fs != null ? fs.ProjectedSettlement : o.GrossRevenue,
+                                Snapshot = fs,
                                 Cogs = o.Items.Sum(i => i.TotalCost)
                             }).ToListAsync(ct);
 
+        var missing = orders.FirstOrDefault(x => x.Snapshot == null);
+        if (missing != null)
+        {
+            throw new BusinessRuleException(
+                $"Data integrity violation: DELIVERED order '{missing.Id}' is missing an OrderFeeSnapshot. Export reports cannot be generated with missing fee deductions.");
+        }
+
         return orders.Select(x =>
         {
-            var profit = FinancialCalculator.CalculateOrderProfit(x.GrossRevenue, x.TotalPlatformFees, x.Cogs);
+            var fees = x.Snapshot!.TotalPlatformFees;
+            var projected = x.Snapshot!.ProjectedSettlement;
+            var profit = FinancialCalculator.CalculateOrderProfit(x.GrossRevenue, fees, x.Cogs);
             var marginPct = FinancialCalculator.CalculateContributionMargin(profit, x.GrossRevenue);
             return new DrilldownOrderResult(
                 Id: x.Id,
@@ -337,8 +385,8 @@ public class AnalyticsRepository : IAnalyticsRepository
                 Channel: x.Channel,
                 DeliveredAt: x.DeliveredAt,
                 GrossRevenue: x.GrossRevenue,
-                TotalPlatformFees: x.TotalPlatformFees,
-                ProjectedSettlement: x.ProjectedSettlement,
+                TotalPlatformFees: fees,
+                ProjectedSettlement: projected,
                 Cogs: x.Cogs,
                 ContributionProfit: profit,
                 ContributionMarginPct: marginPct

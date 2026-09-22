@@ -4,11 +4,11 @@ import { OrderFilterPills } from './components/OrderFilterPills';
 import { OrderTable } from './components/OrderTable';
 import { Button } from '../../shared/ui/Button';
 import { ordersApi } from './api/ordersApi';
-import { OrderResponse, OrderSummaryResponse } from './types/order.types';
+import { OrderListItemResponse, OrderSummaryResponse, SalesChannel } from './types/order.types';
 
 export const OrdersPage: React.FC = () => {
   const [selectedChannel, setSelectedChannel] = useState<string>('ALL');
-  const [orders, setOrders] = useState<OrderResponse[]>([]);
+  const [orders, setOrders] = useState<OrderListItemResponse[]>([]);
   const [summary, setSummary] = useState<OrderSummaryResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,12 +17,12 @@ export const OrdersPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const channelParam = selectedChannel === 'ALL' ? undefined : selectedChannel;
-      const [orderList, summaryData] = await Promise.all([
+      const channelParam = selectedChannel === 'ALL' ? undefined : (selectedChannel as SalesChannel);
+      const [pagedList, summaryData] = await Promise.all([
         ordersApi.getOrders({ channel: channelParam }),
         ordersApi.getOrderSummary({ channel: channelParam }),
       ]);
-      setOrders(orderList || []);
+      setOrders(pagedList.items || []);
       setSummary(summaryData || null);
     } catch (err: unknown) {
       console.error('Failed to load orders:', err);

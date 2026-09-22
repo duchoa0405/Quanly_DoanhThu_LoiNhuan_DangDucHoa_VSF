@@ -1,6 +1,39 @@
-export type SalesChannel = 'TikTokShop' | 'Shopee' | 'Pos';
-export type PaymentMethod = 'Cod' | 'OnlineBanking' | 'EWallet';
-export type OrderStatus = 'Pending' | 'Confirmed' | 'InTransit' | 'Delivered' | 'Cancelled' | 'Returned';
+export type SalesChannel = 'TIKTOK' | 'SHOPEE' | 'POS';
+export type PaymentMethod = 'CASH' | 'POS_CARD_QR' | 'MARKETPLACE_WALLET';
+export type OrderStatus = 'PENDING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+export type OrderProgressStatus = 'SHIPPED' | 'DELIVERED';
+
+export interface OrderItemSummary {
+  skuCode: string;
+  quantity: number;
+}
+
+export interface OrderListItemResponse {
+  id: string;
+  externalOrderId: string;
+  channel: SalesChannel;
+  paymentMethod: PaymentMethod;
+  status: OrderStatus;
+  orderDate: string;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  subtotal: number;
+  shopVoucher: number;
+  grossRevenue: number;
+  itemCount: number;
+  itemsSummary: OrderItemSummary[];
+  deliveredAt?: string | null;
+  cancelledAt?: string | null;
+  createdAt: string;
+}
+
+export interface PagedOrderListResponse {
+  items: OrderListItemResponse[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
 
 export interface OrderItemResponse {
   id: string;
@@ -9,41 +42,36 @@ export interface OrderItemResponse {
   productName: string;
   quantity: number;
   unitPrice: number;
-  unitCost?: number | null;
   lineTotal: number;
+  unitCostSnapshot?: number | null;
   totalCost?: number | null;
 }
 
-export interface FeeSnapshotResponse {
+export interface OrderStatusHistoryResponse {
   id: string;
-  commissionRate: number;
-  commissionFeeAmount: number;
-  paymentFeeRate: number;
-  paymentFeeAmount: number;
-  serviceFeeRate: number;
-  serviceFeeAmount: number;
-  serviceFeeCapSnapshot?: number | null;
-  fixedFeeAmount: number;
+  fromStatus?: OrderStatus | null;
+  toStatus: OrderStatus;
+  reason?: string | null;
+  changedBy: string;
+  changedAt: string;
+}
+
+export interface FeeSnapshotResponse {
+  commissionFee: number;
+  paymentFee: number;
+  serviceFee: number;
+  fixedFee: number;
   totalPlatformFees: number;
   projectedSettlement: number;
-  snapshotAt: string;
+  snapshottedAt: string;
 }
 
-export interface ReconciliationSummaryResponse {
-  id: string;
-  status: string;
-  projectedSettlement: number;
-  actualSettlement?: number | null;
-  varianceAmount?: number | null;
-  reconciledAt?: string | null;
-}
-
-export interface OrderResponse {
+export interface OrderDetailResponse {
   id: string;
   externalOrderId: string;
-  channel: SalesChannel | string;
-  paymentMethod: PaymentMethod | string;
-  status: OrderStatus | string;
+  channel: SalesChannel;
+  paymentMethod: PaymentMethod;
+  status: OrderStatus;
   subtotal: number;
   shopVoucher: number;
   grossRevenue: number;
@@ -53,11 +81,13 @@ export interface OrderResponse {
   deliveredAt?: string | null;
   cancelledAt?: string | null;
   cancellationReason?: string | null;
-  totalCost?: number | null;
-  profit?: number | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  cogs?: number | null;
+  contributionProfit?: number | null;
   items: OrderItemResponse[];
+  statusHistory: OrderStatusHistoryResponse[];
   feeSnapshot?: FeeSnapshotResponse | null;
-  reconciliationRecord?: ReconciliationSummaryResponse | null;
 }
 
 export interface OrderSummaryResponse {
@@ -69,22 +99,20 @@ export interface OrderSummaryResponse {
 }
 
 export interface FeePreviewPayload {
-  channel: string;
-  paymentMethod: string;
+  channel: SalesChannel;
+  paymentMethod: PaymentMethod;
   subtotal: number;
   shopVoucher: number;
 }
 
-export interface FeePreviewResponse {
-  channel: string;
-  paymentMethod: string;
+export interface FeeBreakdownResponse {
   subtotal: number;
   shopVoucher: number;
   grossRevenue: number;
-  commissionFeeAmount: number;
-  paymentFeeAmount: number;
-  serviceFeeAmount: number;
-  fixedFeeAmount: number;
+  commissionFee: number;
+  paymentFee: number;
+  serviceFee: number;
+  fixedFee: number;
   totalPlatformFees: number;
   projectedSettlement: number;
 }
@@ -97,23 +125,20 @@ export interface CreateOrderItemPayload {
 
 export interface CreateOrderPayload {
   externalOrderId: string;
-  channel: string;
-  paymentMethod: string;
-  subtotal: number;
+  channel: SalesChannel;
+  paymentMethod: PaymentMethod;
   shopVoucher: number;
   customerName?: string;
   customerPhone?: string;
-  orderDate: string;
   items: CreateOrderItemPayload[];
 }
 
 export interface OrderFilterParams {
-  channel?: string;
-  status?: string;
-  paymentMethod?: string;
+  channel?: SalesChannel;
+  status?: OrderStatus;
+  from?: string;
+  to?: string;
   search?: string;
-  fromDate?: string;
-  toDate?: string;
   page?: number;
   pageSize?: number;
 }

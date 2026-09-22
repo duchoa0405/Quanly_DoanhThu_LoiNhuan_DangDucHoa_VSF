@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { settlementsApi } from './api/settlementsApi';
-import { SettlementLedgerItem, SettlementSummaryResponse } from './types/settlement.types';
+import { DiscrepancyType, SettlementLedgerItem, SettlementSummaryResponse } from './types/settlement.types';
 import { MoneyText } from '../../shared/ui/MoneyText';
 import { Badge } from '../../shared/ui/Badge';
 import { Button } from '../../shared/ui/Button';
@@ -11,10 +11,11 @@ export const SettlementsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Reconcile Modal state
   const [reconcileModalOrder, setReconcileModalOrder] = useState<SettlementLedgerItem | null>(null);
   const [actualAmount, setActualAmount] = useState<string>('');
   const [reconcileNote, setReconcileNote] = useState<string>('');
-  const [discrepancyType, setDiscrepancyType] = useState<string>('PLATFORM_FEE_OVERCHARGE');
+  const [discrepancyType, setDiscrepancyType] = useState<DiscrepancyType>('COMMISSION_RATE_MISMATCH');
   const [submitting, setSubmitting] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -60,7 +61,7 @@ export const SettlementsPage: React.FC = () => {
       await settlementsApi.reconcileOrder(reconcileModalOrder.orderId, {
         actualSettlement: parsedActual,
         notes: reconcileNote.trim() || undefined,
-        discrepancyType: variance !== 0 ? (discrepancyType as any) : undefined,
+        discrepancyType: variance !== 0 ? discrepancyType : undefined,
       });
       setReconcileModalOrder(null);
       setActualAmount('');
@@ -250,13 +251,13 @@ export const SettlementsPage: React.FC = () => {
                     </label>
                     <select
                       value={discrepancyType}
-                      onChange={(e) => setDiscrepancyType(e.target.value)}
+                      onChange={(e) => setDiscrepancyType(e.target.value as DiscrepancyType)}
                       style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     >
-                      <option value="PLATFORM_FEE_OVERCHARGE">Thu phí quá mức (PLATFORM_FEE_OVERCHARGE)</option>
                       <option value="COMMISSION_RATE_MISMATCH">Sai tỷ lệ hoa hồng (COMMISSION_RATE_MISMATCH)</option>
                       <option value="PAYMENT_FEE_MISMATCH">Sai phí thanh toán (PAYMENT_FEE_MISMATCH)</option>
                       <option value="SERVICE_FEE_MISMATCH">Sai phí dịch vụ (SERVICE_FEE_MISMATCH)</option>
+                      <option value="UNEXPECTED_PLATFORM_CHARGE">Thu phí sàn bất thường (UNEXPECTED_PLATFORM_CHARGE)</option>
                       <option value="OTHER">Lý do khác (OTHER)</option>
                     </select>
                   </div>

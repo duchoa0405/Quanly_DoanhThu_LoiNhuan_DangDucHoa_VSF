@@ -234,14 +234,24 @@ sequenceDiagram
     DB-->>ProdRepo: ProductVariant rows (sku_code, product_name, cost_price)
     ProdRepo-->>Svc: ProductVariant entities
 
-    Note over Svc: Server-Side Baseline Cost & Snapshot Freezing:<br/>- Read current SkuCode, ProductName, and CostPrice from catalog<br/>- LineTotal = Quantity * UnitPrice<br/>- TotalCost = Quantity * UnitCostSnapshot<br/>- Subtotal = sum(LineTotal)<br/>- GrossRevenue = Subtotal - ShopVoucher<br/>- Initial Status = PENDING (Applies to all channels, including POS)
+    Note over Svc: Server-Side Baseline Cost & Snapshot Freezing:<br/>- Read current SkuCode, ProductName, and CostPrice from catalog<br/>- LineTotal = Quantity * UnitPrice<br/>- TotalCost = Quantity * UnitCostSnapshot<br/>- Subtotal = sum(LineTotal)<br/>- GrossRevenue = Subtotal - ShopVoucher<br/>- Online (TIKTOK, SHOPEE): Status = PENDING<br/>- In-Store POS: Status = DELIVERED, executes fee engine, creates reconciliation record immediately
 
     Note over Svc, Uow: ATOMIC TRANSACTION BOUNDARY (IUnitOfWork)
-    Svc->>Uow: ExecuteTransactionAsync()
-    Uow->>DB: 1. INSERT INTO orders (external_order_id, channel, payment_method, status = 'PENDING', subtotal, gross_revenue...)
-    Uow->>DB: 2. INSERT INTO order_items (sku_code_snapshot, product_name_snapshot, unit_cost_snapshot...)
-    Uow->>DB: 3. INSERT INTO order_status_history (from_status = NULL, to_status = 'PENDING', changed_by = @actorIdentity)
-    Uow->>DB: COMMIT TRANSACTION
+    alt Channel is In-Store POS
+        Svc->>Uow: ExecuteTransactionAsync()
+        Uow->>DB: 1. INSERT INTO orders (status = 'DELIVERED', delivered_at = @now, ...)
+        Uow->>DB: 2. INSERT INTO order_items (sku_code_snapshot, unit_cost_snapshot...)
+        Uow->>DB: 3. INSERT INTO order_status_history (from_status = NULL, to_status = 'DELIVERED', changed_by = @actorIdentity)
+        Uow->>DB: 4. INSERT INTO order_fee_snapshots (commission_fee_amount, payment_fee_amount, total_platform_fees, projected_settlement...)
+        Uow->>DB: 5. INSERT INTO reconciliation_records (status = 'PENDING_SETTLEMENT', projected_settlement...)
+        Uow->>DB: COMMIT TRANSACTION
+    else Channel is Online (TIKTOK, SHOPEE)
+        Svc->>Uow: ExecuteTransactionAsync()
+        Uow->>DB: 1. INSERT INTO orders (status = 'PENDING', subtotal, gross_revenue...)
+        Uow->>DB: 2. INSERT INTO order_items (sku_code_snapshot, unit_cost_snapshot...)
+        Uow->>DB: 3. INSERT INTO order_status_history (from_status = NULL, to_status = 'PENDING', changed_by = @actorIdentity)
+        Uow->>DB: COMMIT TRANSACTION
+    end
     DB-->>Uow: Success
     Uow-->>Svc: Order persisted
     Svc-->>Ctrl: Order entity

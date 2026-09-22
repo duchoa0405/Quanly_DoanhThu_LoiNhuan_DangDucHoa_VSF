@@ -139,15 +139,18 @@ graph LR
      $$\text{Estimated Fees} = \text{Commission} + \text{Payment Fee} + \text{Service Fee} + \text{Fixed Fee}$$
      $$\text{Projected Settlement} = \text{Gross Revenue} - \text{Estimated Fees}$$
      *(Note: Fee Preview at order creation is an interactive estimation; official platform fee snapshots are authoritatively frozen upon reaching `DELIVERED` status).*
-  5. Order is saved with `PENDING` status.
+   5. **Channel-Dependent Order Creation:**
+      - **Online Channels (TikTok Shop, Shopee):** Order is saved in `PENDING` status. Recognized revenue remains provisional (0 VND).
+      - **In-Store POS (Direct Counter Checkout):** Because the physical transaction and handover occur immediately at the cash register, the order is created directly in `DELIVERED` status. The system authoritatively freezes the `OrderFeeSnapshot` and initializes a `ReconciliationRecord` (`PENDING_SETTLEMENT`). Gross revenue and COGS are officially recognized immediately.
 
 ### 4.2. Scenario 2: Order Lifecycle & Revenue/Profit Recognition (UC03)
 * **Primary Actors:** `Sales & Ops Staff`, `Shop Owner`
 * **Workspace:** Screen 1: Orders Management
 * **Rules:**
-  1. **Dispatch (`SHIPPED`):** Order is marked in-transit; revenue, COGS, and profit remain provisional.
-  2. **Delivery (`DELIVERED`):** System **officially credits Gross Revenue, COGS, and Contribution Profit** to executive dashboards. Platform fee snapshots are permanently frozen.
-  3. **Cancellation (`CANCELLED`):** System enforces mandatory cancellation reason; cancelled order contributes 0 VND to Gross Revenue, COGS, and Contribution Profit.
+  1. **POS Counter Checkout:** Creates directly as `DELIVERED`, bypassing `PENDING` and `SHIPPED`.
+  2. **Online Dispatch (`SHIPPED`):** Order is marked in-transit; revenue, COGS, and profit remain provisional (0 VND).
+  3. **Online Delivery (`DELIVERED`):** System **officially credits Gross Revenue, COGS, and Contribution Profit** to executive dashboards. Platform fee snapshots are permanently frozen and reconciliation records initialized.
+  4. **Cancellation (`CANCELLED`):** System enforces mandatory cancellation reason; cancelled order contributes 0 VND to Gross Revenue, COGS, and Contribution Profit. Delivered orders cannot be cancelled.
 
 ### 4.3. Scenario 3: Manual Settlement Reconciliation & CSV Export (UC06, UC07, UC11)
 * **Primary Actors:** `Finance Manager`, `Shop Owner`

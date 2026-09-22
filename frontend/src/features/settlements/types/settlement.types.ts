@@ -1,8 +1,19 @@
+import { SalesChannel } from '../../orders/types/order.types';
+
+export type ReconciliationStatus = 'PENDING_SETTLEMENT' | 'RECONCILED' | 'DISCREPANCY';
+
+export type DiscrepancyType =
+  | 'COMMISSION_RATE_MISMATCH'
+  | 'PAYMENT_FEE_MISMATCH'
+  | 'SERVICE_FEE_MISMATCH'
+  | 'UNEXPECTED_PLATFORM_CHARGE'
+  | 'OTHER';
+
 export interface SettlementLedgerItem {
   id: string;
   orderId: string;
   externalOrderId: string;
-  channel: 'TIKTOK' | 'SHOPEE' | 'POS';
+  channel: SalesChannel;
   grossRevenue: number;
   commissionFee: number;
   paymentFee: number;
@@ -12,7 +23,7 @@ export interface SettlementLedgerItem {
   projectedSettlement: number;
   actualSettlement?: number | null;
   varianceAmount?: number | null;
-  reconciliationStatus: 'PENDING_SETTLEMENT' | 'RECONCILED' | 'DISCREPANCY';
+  reconciliationStatus: ReconciliationStatus;
   deliveredAt: string;
   reconciledAt?: string | null;
 }
@@ -34,5 +45,17 @@ export interface SettlementSummaryResponse {
 export interface ReconcileSettlementPayload {
   actualSettlement: number;
   notes?: string;
-  discrepancyType?: 'COMMISSION_RATE_MISMATCH' | 'PAYMENT_FEE_MISMATCH' | 'SERVICE_FEE_MISMATCH' | 'PLATFORM_FEE_OVERCHARGE' | 'OTHER';
+  discrepancyType?: DiscrepancyType;
+}
+
+export interface ReconciliationResponse {
+  id: string;
+  orderId: string;
+  projectedSettlement: number;
+  actualSettlement: number;
+  varianceAmount: number;
+  reconciliationStatus: ReconciliationStatus;
+  reconciliationNotes?: string | null;
+  reconciledAt: string;
+  reconciledBy: string;
 }

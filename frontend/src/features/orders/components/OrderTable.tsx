@@ -1,12 +1,12 @@
 import React from 'react';
-import { OrderResponse } from '../types/order.types';
+import { OrderListItemResponse, OrderStatus } from '../types/order.types';
 import { MoneyText } from '../../../shared/ui/MoneyText';
 import { Badge } from '../../../shared/ui/Badge';
 
 interface OrderTableProps {
-  orders: OrderResponse[];
+  orders: OrderListItemResponse[];
   loading?: boolean;
-  onSelectOrder?: (order: OrderResponse) => void;
+  onSelectOrder?: (order: OrderListItemResponse) => void;
 }
 
 export const OrderTable: React.FC<OrderTableProps> = ({ orders, loading, onSelectOrder }) => {
@@ -26,16 +26,15 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, loading, onSelec
     );
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'delivered':
+  const getStatusColor = (status: OrderStatus) => {
+    switch (status) {
+      case 'DELIVERED':
         return 'var(--color-positive, #10b981)';
-      case 'cancelled':
-      case 'returned':
+      case 'CANCELLED':
         return 'var(--color-danger, #ef4444)';
-      case 'intransit':
-      case 'shipped':
+      case 'SHIPPED':
         return '#3b82f6';
+      case 'PENDING':
       default:
         return 'var(--color-warning, #f59e0b)';
     }
@@ -49,17 +48,17 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, loading, onSelec
             <th style={{ padding: '12px 16px' }}>MÃ ĐƠN HÀNG</th>
             <th style={{ padding: '12px 16px' }}>KÊNH</th>
             <th style={{ padding: '12px 16px' }}>KHÁCH HÀNG</th>
+            <th style={{ padding: '12px 16px' }}>SẢN PHẨM</th>
             <th style={{ padding: '12px 16px' }}>DOANH THU GỘP</th>
-            <th style={{ padding: '12px 16px' }}>PHÍ SÀN DỰ KIẾN</th>
-            <th style={{ padding: '12px 16px' }}>DỰ KIẾN THỰC NHẬN</th>
             <th style={{ padding: '12px 16px' }}>TRẠNG THÁI</th>
           </tr>
         </thead>
         <tbody>
           {orders.map((order) => {
-            const platformFee = order.feeSnapshot?.totalPlatformFees ?? 0;
-            const netPayout = order.feeSnapshot?.projectedSettlement ?? (order.grossRevenue - platformFee);
             const statusColor = getStatusColor(order.status);
+            const itemsText = order.itemsSummary && order.itemsSummary.length > 0
+              ? order.itemsSummary.map(i => `${i.skuCode} (x${i.quantity})`).join(', ')
+              : `${order.itemCount} sản phẩm`;
 
             return (
               <tr
@@ -76,14 +75,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, loading, onSelec
                   <Badge label={order.channel} />
                 </td>
                 <td style={{ padding: '12px 16px' }}>{order.customerName || 'Khách vãng lai'}</td>
-                <td style={{ padding: '12px 16px' }}>
+                <td style={{ padding: '12px 16px', color: 'var(--color-text-secondary)' }}>{itemsText}</td>
+                <td style={{ padding: '12px 16px', fontWeight: 600 }}>
                   <MoneyText amount={order.grossRevenue} />
-                </td>
-                <td style={{ padding: '12px 16px', color: 'var(--color-danger)' }}>
-                  <MoneyText amount={platformFee} />
-                </td>
-                <td style={{ padding: '12px 16px', color: 'var(--color-positive)', fontWeight: 600 }}>
-                  <MoneyText amount={netPayout} />
                 </td>
                 <td style={{ padding: '12px 16px' }}>
                   <span style={{ color: statusColor, fontWeight: 600 }}>
