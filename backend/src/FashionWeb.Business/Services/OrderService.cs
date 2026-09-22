@@ -65,7 +65,6 @@ public class OrderService : IOrderService
                     Id = Guid.NewGuid(),
                     OrderId = order.Id,
                     ProjectedSettlement = feeSnapshot.ProjectedSettlement,
-                    Status = ReconciliationStatus.PENDING_SETTLEMENT,
                     CreatedAt = now
                 };
 
@@ -232,7 +231,6 @@ public class OrderService : IOrderService
                 Id = Guid.NewGuid(),
                 OrderId = order.Id,
                 ProjectedSettlement = feeSnapshot.ProjectedSettlement,
-                Status = ReconciliationStatus.PENDING_SETTLEMENT,
                 CreatedAt = now
             };
 

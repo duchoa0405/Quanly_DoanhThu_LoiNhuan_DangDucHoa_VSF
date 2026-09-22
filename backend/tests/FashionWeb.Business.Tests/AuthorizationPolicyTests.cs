@@ -1,8 +1,9 @@
 using System.Security.Claims;
 using FashionWeb.Api.Authorization;
-using FashionWeb.Api.Mappers;
+using FashionWeb.Api.Mappings;
 using FashionWeb.Business.Domain.Entities;
 using FashionWeb.Business.Domain.Enums;
+using FashionWeb.Business.Results;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -114,39 +115,62 @@ public class AuthorizationPolicyTests
     [Fact]
     public void OrderContractMapper_HidesCostAndProfit_WhenUserLacksCostPermission()
     {
-        var order = new Order
-        {
-            ExternalOrderId = "ORD-RBAC-001",
-            Channel = ChannelType.TIKTOK,
-            PaymentMethod = PaymentMethod.MARKETPLACE_WALLET,
-        };
-        order.SetFinancials(500000m, 50000m);
-        order.Items.Add(new OrderItem
-        {
-            SkuCode = "TSHIRT-BLK",
-            Quantity = 2,
-            UnitPrice = 250000m,
-            UnitCostSnapshot = 100000m
-        });
-        order.MarkAsPending("system");
-        order.TransitionToShipped("system");
-        order.TransitionToDelivered("system");
+        var itemResult = new OrderItemDetailResult(
+            Id: Guid.NewGuid(),
+            ProductVariantId: Guid.NewGuid(),
+            SkuCodeSnapshot: "TSHIRT-BLK",
+            ProductNameSnapshot: "Áo thun đen",
+            Quantity: 2,
+            UnitPrice: 250000m,
+            UnitCostSnapshot: 100000m,
+            LineTotal: 500000m,
+            TotalCost: 200000m
+        );
+
+        var result = new OrderDetailResult(
+            Id: Guid.NewGuid(),
+            ExternalOrderId: "ORD-RBAC-001",
+            Channel: ChannelType.TIKTOK,
+            PaymentMethod: PaymentMethod.MARKETPLACE_WALLET,
+            Status: OrderStatus.DELIVERED,
+            Subtotal: 500000m,
+            ShopVoucher: 50000m,
+            GrossRevenue: 450000m,
+            CustomerName: "Nguyen Van A",
+            CustomerPhone: "0901234567",
+            OrderDate: DateTime.UtcNow.AddDays(-1),
+            DeliveredAt: DateTime.UtcNow,
+            CancelledAt: null,
+            CancellationReason: null,
+            CreatedAt: DateTime.UtcNow.AddDays(-1),
+            UpdatedAt: DateTime.UtcNow,
+            Cogs: 200000m,
+            ContributionProfit: 214000m,
+            Items: new List<OrderItemDetailResult> { itemResult },
+            StatusHistory: new List<OrderStatusHistoryResult>(),
+            FeeSnapshot: null
+        );
 
         // Act: Map with canViewCosts = false (SalesOps perspective)
-        var salesOpsDto = OrderContractMapper.ToDetailResponse(order, canViewCosts: false);
+        var salesOpsDto = OrderContractMapper.MapToOrderDetailResponse(result, canViewCosts: false);
 
         // Assert: Costs & Contribution Profit must be completely null / hidden
         Assert.Null(salesOpsDto.Cogs);
         Assert.Null(salesOpsDto.ContributionProfit);
         Assert.Null(salesOpsDto.Items[0].UnitCostSnapshot);
+        Assert.Null(salesOpsDto.Items[0].TotalCost);
 
         // Act: Map with canViewCosts = true (FinanceManager / ShopOwner perspective)
-        var financeDto = OrderContractMapper.ToDetailResponse(order, canViewCosts: true);
+        var financeDto = OrderContractMapper.MapToOrderDetailResponse(result, canViewCosts: true);
 
         // Assert: Costs & Contribution Profit must be accurately populated
         Assert.NotNull(financeDto.Cogs);
         Assert.Equal(200000m, financeDto.Cogs);
         Assert.NotNull(financeDto.ContributionProfit);
+        Assert.Equal(214000m, financeDto.ContributionProfit);
+        Assert.NotNull(financeDto.Items[0].UnitCostSnapshot);
         Assert.Equal(100000m, financeDto.Items[0].UnitCostSnapshot);
+        Assert.NotNull(financeDto.Items[0].TotalCost);
+        Assert.Equal(200000m, financeDto.Items[0].TotalCost);
     }
 }
