@@ -1,3 +1,4 @@
+using FashionWeb.Business.Common;
 using FashionWeb.Business.Domain.Enums;
 using FashionWeb.Business.Filters;
 using FashionWeb.Business.Interfaces.Repositories;
@@ -18,14 +19,15 @@ public class AnalyticsRepository : IAnalyticsRepository
 
     public async Task<FinancialKpiResult> QueryKpisAsync(AnalyticsFilter filter, CancellationToken ct = default)
     {
+        // Strict revenue recognition on DeliveredAt
         var baseQuery = _context.Orders
-            .Where(o => o.Status == OrderStatus.DELIVERED);
+            .Where(o => o.Status == OrderStatus.DELIVERED && o.DeliveredAt != null);
 
         if (filter.FromDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt >= filter.FromDate.Value);
 
         if (filter.ToDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);
@@ -43,6 +45,7 @@ public class AnalyticsRepository : IAnalyticsRepository
                           {
                               GrossRevenue = o.GrossRevenue,
                               TotalPlatformFees = fs != null ? fs.TotalPlatformFees : 0.00m,
+                              HasFeeSnapshot = fs != null,
                               Cogs = o.Items.Sum(i => i.TotalCost)
                           }).ToListAsync(ct);
 
@@ -50,8 +53,8 @@ public class AnalyticsRepository : IAnalyticsRepository
         var totalPlatformFees = data.Sum(x => x.TotalPlatformFees);
         var projectedSettlement = grossRevenue - totalPlatformFees;
         var cogs = data.Sum(x => x.Cogs);
-        var contributionProfit = projectedSettlement - cogs;
-        var marginPct = grossRevenue > 0m ? Math.Round((contributionProfit / grossRevenue) * 100m, 2) : 0.00m;
+        var contributionProfit = FinancialCalculator.CalculateOrderProfit(grossRevenue, totalPlatformFees, cogs);
+        var marginPct = FinancialCalculator.CalculateContributionMargin(contributionProfit, grossRevenue);
 
         return new FinancialKpiResult(
             GrossRevenue: grossRevenue,
@@ -67,13 +70,13 @@ public class AnalyticsRepository : IAnalyticsRepository
     public async Task<List<FinancialTrendPointResult>> QueryTrendAsync(TrendFilter filter, CancellationToken ct = default)
     {
         var baseQuery = _context.Orders
-            .Where(o => o.Status == OrderStatus.DELIVERED);
+            .Where(o => o.Status == OrderStatus.DELIVERED && o.DeliveredAt != null);
 
         if (filter.FromDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt >= filter.FromDate.Value);
 
         if (filter.ToDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);
@@ -83,7 +86,7 @@ public class AnalyticsRepository : IAnalyticsRepository
                                from fs in feeSnapshots.DefaultIfEmpty()
                                select new
                                {
-                                   Date = DateOnly.FromDateTime(o.OrderDate),
+                                   Date = DateOnly.FromDateTime(o.DeliveredAt!.Value),
                                    GrossRevenue = o.GrossRevenue,
                                    TotalPlatformFees = fs != null ? fs.TotalPlatformFees : 0.00m,
                                    Cogs = o.Items.Sum(i => i.TotalCost)
@@ -98,7 +101,7 @@ public class AnalyticsRepository : IAnalyticsRepository
                     var gross = g.Sum(x => x.GrossRevenue);
                     var fees = g.Sum(x => x.TotalPlatformFees);
                     var cogs = g.Sum(x => x.Cogs);
-                    var profit = gross - fees - cogs;
+                    var profit = FinancialCalculator.CalculateOrderProfit(gross, fees, cogs);
                     return (Gross: gross, Profit: profit);
                 });
 
@@ -124,13 +127,13 @@ public class AnalyticsRepository : IAnalyticsRepository
     public async Task<List<ChannelBreakdownResult>> QueryChannelBreakdownAsync(AnalyticsFilter filter, CancellationToken ct = default)
     {
         var baseQuery = _context.Orders
-            .Where(o => o.Status == OrderStatus.DELIVERED);
+            .Where(o => o.Status == OrderStatus.DELIVERED && o.DeliveredAt != null);
 
         if (filter.FromDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt >= filter.FromDate.Value);
 
         if (filter.ToDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);
@@ -158,8 +161,8 @@ public class AnalyticsRepository : IAnalyticsRepository
             var gross = items.Sum(x => x.GrossRevenue);
             var fees = items.Sum(x => x.TotalPlatformFees);
             var cogs = items.Sum(x => x.Cogs);
-            var profit = gross - fees - cogs;
-            var marginPct = gross > 0m ? Math.Round((profit / gross) * 100m, 2) : 0.00m;
+            var profit = FinancialCalculator.CalculateOrderProfit(gross, fees, cogs);
+            var marginPct = FinancialCalculator.CalculateContributionMargin(profit, gross);
 
             result.Add(new ChannelBreakdownResult(ch, count, gross, fees, profit, marginPct));
         }
@@ -170,13 +173,13 @@ public class AnalyticsRepository : IAnalyticsRepository
     public async Task<List<TopSkuResult>> QueryTopSkusAsync(TopSkuFilter filter, CancellationToken ct = default)
     {
         var baseQuery = _context.Orders
-            .Where(o => o.Status == OrderStatus.DELIVERED);
+            .Where(o => o.Status == OrderStatus.DELIVERED && o.DeliveredAt != null);
 
         if (filter.FromDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt >= filter.FromDate.Value);
 
         if (filter.ToDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);
@@ -193,6 +196,7 @@ public class AnalyticsRepository : IAnalyticsRepository
                              i.LineTotal,
                              i.TotalCost,
                              OrderSubtotal = o.Subtotal,
+                             ShopVoucher = o.ShopVoucher,
                              OrderFees = fs != null ? fs.TotalPlatformFees : 0.00m
                          };
 
@@ -205,23 +209,25 @@ public class AnalyticsRepository : IAnalyticsRepository
                 var skuCode = g.Key.SkuCodeSnapshot;
                 var productName = g.Key.ProductNameSnapshot;
                 var deliveredUnits = g.Sum(x => x.Quantity);
-                var lineTotal = g.Sum(x => x.LineTotal);
                 var cogs = g.Sum(x => x.TotalCost);
 
+                decimal skuGrossRevenue = 0.00m;
                 decimal allocatedFees = 0.00m;
+
                 foreach (var item in g)
                 {
-                    if (item.OrderSubtotal > 0m)
-                    {
-                        var ratio = item.LineTotal / item.OrderSubtotal;
-                        allocatedFees += item.OrderFees * ratio;
-                    }
+                    var allocatedVoucher = FinancialCalculator.AllocateVoucher(item.ShopVoucher, item.LineTotal, item.OrderSubtotal);
+                    var lineGrossRevenue = FinancialCalculator.CalculateSkuGrossRevenue(item.LineTotal, allocatedVoucher);
+                    skuGrossRevenue += lineGrossRevenue;
+
+                    var itemAllocatedFee = FinancialCalculator.AllocateFees(item.OrderFees, item.LineTotal, item.OrderSubtotal);
+                    allocatedFees += itemAllocatedFee;
                 }
 
-                var profit = lineTotal - cogs - allocatedFees;
-                var marginPct = lineTotal > 0m ? Math.Round((profit / lineTotal) * 100m, 2) : 0.00m;
+                var profit = FinancialCalculator.CalculateSkuProfit(skuGrossRevenue, 0m, allocatedFees, cogs);
+                var marginPct = FinancialCalculator.CalculateContributionMargin(profit, skuGrossRevenue);
 
-                return new TopSkuResult(skuCode, productName, deliveredUnits, lineTotal, cogs, profit, marginPct);
+                return new TopSkuResult(skuCode, productName, deliveredUnits, skuGrossRevenue, cogs, profit, marginPct);
             });
 
         var sortBy = filter.SortBy?.Trim().ToUpperInvariant();
@@ -238,13 +244,13 @@ public class AnalyticsRepository : IAnalyticsRepository
     public async Task<PagedResult<DrilldownOrderResult>> QueryDrilldownAsync(DrilldownFilter filter, CancellationToken ct = default)
     {
         var baseQuery = _context.Orders
-            .Where(o => o.Status == OrderStatus.DELIVERED);
+            .Where(o => o.Status == OrderStatus.DELIVERED && o.DeliveredAt != null);
 
         if (filter.FromDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt >= filter.FromDate.Value);
 
         if (filter.ToDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);
@@ -254,13 +260,13 @@ public class AnalyticsRepository : IAnalyticsRepository
         var pagedOrders = await (from o in baseQuery
                                  join fs in _context.OrderFeeSnapshots on o.Id equals fs.OrderId into feeSnapshots
                                  from fs in feeSnapshots.DefaultIfEmpty()
-                                 orderby o.DeliveredAt ?? o.OrderDate descending
+                                 orderby o.DeliveredAt descending
                                  select new
                                  {
                                      o.Id,
                                      o.ExternalOrderId,
                                      o.Channel,
-                                     DeliveredAt = o.DeliveredAt ?? o.OrderDate,
+                                     DeliveredAt = o.DeliveredAt!.Value,
                                      o.GrossRevenue,
                                      TotalPlatformFees = fs != null ? fs.TotalPlatformFees : 0.00m,
                                      ProjectedSettlement = fs != null ? fs.ProjectedSettlement : o.GrossRevenue,
@@ -272,8 +278,8 @@ public class AnalyticsRepository : IAnalyticsRepository
 
         var items = pagedOrders.Select(x =>
         {
-            var profit = x.GrossRevenue - x.TotalPlatformFees - x.Cogs;
-            var marginPct = x.GrossRevenue > 0m ? Math.Round((profit / x.GrossRevenue) * 100m, 2) : 0.00m;
+            var profit = FinancialCalculator.CalculateOrderProfit(x.GrossRevenue, x.TotalPlatformFees, x.Cogs);
+            var marginPct = FinancialCalculator.CalculateContributionMargin(profit, x.GrossRevenue);
             return new DrilldownOrderResult(
                 Id: x.Id,
                 ExternalOrderId: x.ExternalOrderId,
@@ -294,13 +300,13 @@ public class AnalyticsRepository : IAnalyticsRepository
     public async Task<List<DrilldownOrderResult>> QueryRawExportDataAsync(AnalyticsFilter filter, CancellationToken ct = default)
     {
         var baseQuery = _context.Orders
-            .Where(o => o.Status == OrderStatus.DELIVERED);
+            .Where(o => o.Status == OrderStatus.DELIVERED && o.DeliveredAt != null);
 
         if (filter.FromDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate >= filter.FromDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt >= filter.FromDate.Value);
 
         if (filter.ToDate.HasValue)
-            baseQuery = baseQuery.Where(o => o.OrderDate <= filter.ToDate.Value);
+            baseQuery = baseQuery.Where(o => o.DeliveredAt <= filter.ToDate.Value);
 
         if (filter.Channel.HasValue)
             baseQuery = baseQuery.Where(o => o.Channel == filter.Channel.Value);
@@ -308,13 +314,13 @@ public class AnalyticsRepository : IAnalyticsRepository
         var orders = await (from o in baseQuery
                             join fs in _context.OrderFeeSnapshots on o.Id equals fs.OrderId into feeSnapshots
                             from fs in feeSnapshots.DefaultIfEmpty()
-                            orderby o.DeliveredAt ?? o.OrderDate descending
+                            orderby o.DeliveredAt descending
                             select new
                             {
                                 o.Id,
                                 o.ExternalOrderId,
                                 o.Channel,
-                                DeliveredAt = o.DeliveredAt ?? o.OrderDate,
+                                DeliveredAt = o.DeliveredAt!.Value,
                                 o.GrossRevenue,
                                 TotalPlatformFees = fs != null ? fs.TotalPlatformFees : 0.00m,
                                 ProjectedSettlement = fs != null ? fs.ProjectedSettlement : o.GrossRevenue,
@@ -323,8 +329,8 @@ public class AnalyticsRepository : IAnalyticsRepository
 
         return orders.Select(x =>
         {
-            var profit = x.GrossRevenue - x.TotalPlatformFees - x.Cogs;
-            var marginPct = x.GrossRevenue > 0m ? Math.Round((profit / x.GrossRevenue) * 100m, 2) : 0.00m;
+            var profit = FinancialCalculator.CalculateOrderProfit(x.GrossRevenue, x.TotalPlatformFees, x.Cogs);
+            var marginPct = FinancialCalculator.CalculateContributionMargin(profit, x.GrossRevenue);
             return new DrilldownOrderResult(
                 Id: x.Id,
                 ExternalOrderId: x.ExternalOrderId,

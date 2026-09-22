@@ -34,12 +34,12 @@ public class ExceptionHandlingMiddleware
     {
         var (statusCode, title, detail) = exception switch
         {
-            ValidationException ve => (HttpStatusCode.BadRequest, "Validation Error", ve.Message),
+            ValidationException ve => (HttpStatusCode.UnprocessableEntity, "Unprocessable Entity", ve.Message),
+            BusinessRuleException bre => (HttpStatusCode.UnprocessableEntity, "Business Rule Violation", bre.Message),
             NotFoundException nfe => (HttpStatusCode.NotFound, "Resource Not Found", nfe.Message),
             ConflictException ce => (HttpStatusCode.Conflict, "Conflict Violation", ce.Message),
-            BusinessRuleException bre => (HttpStatusCode.UnprocessableEntity, "Business Rule Violation", bre.Message),
             KeyNotFoundException knf => (HttpStatusCode.NotFound, "Resource Not Found", knf.Message),
-            ArgumentNullException ane => (HttpStatusCode.BadRequest, "Invalid Argument", ane.Message),
+            ArgumentNullException ane => (HttpStatusCode.BadRequest, "Bad Request", ane.Message),
             ArgumentException ae => (HttpStatusCode.BadRequest, "Bad Request", ae.Message),
             InvalidOperationException ioe => (HttpStatusCode.Conflict, "Conflict", ioe.Message),
             UnauthorizedAccessException uae => (HttpStatusCode.Forbidden, "Access Forbidden", uae.Message),

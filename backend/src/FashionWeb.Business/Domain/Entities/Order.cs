@@ -45,6 +45,40 @@ public class Order
         UpdatedAt = timestamp;
     }
 
+    public void MarkAsPending(string actorIdentity, DateTime? now = null)
+    {
+        var timestamp = now ?? DateTime.UtcNow;
+        Status = OrderStatus.PENDING;
+        UpdatedAt = timestamp;
+
+        StatusHistory.Add(new OrderStatusHistory
+        {
+            OrderId = Id,
+            FromStatus = null,
+            ToStatus = OrderStatus.PENDING,
+            ChangedBy = actorIdentity,
+            ChangedAt = timestamp
+        });
+    }
+
+    public void MarkAsPosDelivered(string actorIdentity, DateTime? now = null)
+    {
+        var timestamp = now ?? DateTime.UtcNow;
+        Status = OrderStatus.DELIVERED;
+        DeliveredAt = timestamp;
+        UpdatedAt = timestamp;
+
+        StatusHistory.Add(new OrderStatusHistory
+        {
+            OrderId = Id,
+            FromStatus = null,
+            ToStatus = OrderStatus.DELIVERED,
+            Reason = "In-store POS counter checkout",
+            ChangedBy = actorIdentity,
+            ChangedAt = timestamp
+        });
+    }
+
     public void TransitionToShipped(string actorIdentity, DateTime? now = null)
     {
         var timestamp = now ?? DateTime.UtcNow;
@@ -117,16 +151,31 @@ public class Order
         decimal grossRevenue = 0m,
         ChannelType channel = ChannelType.SHOPEE,
         PaymentMethod paymentMethod = PaymentMethod.MARKETPLACE_WALLET,
-        string externalOrderId = "TEST-ORD")
+        string externalOrderId = "TEST-ORD",
+        DateTime? orderDate = null,
+        DateTime? deliveredAt = null,
+        decimal? subtotal = null,
+        decimal? shopVoucher = null)
     {
-        return new Order
+        var order = new Order
         {
             Id = id ?? Guid.NewGuid(),
             Status = status,
             GrossRevenue = grossRevenue,
             Channel = channel,
             PaymentMethod = paymentMethod,
-            ExternalOrderId = externalOrderId
+            ExternalOrderId = externalOrderId,
+            OrderDate = orderDate ?? DateTime.UtcNow,
+            DeliveredAt = deliveredAt
         };
+
+        if (subtotal.HasValue)
+        {
+            order.Subtotal = subtotal.Value;
+            order.ShopVoucher = shopVoucher ?? 0m;
+            order.GrossRevenue = grossRevenue > 0m ? grossRevenue : (order.Subtotal - order.ShopVoucher);
+        }
+
+        return order;
     }
 }

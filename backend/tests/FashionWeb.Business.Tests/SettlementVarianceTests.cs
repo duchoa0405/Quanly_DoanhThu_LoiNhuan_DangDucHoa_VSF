@@ -185,4 +185,34 @@ public class SettlementVarianceTests
         Assert.Equal("finance_manager@shop.vn", audit.ResolvedBy);
         Assert.Equal("Platform credited back 20,000 VND voucher adjustment.", audit.ResolutionNotes);
     }
+
+    [Fact]
+    public void Reconcile_ValidationFails_LeavesAggregateUnmodified()
+    {
+        // Arrange
+        var record = new ReconciliationRecord
+        {
+            Id = Guid.NewGuid(),
+            OrderId = Guid.NewGuid(),
+            ProjectedSettlement = 500000m,
+            Status = ReconciliationStatus.PENDING_SETTLEMENT,
+            ActualSettlement = null,
+            VarianceAmount = null,
+            ReconciliationNotes = null,
+            ReconciledAt = null
+        };
+
+        // Act: Reconcile with variance (480k vs 500k) but missing mandatory notes
+        Assert.Throws<ValidationException>(() =>
+            record.Reconcile(480000m, null, DiscrepancyType.PLATFORM_FEE_OVERCHARGE, "accountant")
+        );
+
+        // Assert: The in-memory state is strictly preserved; nothing was mutated
+        Assert.Equal(ReconciliationStatus.PENDING_SETTLEMENT, record.Status);
+        Assert.Null(record.ActualSettlement);
+        Assert.Null(record.VarianceAmount);
+        Assert.Null(record.ReconciliationNotes);
+        Assert.Null(record.ReconciledAt);
+        Assert.Empty(record.Audits);
+    }
 }

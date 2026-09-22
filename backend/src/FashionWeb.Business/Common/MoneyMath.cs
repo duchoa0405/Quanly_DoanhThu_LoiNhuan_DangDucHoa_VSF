@@ -9,7 +9,7 @@ public static class MoneyMath
 
     public static decimal CalculateGrossRevenue(decimal subtotal, decimal shopVoucher)
     {
-        return Round(Math.Max(0m, subtotal - shopVoucher));
+        return FinancialCalculator.CalculateGrossRevenue(subtotal, shopVoucher);
     }
 
     public static decimal CalculateRateFee(decimal basisAmount, decimal rate)

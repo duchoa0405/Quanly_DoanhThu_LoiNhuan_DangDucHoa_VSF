@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace FashionWeb.Api.Controllers;
 
 [Route("api/v1/orders")]
-[Authorize(Policy = Policies.RequireSalesOps)]
+[Authorize]
 public class OrdersController : BaseApiController
 {
     private readonly IOrderService _orderService;
@@ -24,6 +24,7 @@ public class OrdersController : BaseApiController
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireOrderViewer)]
     public async Task<ActionResult<PagedOrderListResponse>> ListOrders(
         [FromQuery] ChannelType? channel,
         [FromQuery] OrderStatus? status,
@@ -42,6 +43,7 @@ public class OrdersController : BaseApiController
     }
 
     [HttpPost]
+    [Authorize(Policy = Policies.RequireSalesOps)]
     public async Task<ActionResult<OrderResponse>> CreateOrder([FromBody] CreateOrderRequest request, CancellationToken ct)
     {
         var cmd = new CreateOrderCommand(
@@ -64,6 +66,7 @@ public class OrdersController : BaseApiController
     }
 
     [HttpGet("summary")]
+    [Authorize(Policy = Policies.RequireOrderViewer)]
     public async Task<ActionResult<OrderSummaryResponse>> GetOrderSummary(
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
@@ -81,6 +84,7 @@ public class OrdersController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = Policies.RequireOrderViewer)]
     public async Task<ActionResult<OrderDetailResponse>> GetOrderById(Guid id, CancellationToken ct)
     {
         var order = await _orderService.GetOrderByIdAsync(id, ct);
@@ -91,6 +95,7 @@ public class OrdersController : BaseApiController
     }
 
     [HttpPost("preview-fee")]
+    [Authorize(Policy = Policies.RequireOrderViewer)]
     public async Task<ActionResult<FeeBreakdownResponse>> FeePreview([FromBody] FeePreviewRequest request, CancellationToken ct)
     {
         var preview = await _feeEngine.CalculateFeePreviewAsync(
@@ -115,6 +120,7 @@ public class OrdersController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/status")]
+    [Authorize(Policy = Policies.RequireSalesOps)]
     public async Task<ActionResult<OrderResponse>> UpdateOrderStatus(Guid id, [FromBody] UpdateOrderStatusRequest request, CancellationToken ct)
     {
         var cmd = new UpdateOrderStatusCommand(
@@ -128,6 +134,7 @@ public class OrdersController : BaseApiController
     }
 
     [HttpPost("{id:guid}/cancel")]
+    [Authorize(Policy = Policies.RequireSalesOps)]
     public async Task<ActionResult<OrderResponse>> CancelOrder(Guid id, [FromBody] CancelOrderRequest request, CancellationToken ct)
     {
         var cmd = new CancelOrderCommand(

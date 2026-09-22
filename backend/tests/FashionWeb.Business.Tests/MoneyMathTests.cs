@@ -1,4 +1,5 @@
 using FashionWeb.Business.Common;
+using FashionWeb.Business.Exceptions;
 using Xunit;
 
 namespace FashionWeb.Business.Tests;
@@ -31,10 +32,15 @@ public class MoneyMathTests
     }
 
     [Fact]
-    public void CalculateGrossRevenue_VoucherExceedsSubtotal_YieldsZero()
+    public void CalculateGrossRevenue_VoucherExceedsSubtotal_ThrowsValidationException()
     {
-        var result = MoneyMath.CalculateGrossRevenue(500000m, 600000m);
-        Assert.Equal(0m, result);
+        Assert.Throws<ValidationException>(() => MoneyMath.CalculateGrossRevenue(500000m, 600000m));
+    }
+
+    [Fact]
+    public void CalculateGrossRevenue_NegativeVoucher_ThrowsValidationException()
+    {
+        Assert.Throws<ValidationException>(() => MoneyMath.CalculateGrossRevenue(500000m, -10000m));
     }
 
     [Fact]

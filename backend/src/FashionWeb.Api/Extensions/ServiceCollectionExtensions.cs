@@ -155,6 +155,8 @@ public static class ServiceCollectionExtensions
                 policy.RequireRole(Roles.FinanceManager, Roles.ShopOwner));
             options.AddPolicy(Policies.RequireShopOwner, policy =>
                 policy.RequireRole(Roles.ShopOwner));
+            options.AddPolicy(Policies.RequireOrderViewer, policy =>
+                policy.RequireRole(Roles.SalesOps, Roles.FinanceManager, Roles.ShopOwner));
         });
 
         return services;

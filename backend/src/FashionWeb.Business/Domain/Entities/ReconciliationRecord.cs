@@ -22,32 +22,41 @@ public class ReconciliationRecord
     public DiscrepancyAudit? Reconcile(decimal actualSettlement, string? notes, DiscrepancyType? discrepancyType, string actorIdentity, DateTime? now = null)
     {
         var timestamp = now ?? DateTime.UtcNow;
+
+        // 1. Calculate variance first
+        var variance = FashionWeb.Business.Common.MoneyMath.Round(ProjectedSettlement - actualSettlement);
+
+        // 2. Validate first before mutating any in-memory state
+        if (variance != 0m)
+        {
+            if (string.IsNullOrWhiteSpace(notes))
+                throw new Exceptions.ValidationException("Reconciliation notes are mandatory when variance is detected.");
+            if (!discrepancyType.HasValue)
+                throw new Exceptions.ValidationException("Discrepancy type classification is mandatory when variance is detected.");
+        }
+
+        // 3. Mutate aggregate state atomically only after validations succeed
         ActualSettlement = actualSettlement;
-        VarianceAmount = FashionWeb.Business.Common.MoneyMath.Round(ProjectedSettlement - actualSettlement);
+        VarianceAmount = variance;
         ReconciledAt = timestamp;
         ReconciledBy = actorIdentity;
         ReconciliationNotes = notes;
         UpdatedAt = timestamp;
 
-        if (VarianceAmount.Value == 0m)
+        if (variance == 0m)
         {
             Status = ReconciliationStatus.RECONCILED;
             return null;
         }
         else
         {
-            if (string.IsNullOrWhiteSpace(notes))
-                throw new Exceptions.ValidationException("Reconciliation notes are mandatory when variance is detected.");
-            if (!discrepancyType.HasValue)
-                throw new Exceptions.ValidationException("Discrepancy type classification is mandatory when variance is detected.");
-
             Status = ReconciliationStatus.DISCREPANCY;
 
             var audit = new DiscrepancyAudit
             {
                 ReconciliationId = Id,
-                DiscrepancyType = discrepancyType.Value,
-                ExplanationNote = notes,
+                DiscrepancyType = discrepancyType!.Value,
+                ExplanationNote = notes!,
                 CreatedAt = timestamp
             };
 

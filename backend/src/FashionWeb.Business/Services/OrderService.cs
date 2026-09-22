@@ -2,6 +2,7 @@ using FashionWeb.Business.Commands;
 using FashionWeb.Business.Common;
 using FashionWeb.Business.Domain.Entities;
 using FashionWeb.Business.Domain.Enums;
+using FashionWeb.Business.Domain.Validators;
 using FashionWeb.Business.Exceptions;
 using FashionWeb.Business.Filters;
 using FashionWeb.Business.Interfaces.Repositories;
@@ -48,8 +49,38 @@ public class OrderService : IOrderService
         var variantMap = await LoadRequiredVariantsAsync(command.Items, ct);
         var order = BuildOrderAggregate(command, variantMap);
 
-        await _orderRepository.AddAsync(order, ct);
-        await _unitOfWork.SaveChangesAsync(ct);
+        if (command.Channel == ChannelType.POS)
+        {
+            OrderFeeSnapshot feeSnapshot = null!;
+            ReconciliationRecord reconRecord = null!;
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+            await _unitOfWork.ExecuteTransactionAsync(async () =>
+            {
+                await _orderRepository.AddAsync(order, ct);
+                feeSnapshot = await _feeEngine.CalculateAndFreezeFeeAsync(order, ct);
+
+                reconRecord = new ReconciliationRecord
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = order.Id,
+                    ProjectedSettlement = feeSnapshot.ProjectedSettlement,
+                    Status = ReconciliationStatus.PENDING_SETTLEMENT,
+                    CreatedAt = now
+                };
+
+                await _orderRepository.AddFeeSnapshotAsync(feeSnapshot, ct);
+                await _reconciliationRepository.AddAsync(reconRecord, ct);
+            }, ct);
+
+            order.FeeSnapshot = feeSnapshot;
+            order.ReconciliationRecord = reconRecord;
+        }
+        else
+        {
+            await _orderRepository.AddAsync(order, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
 
         return order;
     }
@@ -220,8 +251,8 @@ public class OrderService : IOrderService
         if (string.IsNullOrWhiteSpace(command.ExternalOrderId))
             throw new ValidationException("External order ID cannot be empty.");
 
-        if (command.Items == null || command.Items.Count == 0)
-            throw new ValidationException("An order must contain at least one order item.");
+        OrderValidationRules.ValidateChannelPaymentCompatibility(command.Channel, command.PaymentMethod);
+        OrderValidationRules.ValidateItems(command.Items);
 
         if (command.ShopVoucher < 0m)
             throw new ValidationException("Shop voucher cannot be negative.");
@@ -236,8 +267,10 @@ public class OrderService : IOrderService
 
         foreach (var id in variantIds)
         {
-            if (!variantMap.ContainsKey(id))
+            if (!variantMap.TryGetValue(id, out var variant))
                 throw new NotFoundException($"Product variant with ID '{id}' was not found in catalog.");
+
+            OrderValidationRules.ValidateVariantActive(variant);
         }
 
         return variantMap;
@@ -283,15 +316,14 @@ public class OrderService : IOrderService
         var subtotal = order.Items.Sum(i => i.LineTotal);
         order.SetFinancials(subtotal, command.ShopVoucher, now);
 
-        order.StatusHistory.Add(new OrderStatusHistory
+        if (command.Channel == ChannelType.POS)
         {
-            Id = Guid.NewGuid(),
-            OrderId = order.Id,
-            FromStatus = null,
-            ToStatus = OrderStatus.PENDING,
-            ChangedBy = command.ActorIdentity,
-            ChangedAt = now
-        });
+            order.MarkAsPosDelivered(command.ActorIdentity, now);
+        }
+        else
+        {
+            order.MarkAsPending(command.ActorIdentity, now);
+        }
 
         return order;
     }

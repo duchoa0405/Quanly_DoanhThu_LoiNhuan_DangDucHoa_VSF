@@ -3,7 +3,6 @@ using FashionWeb.Business.Domain.Entities;
 using FashionWeb.Business.Domain.Enums;
 using FashionWeb.Business.Exceptions;
 using FashionWeb.Business.Interfaces.Repositories;
-using FashionWeb.Business.Interfaces.Services;
 using FashionWeb.Business.Services;
 using Moq;
 using Xunit;
@@ -44,7 +43,7 @@ public class FeeScheduleServiceTests
             .Setup(r => r.GetActiveScheduleAsync(ChannelType.SHOPEE, PaymentMethod.MARKETPLACE_WALLET, It.IsAny<CancellationToken>()))
             .ReturnsAsync(prior);
 
-        var effectiveFrom = new DateOnly(2026, 10, 1);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var cmd = new CreateFeeScheduleCommand(
             Channel: ChannelType.SHOPEE,
             PaymentMethod: PaymentMethod.MARKETPLACE_WALLET,
@@ -53,7 +52,7 @@ public class FeeScheduleServiceTests
             ServiceFeeRate: 0.02m,
             ServiceFeeCap: 25000m,
             FixedFeePerOrder: 0m,
-            EffectiveFrom: effectiveFrom,
+            EffectiveFrom: today,
             ActorIdentity: "admin@shop.vn"
         );
 
@@ -63,7 +62,7 @@ public class FeeScheduleServiceTests
         Assert.True(result.IsActive);
         Assert.Equal(0.05m, result.CommissionRate);
         Assert.False(prior.IsActive);
-        Assert.Equal(effectiveFrom, prior.EffectiveTo);
+        Assert.Equal(today, prior.EffectiveTo);
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<FeeSchedule>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -78,7 +77,62 @@ public class FeeScheduleServiceTests
             ServiceFeeRate: 0m,
             ServiceFeeCap: null,
             FixedFeePerOrder: 3000m,
-            EffectiveFrom: new DateOnly(2026, 10, 1),
+            EffectiveFrom: DateOnly.FromDateTime(DateTime.UtcNow),
+            ActorIdentity: "admin@shop.vn"
+        );
+
+        await Assert.ThrowsAsync<ValidationException>(() => _service.CreateScheduleVersionAsync(cmd));
+    }
+
+    [Fact]
+    public async Task CreateScheduleVersion_RateExceeding100Percent_ThrowsValidationException()
+    {
+        var cmd = new CreateFeeScheduleCommand(
+            Channel: ChannelType.TIKTOK,
+            PaymentMethod: PaymentMethod.MARKETPLACE_WALLET,
+            CommissionRate: 1.50m, // 150% is invalid!
+            PaymentFeeRate: 0.03m,
+            ServiceFeeRate: 0m,
+            ServiceFeeCap: null,
+            FixedFeePerOrder: 3000m,
+            EffectiveFrom: DateOnly.FromDateTime(DateTime.UtcNow),
+            ActorIdentity: "admin@shop.vn"
+        );
+
+        await Assert.ThrowsAsync<ValidationException>(() => _service.CreateScheduleVersionAsync(cmd));
+    }
+
+    [Fact]
+    public async Task CreateScheduleVersion_IncompatibleChannelPayment_ThrowsValidationException()
+    {
+        var cmd = new CreateFeeScheduleCommand(
+            Channel: ChannelType.TIKTOK,
+            PaymentMethod: PaymentMethod.CASH, // TikTok cannot accept cash!
+            CommissionRate: 0.05m,
+            PaymentFeeRate: 0.03m,
+            ServiceFeeRate: 0m,
+            ServiceFeeCap: null,
+            FixedFeePerOrder: 0m,
+            EffectiveFrom: DateOnly.FromDateTime(DateTime.UtcNow),
+            ActorIdentity: "admin@shop.vn"
+        );
+
+        await Assert.ThrowsAsync<ValidationException>(() => _service.CreateScheduleVersionAsync(cmd));
+    }
+
+    [Fact]
+    public async Task CreateScheduleVersion_FutureEffectiveDate_ThrowsValidationException()
+    {
+        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
+        var cmd = new CreateFeeScheduleCommand(
+            Channel: ChannelType.POS,
+            PaymentMethod: PaymentMethod.CASH,
+            CommissionRate: 0m,
+            PaymentFeeRate: 0m,
+            ServiceFeeRate: 0m,
+            ServiceFeeCap: null,
+            FixedFeePerOrder: 0m,
+            EffectiveFrom: futureDate,
             ActorIdentity: "admin@shop.vn"
         );
 

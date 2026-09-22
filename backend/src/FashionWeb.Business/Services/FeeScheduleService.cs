@@ -1,6 +1,7 @@
 using FashionWeb.Business.Commands;
 using FashionWeb.Business.Domain.Entities;
 using FashionWeb.Business.Domain.Enums;
+using FashionWeb.Business.Domain.Validators;
 using FashionWeb.Business.Exceptions;
 using FashionWeb.Business.Interfaces.Repositories;
 using FashionWeb.Business.Interfaces.Services;
@@ -30,11 +31,26 @@ public class FeeScheduleService : IFeeScheduleService
 
     public async Task<FeeSchedule> CreateScheduleVersionAsync(CreateFeeScheduleCommand cmd, CancellationToken ct = default)
     {
-        if (cmd.CommissionRate < 0m || cmd.PaymentFeeRate < 0m || cmd.ServiceFeeRate < 0m || cmd.FixedFeePerOrder < 0m)
-            throw new ValidationException("Fee rates and fixed fees cannot be negative.");
+        OrderValidationRules.ValidateChannelPaymentCompatibility(cmd.Channel, cmd.PaymentMethod);
+
+        if (cmd.CommissionRate < 0m || cmd.CommissionRate > 1.0m)
+            throw new ValidationException($"Commission rate must be between 0 and 1 (0% to 100%). Received: {cmd.CommissionRate}.");
+
+        if (cmd.PaymentFeeRate < 0m || cmd.PaymentFeeRate > 1.0m)
+            throw new ValidationException($"Payment fee rate must be between 0 and 1 (0% to 100%). Received: {cmd.PaymentFeeRate}.");
+
+        if (cmd.ServiceFeeRate < 0m || cmd.ServiceFeeRate > 1.0m)
+            throw new ValidationException($"Service fee rate must be between 0 and 1 (0% to 100%). Received: {cmd.ServiceFeeRate}.");
+
+        if (cmd.FixedFeePerOrder < 0m)
+            throw new ValidationException("Fixed fee per order cannot be negative.");
 
         if (cmd.ServiceFeeCap.HasValue && cmd.ServiceFeeCap.Value < 0m)
             throw new ValidationException("Service fee cap cannot be negative.");
+
+        var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
+        if (cmd.EffectiveFrom > today)
+            throw new ValidationException($"Future effective dates are not supported in MVP. EffectiveFrom must be on or before {today:yyyy-MM-dd}.");
 
         FeeSchedule newSchedule = null!;
         var now = _timeProvider.GetUtcNow().UtcDateTime;
