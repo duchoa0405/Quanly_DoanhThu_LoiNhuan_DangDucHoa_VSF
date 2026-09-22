@@ -1,32 +1,21 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { catalogApi } from './api/catalogApi';
-import { Product } from './types/catalog.types';
+import React, { useEffect, useState } from 'react';
+import { useCatalog } from './hooks/useCatalog';
+import { ProductVariant } from './types/catalog.types';
+import { CreateProductModal } from './components/CreateProductModal';
+import { EditVariantModal } from './components/EditVariantModal';
 import { MoneyText } from '../../shared/ui/MoneyText';
 import { Badge } from '../../shared/ui/Badge';
 import { Button } from '../../shared/ui/Button';
 
 export const CatalogPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { products, loading, error, fetchProducts, createProduct, updateVariant } = useCatalog();
 
-  const loadProducts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await catalogApi.getProducts({ pageSize: 50 });
-      setProducts(data.items || []);
-    } catch (err: unknown) {
-      console.error('Failed to load catalog:', err);
-      setError('Không thể kết nối đến danh mục sản phẩm.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingVariant, setEditingVariant] = useState<{ variant: ProductVariant; productName: string } | null>(null);
 
   useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+    fetchProducts({ pageSize: 50 });
+  }, [fetchProducts]);
 
   return (
     <div>
@@ -37,9 +26,14 @@ export const CatalogPage: React.FC = () => {
             Quản lý mã SKU, đơn giá bán lẻ và giá vốn (COGS) phục vụ tính biên lợi nhuận đóng góp.
           </p>
         </div>
-        <Button variant="primary" onClick={loadProducts}>
-          Làm mới
-        </Button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button variant="secondary" onClick={() => fetchProducts({ pageSize: 50 })}>
+            Làm mới
+          </Button>
+          <Button variant="primary" onClick={() => setIsCreateOpen(true)}>
+            + Thêm Sản Phẩm Mới
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -63,13 +57,14 @@ export const CatalogPage: React.FC = () => {
                 <th style={{ padding: '12px 16px' }}>GIÁ BÁN LẺ</th>
                 <th style={{ padding: '12px 16px' }}>GIÁ VỐN (COGS)</th>
                 <th style={{ padding: '12px 16px' }}>TRẠNG THÁI</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right' }}>THAO TÁC</th>
               </tr>
             </thead>
             <tbody>
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-                    Chưa có sản phẩm nào trong hệ thống.
+                  <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                    Chưa có sản phẩm nào trong hệ thống. Nhấn "+ Thêm Sản Phẩm Mới" để bắt đầu.
                   </td>
                 </tr>
               ) : (
@@ -90,6 +85,24 @@ export const CatalogPage: React.FC = () => {
                       <td style={{ padding: '12px 16px' }}>
                         <Badge label={v.isActive ? 'Đang bán' : 'Ngừng bán'} variant={v.isActive ? 'success' : 'danger'} />
                       </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          onClick={() => setEditingVariant({ variant: v, productName: product.name })}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            borderRadius: '4px',
+                            border: '1px solid #cbd5e1',
+                            background: '#f8fafc',
+                            color: '#334155',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Sửa giá / trạng thái
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )
@@ -98,6 +111,21 @@ export const CatalogPage: React.FC = () => {
           </table>
         </div>
       )}
+
+      {/* Modals */}
+      <CreateProductModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSuccess={createProduct}
+      />
+
+      <EditVariantModal
+        isOpen={editingVariant !== null}
+        variant={editingVariant?.variant || null}
+        productName={editingVariant?.productName}
+        onClose={() => setEditingVariant(null)}
+        onSuccess={updateVariant}
+      />
     </div>
   );
 };

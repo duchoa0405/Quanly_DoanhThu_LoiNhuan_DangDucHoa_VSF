@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RhythmStrip } from './components/RhythmStrip';
 import { OrderFilterPills } from './components/OrderFilterPills';
 import { OrderTable } from './components/OrderTable';
+import { CreateOrderModal } from './components/CreateOrderModal';
+import { CancelOrderModal } from './components/CancelOrderModal';
 import { Button } from '../../shared/ui/Button';
 import { ordersApi } from './api/ordersApi';
 import { OrderListItemResponse, OrderSummaryResponse, SalesChannel } from './types/order.types';
@@ -12,6 +14,10 @@ export const OrdersPage: React.FC = () => {
   const [summary, setSummary] = useState<OrderSummaryResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Modals
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [cancellingOrder, setCancellingOrder] = useState<OrderListItemResponse | null>(null);
 
   const fetchOrderData = useCallback(async () => {
     setLoading(true);
@@ -36,6 +42,16 @@ export const OrdersPage: React.FC = () => {
     fetchOrderData();
   }, [fetchOrderData]);
 
+  const handleUpdateStatus = async (orderId: string, toStatus: 'SHIPPED' | 'DELIVERED') => {
+    try {
+      await ordersApi.updateOrderStatus(orderId, { toStatus });
+      await fetchOrderData();
+    } catch (err: unknown) {
+      console.error('Failed to update order status:', err);
+      alert('Cập nhật trạng thái đơn hàng thất bại.');
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -49,7 +65,7 @@ export const OrdersPage: React.FC = () => {
           <Button variant="secondary" onClick={fetchOrderData}>
             Làm mới
           </Button>
-          <Button variant="primary">
+          <Button variant="primary" onClick={() => setIsCreateOpen(true)}>
             + Tạo Đơn Mới (Live Fee Preview)
           </Button>
         </div>
@@ -78,6 +94,22 @@ export const OrdersPage: React.FC = () => {
       <OrderTable
         orders={orders}
         loading={loading}
+        onUpdateStatus={handleUpdateStatus}
+        onCancelOrder={(order) => setCancellingOrder(order)}
+      />
+
+      {/* Modals */}
+      <CreateOrderModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSuccess={fetchOrderData}
+      />
+
+      <CancelOrderModal
+        isOpen={cancellingOrder !== null}
+        order={cancellingOrder}
+        onClose={() => setCancellingOrder(null)}
+        onSuccess={fetchOrderData}
       />
     </div>
   );

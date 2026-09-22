@@ -7,9 +7,17 @@ interface OrderTableProps {
   orders: OrderListItemResponse[];
   loading?: boolean;
   onSelectOrder?: (order: OrderListItemResponse) => void;
+  onUpdateStatus?: (orderId: string, toStatus: 'SHIPPED' | 'DELIVERED') => void;
+  onCancelOrder?: (order: OrderListItemResponse) => void;
 }
 
-export const OrderTable: React.FC<OrderTableProps> = ({ orders, loading, onSelectOrder }) => {
+export const OrderTable: React.FC<OrderTableProps> = ({
+  orders,
+  loading,
+  onSelectOrder,
+  onUpdateStatus,
+  onCancelOrder,
+}) => {
   if (loading) {
     return (
       <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
@@ -51,6 +59,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, loading, onSelec
             <th style={{ padding: '12px 16px' }}>SẢN PHẨM</th>
             <th style={{ padding: '12px 16px' }}>DOANH THU GỘP</th>
             <th style={{ padding: '12px 16px' }}>TRẠNG THÁI</th>
+            <th style={{ padding: '12px 16px', textAlign: 'right' }}>THAO TÁC</th>
           </tr>
         </thead>
         <tbody>
@@ -63,14 +72,17 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, loading, onSelec
             return (
               <tr
                 key={order.id}
-                onClick={() => onSelectOrder?.(order)}
                 style={{
                   borderBottom: '1px solid var(--color-border-hairline)',
-                  cursor: onSelectOrder ? 'pointer' : 'default',
                   transition: 'background-color 0.15s ease',
                 }}
               >
-                <td style={{ padding: '12px 16px', fontWeight: 600 }}>{order.externalOrderId}</td>
+                <td
+                  style={{ padding: '12px 16px', fontWeight: 600, cursor: onSelectOrder ? 'pointer' : 'default' }}
+                  onClick={() => onSelectOrder?.(order)}
+                >
+                  {order.externalOrderId}
+                </td>
                 <td style={{ padding: '12px 16px' }}>
                   <Badge label={order.channel} />
                 </td>
@@ -83,6 +95,87 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, loading, onSelec
                   <span style={{ color: statusColor, fontWeight: 600 }}>
                     ● {order.status}
                   </span>
+                </td>
+                <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                  <div style={{ display: 'inline-flex', gap: '6px' }}>
+                    {order.status === 'PENDING' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onUpdateStatus?.(order.id, 'SHIPPED')}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            borderRadius: '4px',
+                            border: '1px solid #3b82f6',
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Giao hàng
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onCancelOrder?.(order)}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            borderRadius: '4px',
+                            border: '1px solid #fca5a5',
+                            background: '#fef2f2',
+                            color: '#b91c1c',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Hủy
+                        </button>
+                      </>
+                    )}
+                    {order.status === 'SHIPPED' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onUpdateStatus?.(order.id, 'DELIVERED')}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            borderRadius: '4px',
+                            border: '1px solid #10b981',
+                            background: '#ecfdf5',
+                            color: '#047857',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Đã giao
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onCancelOrder?.(order)}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            borderRadius: '4px',
+                            border: '1px solid #fca5a5',
+                            background: '#fef2f2',
+                            color: '#b91c1c',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Hủy
+                        </button>
+                      </>
+                    )}
+                    {(order.status === 'DELIVERED' || order.status === 'CANCELLED') && (
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                        {order.status === 'DELIVERED' ? 'Đã hoàn tất' : 'Đã hủy'}
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             );

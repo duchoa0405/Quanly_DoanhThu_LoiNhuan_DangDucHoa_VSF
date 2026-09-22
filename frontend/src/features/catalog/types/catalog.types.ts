@@ -28,3 +28,43 @@ export interface PagedProductListResponse {
   totalItems: number;
   totalPages: number;
 }
+
+export interface CreateProductVariantRequest {
+  skuCode: string;
+  color?: string | null;
+  size?: string | null;
+  retailPrice: number;
+  costPrice: number;
+}
+
+export interface CreateProductRequest {
+  name: string;
+  category?: string | null;
+  variants: CreateProductVariantRequest[];
+}
+
+export interface UpdateProductRequest {
+  name?: string | null;
+  category?: string | null;
+  isActive?: boolean | null;
+}
+
+export interface UpdateVariantRequest {
+  retailPrice?: number | null;
+  costPrice?: number | null;
+  isActive?: boolean | null;
+}
+
+export interface SelectableVariantResponse {
+  id: string;
+  skuCode: string;
+  productName: string;
+  color?: string | null;
+  size?: string | null;
+  retailPrice: number;
+  isActive: boolean;
+}
+
+export interface SelectableVariantListResponse {
+  items: SelectableVariantResponse[];
+}
